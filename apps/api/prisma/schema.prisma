@@ -1,0 +1,1195 @@
+// ---------------------------------------------------------------------------
+// Lignum Vitae — modelo de datos
+//
+//   auth       usuarios y roles
+//   catalog    lo que se vende (categorias, velas/moldes, empaques, tarjetas,
+//              productos, incluidos los ramos como producto compuesto)
+//   inventory  insumos, compras, movimientos de stock, activos y gastos
+//   sales      ciclo comercial (clientes, solicitudes, cotizaciones, pedidos, pagos)
+//   config     datos del negocio y politicas de costeo, editables desde el admin
+//
+// PRECISION DECIMAL — desviacion deliberada de Decimal(12,2) para todo:
+//   Decimal(12,2)  importes que se cobran o se pagan (precios, totales, abonos)
+//   Decimal(14,6)  costos unitarios y tasas ($/g, $/min, $/pieza de insumo)
+//   Decimal(14,3)  cantidades y existencias en unidad base
+//   Decimal(5,4)   fracciones (merma, carga de aroma)
+// La cera cuesta $0.0989/g: a 2 decimales se vuelve $0.10 y encarece 1.1% el
+// catalogo completo. Ver packages/types/src/costing/README.md.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["auth", "catalog", "inventory", "sales", "config"]
+}
+
+// =============================================================================
+// auth
+// =============================================================================
+
+enum UserRoles {
+  employee
+  admin
+  super_user
+
+  @@map("user_roles")
+  @@schema("auth")
+}
+
+/// Sin correo a proposito: la duena y su ayudante entran con usuario y
+/// contrasena. Recuperacion de acceso = el super_user la resetea.
+model User {
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  password  String
+  fullName  String    @map("full_name")
+  role      UserRoles @default(employee)
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  quotations Quotation[]
+  orders     Order[]
+  purchases  Purchase[]
+  payments   Payment[]
+
+  @@map("users")
+  @@schema("auth")
+}
+
+// =============================================================================
+// catalog
+// =============================================================================
+
+/// Las categorias del catalogo impreso: Animalitos, Flores, Religiosas,
+/// Navidad, Ramos... El color es el que se usa para diferenciarlas en el admin
+/// y para filtrar en la landing.
+model CandleCategory {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique
+  slug               String   @unique
+  /// Hex con # incluido, validado en el DTO: ^#[0-9A-Fa-f]{6}$
+  colorHex           String   @default("#7A5C3E") @map("color_hex")
+  description        String?
+  coverImageUrl      String?  @map("cover_image_url")
+  sortOrder          Int      @default(0) @map("sort_order")
+  isVisibleOnLanding Boolean  @default(true) @map("is_visible_on_landing")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  candles  Candle[]
+  products Product[]
+
+  @@map("candle_categories")
+  @@schema("catalog")
+}
+
+/// La vela desnuda: el molde y su fisica. NO tiene precio ni empaque propios.
+model Candle {
+  id         Int    @id @default(autoincrement())
+  name       String @unique
+  slug       String @unique
+  categoryId Int    @map("category_id")
+
+  /// Gramos de cera de UNA pieza, sin merma.
+  grams Decimal @db.Decimal(10, 2)
+  widthCm  Decimal? @db.Decimal(6, 2) @map("width_cm")
+  heightCm Decimal? @db.Decimal(6, 2) @map("height_cm")
+
+  /// Merma de vaciado: cera que se queda en la olla, el cucharon y los
+  /// desmoldes fallidos. Se aplica siempre antes de calcular el costo de cera.
+  wastePct Decimal @default(0.03) @db.Decimal(5, 4) @map("waste_pct")
+
+  /// Minutos de derretir y desmoldar de UN LOTE, no de una pieza.
+  meltMinutes Int @default(15) @map("melt_minutes")
+  /// Capacidad de la olla en gramos para ESTE molde. null = Settings.meltBatchGrams.
+  meltBatchGrams Int? @map("melt_batch_grams")
+
+  /// Que cera usa. null = Settings.waxSupplyId (permite distinguir parafina de soya).
+  waxSupplyId Int? @map("wax_supply_id")
+  /// El molde fisico, para poder amortizarlo.
+  moldAssetId Int? @map("mold_asset_id")
+
+  imageUrl  String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category         CandleCategory    @relation(fields: [categoryId], references: [id])
+  waxSupply        Supply?           @relation("CandleWax", fields: [waxSupplyId], references: [id])
+  moldAsset        Asset?            @relation(fields: [moldAssetId], references: [id])
+  products         Product[]
+  bouquetComponent ProductComponent[]
+  supplyTemplate   CandleSupplyTemplate[]
+
+  @@index([categoryId])
+  @@map("candles")
+  @@schema("catalog")
+}
+
+/// Insumos que pertenecen a la VELA misma, no al empaque: mecha, colorante.
+/// En el Excel estos costos se repetian identicos en cada variante del mismo
+/// molde (Osito Chico SOLO, Liston, Cajita... todos con la misma mecha y el
+/// mismo colorante) — es la senal de que el dato pertenece al molde, no a la
+/// combinacion. Se copia a ProductSupply al crear el producto, igual que las
+/// plantillas de empaque y de tarjeta.
+model CandleSupplyTemplate {
+  id       Int           @id @default(autoincrement())
+  candleId Int           @map("candle_id")
+  supplyId Int           @map("supply_id")
+  quantity Decimal       @db.Decimal(14, 4)
+  unit     UnitOfMeasure
+  note     String?
+
+  candle Candle @relation(fields: [candleId], references: [id], onDelete: Cascade)
+  supply Supply @relation(fields: [supplyId], references: [id])
+
+  @@unique([candleId, supplyId])
+  @@map("candle_supply_templates")
+  @@schema("catalog")
+}
+
+/// Catalogo extensible de empaques: Sola, Celofan con Liston, Cajita, Tul,
+/// Caja de Acetato, Base Cupcake... Los minutos resultaron estar determinados
+/// por el empaque, no por la vela.
+model PackagingType {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  /// Minutos de empaquetar UNA pieza. No se prorratea.
+  packMinutes Int     @default(0) @map("pack_minutes")
+  /// Parte del diseno que aporta el empaque: minutos POR PEDIDO, no por pieza.
+  setupMinutes Int    @default(0) @map("setup_minutes")
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  supplyTemplate PackagingSupplyTemplate[]
+  products       Product[]
+
+  @@map("packaging_types")
+  @@schema("catalog")
+}
+
+/// Etiqueta 5x5 una cara, etiqueta 5x5 dos caras, tarjeta 9x12.
+model CardType {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique
+  slug         String  @unique
+  description  String?
+  widthCm      Decimal? @db.Decimal(6, 2) @map("width_cm")
+  heightCm     Decimal? @db.Decimal(6, 2) @map("height_cm")
+  printedSides Int     @default(1) @map("printed_sides")
+  /// Minutos POR PEDIDO de disenar el arte personalizado de esta tarjeta.
+  setupMinutes Int     @default(15) @map("setup_minutes")
+  sortOrder    Int     @default(0) @map("sort_order")
+  isActive     Boolean @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  supplyTemplate CardSupplyTemplate[]
+  products       Product[]
+
+  @@map("card_types")
+  @@schema("catalog")
+}
+
+/// Plantilla: que insumos consume el empaque. Se COPIA a ProductSupply al
+/// crear el producto; no se resuelve en tiempo de calculo. El BOM del
+/// producto queda explicito y editable; lo que SI se propaga solo al cambiar
+/// es el PRECIO del insumo (Supply.currentUnitCost), no la cantidad.
+model PackagingSupplyTemplate {
+  id              Int           @id @default(autoincrement())
+  packagingTypeId Int           @map("packaging_type_id")
+  supplyId        Int           @map("supply_id")
+  quantity        Decimal       @db.Decimal(14, 4)
+  unit            UnitOfMeasure
+  note            String?
+
+  packagingType PackagingType @relation(fields: [packagingTypeId], references: [id], onDelete: Cascade)
+  supply        Supply        @relation(fields: [supplyId], references: [id])
+
+  @@unique([packagingTypeId, supplyId])
+  @@map("packaging_supply_templates")
+  @@schema("catalog")
+}
+
+model CardSupplyTemplate {
+  id         Int           @id @default(autoincrement())
+  cardTypeId Int           @map("card_type_id")
+  supplyId   Int           @map("supply_id")
+  quantity   Decimal       @db.Decimal(14, 4)
+  unit       UnitOfMeasure
+  note       String?
+
+  cardType CardType @relation(fields: [cardTypeId], references: [id], onDelete: Cascade)
+  supply   Supply   @relation(fields: [supplyId], references: [id])
+
+  @@unique([cardTypeId, supplyId])
+  @@map("card_supply_templates")
+  @@schema("catalog")
+}
+
+enum ProductKind {
+  /// Una vela con su empaque. Usa candleId.
+  SIMPLE
+  /// Un ramo armado con N velas distintas. Usa ProductComponent en vez de
+  /// candleId; candleId se queda en null.
+  BOUQUET
+
+  @@map("product_kind")
+  @@schema("catalog")
+}
+
+/// Cual insumo lleno este renglon del BOM, para saber que se puede
+/// "reaplicar desde la plantilla" sin pisar un ajuste hecho a mano.
+enum SupplySource {
+  CANDLE_TEMPLATE
+  PACKAGING_TEMPLATE
+  CARD_TEMPLATE
+  MANUAL
+
+  @@map("supply_source")
+  @@schema("catalog")
+}
+
+/// El "Modelo" del catalogo: vela + empaque + tarjeta (o, si kind=BOUQUET,
+/// un ramo de velas). Es lo que se cotiza. El COLOR de la vela, el LISTON y
+/// el AROMA no viven aqui: se eligen en la cotizacion.
+model Product {
+  id   Int         @id @default(autoincrement())
+  sku  String      @unique
+  name String
+  slug String      @unique
+  kind ProductKind @default(SIMPLE)
+
+  categoryId      Int  @map("category_id")
+  /// Solo para kind=SIMPLE. Para BOUQUET, las velas viven en ProductComponent.
+  candleId        Int? @map("candle_id")
+  packagingTypeId Int? @map("packaging_type_id")
+  cardTypeId      Int? @map("card_type_id")
+
+  description String?
+  /// Minutos extra sobre lo que aportan empaque y tarjeta (o, en un ramo, el
+  /// armado). Escape hatch para los casos raros de personalizacion especial.
+  extraSetupMinutes Int @default(0) @map("extra_setup_minutes")
+  extraPackMinutes  Int @default(0) @map("extra_pack_minutes")
+  /// Solo para kind=BOUQUET: minutos de envolver y atar el ramo, por pieza.
+  assemblyMinutes   Int @default(0) @map("assembly_minutes")
+
+  allowsFragrance Boolean @default(true) @map("allows_fragrance")
+
+  // --- Costeo cacheado. Lo escribe RecalculateProductCostingUseCase, nunca
+  // el request directamente. Es un cache de lectura: la verdad la calcula
+  // calculateProductCost() / calculateBouquetCost() en packages/types.
+  unitWaxCost      Decimal @default(0) @db.Decimal(14, 6) @map("unit_wax_cost")
+  unitSupplyCost   Decimal @default(0) @db.Decimal(14, 6) @map("unit_supply_cost")
+  unitLaborCost    Decimal @default(0) @db.Decimal(14, 6) @map("unit_labor_cost")
+  unitOverheadCost Decimal @default(0) @db.Decimal(14, 6) @map("unit_overhead_cost")
+  unitTotalCost    Decimal @default(0) @db.Decimal(14, 6) @map("unit_total_cost")
+
+  /// Precio que sugiere el motor a partir del costo y el markup de Settings.
+  retailListPrice    Decimal @default(0) @db.Decimal(12, 2) @map("retail_list_price")
+  wholesaleListPrice Decimal @default(0) @db.Decimal(12, 2) @map("wholesale_list_price")
+  /// Precio fijado a mano. Si existe, gana sobre el calculado. Se valida
+  /// contra Settings.minMarginPct y alimenta el reporte de fuga de margen.
+  retailPriceOverride    Decimal? @db.Decimal(12, 2) @map("retail_price_override")
+  wholesalePriceOverride Decimal? @db.Decimal(12, 2) @map("wholesale_price_override")
+
+  /// Tasas con las que se calculo el costeo cacheado, para poder explicarlo
+  /// en el admin sin tener que volver a correr el motor.
+  costingBasis      Json?     @map("costing_basis")
+  costingComputedAt DateTime? @map("costing_computed_at")
+  /// true cuando el importador del Excel no pudo reconstruir el BOM con
+  /// confianza y hay que revisarlo a mano.
+  needsReview   Boolean @default(false) @map("needs_review")
+  reviewNote    String? @map("review_note")
+
+  isVisibleOnLanding Boolean @default(true) @map("is_visible_on_landing")
+  isFeatured         Boolean @default(false) @map("is_featured")
+  isActive           Boolean @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  category      CandleCategory  @relation(fields: [categoryId], references: [id])
+  candle        Candle?         @relation(fields: [candleId], references: [id])
+  packagingType PackagingType?  @relation(fields: [packagingTypeId], references: [id])
+  cardType      CardType?       @relation(fields: [cardTypeId], references: [id])
+  supplies      ProductSupply[]
+  components    ProductComponent[]
+  images        ProductImage[]
+  quotationItems QuotationItem[]
+  orderItems     OrderItem[]
+
+  @@index([candleId])
+  @@index([categoryId])
+  @@index([isVisibleOnLanding, isActive])
+  @@map("products")
+  @@schema("catalog")
+}
+
+/// Solo para Product.kind = BOUQUET: cada vela que compone el ramo, con su
+/// cantidad. El costo del ramo suma la cera y el derretido de cada renglon.
+model ProductComponent {
+  id        Int @id @default(autoincrement())
+  productId Int @map("product_id")
+  candleId  Int @map("candle_id")
+  quantity  Int @default(1)
+  sortOrder Int @default(0) @map("sort_order")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  candle  Candle  @relation(fields: [candleId], references: [id])
+
+  @@unique([productId, candleId])
+  @@map("product_components")
+  @@schema("catalog")
+}
+
+/// La lista de materiales. Sustituye las columnas de insumos capturadas a
+/// mano en el Excel. NUNCA guarda costo: guarda CANTIDAD. El costo sale de
+/// Supply.currentUnitCost, que es lo que hace que cambiar el precio del tul
+/// repreciie automaticamente los productos que llevan tul.
+model ProductSupply {
+  id        Int     @id @default(autoincrement())
+  productId Int     @map("product_id")
+  supplyId  Int     @map("supply_id")
+  /// En la unidad base del insumo. Admite fracciones: 0.25 pliegos de papel.
+  quantity  Decimal @db.Decimal(14, 4)
+  /// Copia denormalizada de Supply.unit al capturar, para que un BOM viejo
+  /// siga siendo legible si alguien cambia la unidad del insumo despues.
+  unit      UnitOfMeasure
+  source    SupplySource @default(MANUAL)
+  note      String?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supply  Supply  @relation(fields: [supplyId], references: [id])
+
+  @@unique([productId, supplyId])
+  @@index([supplyId])
+  @@map("product_supplies")
+  @@schema("catalog")
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int     @map("product_id")
+  url       String
+  alt       String?
+  sortOrder Int     @default(0) @map("sort_order")
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+  @@schema("catalog")
+}
+
+// =============================================================================
+// inventory
+// =============================================================================
+
+enum SupplyType {
+  WAX // cera / parafina — NO puede aparecer en ProductSupply
+  FRAGRANCE // aroma
+  WICK // mecha
+  DYE // colorante / aditivo
+  ALUMINUM_BASE
+  CELLOPHANE
+  RIBBON
+  LABEL
+  PRINTING
+  SEAL
+  BELL
+  SILICONE
+  BOX
+  TULLE
+  ACETATE
+  PAPER
+  OTHER
+
+  @@map("supply_type")
+  @@schema("inventory")
+}
+
+enum UnitOfMeasure {
+  GRAM
+  KILOGRAM
+  MILLILITER
+  LITER
+  CENTIMETER
+  METER
+  PIECE
+  SHEET
+
+  @@map("unit_of_measure")
+  @@schema("inventory")
+}
+
+model Supply {
+  id   Int        @id @default(autoincrement())
+  name String     @unique
+  sku  String?    @unique
+  type SupplyType
+  /// Unidad BASE: en la que se expresa el consumo y las existencias.
+  unit UnitOfMeasure
+
+  /// El costo que USA el motor de costeo. Solo cambia porque alguien lo cambia.
+  currentUnitCost Decimal @db.Decimal(14, 6) @map("current_unit_cost")
+  /// El costo que el motor SUGIERE a partir de las compras reales. Nunca se
+  /// aplica solo: el admin muestra el desfase y un boton "Aplicar".
+  suggestedUnitCost       Decimal?  @db.Decimal(14, 6) @map("suggested_unit_cost")
+  suggestedCostSampleSize Int       @default(0) @map("suggested_cost_sample_size")
+  suggestedCostComputedAt DateTime? @map("suggested_cost_computed_at")
+
+  /// Derivado: SIEMPRE SUM(stock_movements.quantity WHERE isActive), nunca
+  /// se suma por deltas para que un movimiento borrado no descuadre todo.
+  stockQty    Decimal @default(0) @db.Decimal(14, 3) @map("stock_qty")
+  minStockQty Decimal @default(0) @db.Decimal(14, 3) @map("min_stock_qty")
+
+  /// Como se compra normalmente: "bulto de 20 kg" = 20000 unidades base.
+  /// Pre-llena el formulario de compra; no participa en el costeo.
+  defaultPackLabel      String?  @map("default_pack_label")
+  defaultBaseQtyPerPack Decimal? @db.Decimal(14, 3) @map("default_base_qty_per_pack")
+  /// Ayuda de captura: "de un pliego salen 4 etiquetas" -> 4. La verdad
+  /// sigue siendo ProductSupply.quantity (0.25); esto solo alimenta el
+  /// asistente de alta del admin.
+  yieldPerBaseUnit Decimal @default(1) @db.Decimal(14, 4) @map("yield_per_base_unit")
+
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  productSupplies   ProductSupply[]
+  packagingTemplate PackagingSupplyTemplate[]
+  cardTemplate      CardSupplyTemplate[]
+  candleTemplate    CandleSupplyTemplate[]
+  purchaseItems     PurchaseItem[]
+  movements         StockMovement[]
+  candlesUsingAsWax Candle[] @relation("CandleWax")
+
+  @@index([type])
+  @@map("supplies")
+  @@schema("inventory")
+}
+
+enum StockMovementKind {
+  PURCHASE // + entra por compra
+  CONSUMPTION // - sale al entregar un pedido
+  ADJUSTMENT // +- conteo fisico
+  WASTE // - merma reconocida
+
+  @@map("stock_movement_kind")
+  @@schema("inventory")
+}
+
+model StockMovement {
+  id       Int               @id @default(autoincrement())
+  supplyId Int               @map("supply_id")
+  kind     StockMovementKind
+  /// Con signo. Positivo entra, negativo sale.
+  quantity Decimal           @db.Decimal(14, 3)
+  unitCost Decimal           @db.Decimal(14, 6) @map("unit_cost")
+  /// A que se debe: 'purchase_item' | 'order' | 'manual'
+  refType    String?  @map("ref_type")
+  refId      Int?     @map("ref_id")
+  occurredAt DateTime @map("occurred_at")
+  notes      String?
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  supply Supply @relation(fields: [supplyId], references: [id])
+
+  @@index([supplyId, occurredAt])
+  @@index([refType, refId])
+  @@map("stock_movements")
+  @@schema("inventory")
+}
+
+enum PurchaseLineKind {
+  /// Insumo para vela: afecta stock y costo unitario.
+  SUPPLY
+  /// Activo durable: moldes, ollas, pinzas. NO entra al costo unitario;
+  /// entra a la bolsa de indirectos amortizado en el tiempo.
+  ASSET
+  /// Gasto del periodo: gas, luz, envios, papeleria. Entra completo a la bolsa.
+  EXPENSE
+
+  @@map("purchase_line_kind")
+  @@schema("inventory")
+}
+
+model Purchase {
+  id           Int      @id @default(autoincrement())
+  folio        String   @unique
+  purchasedAt  DateTime @db.Date @map("purchased_at")
+  /// "Shein", "Mercado Libre", "Local". Texto libre con autocompletado.
+  platform     String?
+  supplierName String?  @map("supplier_name")
+  reference    String?
+  /// Se prorratea entre los renglones SUPPLY por participacion en el importe.
+  shippingCost Decimal  @default(0) @db.Decimal(12, 2) @map("shipping_cost")
+  subtotal     Decimal  @db.Decimal(12, 2)
+  total        Decimal  @db.Decimal(12, 2)
+  notes        String?
+  createdById  Int?     @map("created_by_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  items     PurchaseItem[]
+  createdBy User?          @relation(fields: [createdById], references: [id])
+
+  @@index([purchasedAt])
+  @@map("purchases")
+  @@schema("inventory")
+}
+
+/// Una linea de compra. Sustituye el "=143.45/3" capturado a mano en la
+/// celda de Costo del Excel.
+model PurchaseItem {
+  id          Int              @id @default(autoincrement())
+  purchaseId  Int              @map("purchase_id")
+  kind        PurchaseLineKind
+  /// Texto tal como venia en el ticket: "20 kilos de cera", "Molde Vela Rosa".
+  description String
+
+  supplyId          Int? @map("supply_id")
+  assetId           Int? @map("asset_id")
+  expenseCategoryId Int? @map("expense_category_id")
+
+  /// Como se compro: 2 paquetes ("bultos"), cada uno con 20000 unidades base.
+  packsQty       Decimal @db.Decimal(14, 3) @map("packs_qty")
+  baseQtyPerPack Decimal @db.Decimal(14, 3) @map("base_qty_per_pack")
+  pricePerPack   Decimal @db.Decimal(12, 2) @map("price_per_pack")
+  lineTotal      Decimal @db.Decimal(12, 2) @map("line_total")
+
+  /// Derivadas por el servidor. baseQuantity = packsQty * baseQtyPerPack
+  baseQuantity Decimal @db.Decimal(14, 3) @map("base_quantity")
+  /// baseUnitCost = lineTotal / baseQuantity
+  baseUnitCost Decimal @db.Decimal(14, 6) @map("base_unit_cost")
+  /// landedUnitCost = (lineTotal + fleteProrrateado) / baseQuantity. Es el
+  /// que alimenta suggestSupplyUnitCost.
+  landedUnitCost    Decimal @db.Decimal(14, 6) @map("landed_unit_cost")
+  allocatedShipping Decimal @default(0) @db.Decimal(12, 2) @map("allocated_shipping")
+
+  purchase        Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  supply          Supply?          @relation(fields: [supplyId], references: [id])
+  asset           Asset?           @relation(fields: [assetId], references: [id])
+  expenseCategory ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id])
+
+  @@index([purchaseId])
+  @@index([supplyId])
+  @@map("purchase_items")
+  @@schema("inventory")
+}
+
+enum AssetKind {
+  MOLD
+  TOOL
+  EQUIPMENT
+
+  @@map("asset_kind")
+  @@schema("inventory")
+}
+
+/// Moldes, ollas, pinzas. En el Excel se gastaban completos el mes de la
+/// compra (39.4% de los "egresos" de enero eran moldes). Aqui se amortizan.
+model Asset {
+  id               Int       @id @default(autoincrement())
+  name             String
+  kind             AssetKind @default(MOLD)
+  acquiredAt       DateTime  @db.Date @map("acquired_at")
+  quantity         Int       @default(1)
+  unitCost         Decimal   @db.Decimal(12, 2) @map("unit_cost")
+  totalCost        Decimal   @db.Decimal(12, 2) @map("total_cost")
+  salvageValue     Decimal   @default(0) @db.Decimal(12, 2) @map("salvage_value")
+  /// Linea recta. Default en Settings.defaultAssetUsefulLifeMonths (24).
+  usefulLifeMonths Int       @default(24) @map("useful_life_months")
+  retiredAt        DateTime? @db.Date @map("retired_at")
+  imageUrl         String?
+  notes            String?
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  purchaseItems PurchaseItem[]
+  candles       Candle[]
+
+  @@index([kind])
+  @@map("assets")
+  @@schema("inventory")
+}
+
+enum ExpenseKind {
+  /// Va a la bolsa de gastos indirectos que se reparte al costo unitario.
+  OVERHEAD
+  /// No opera: comisiones bancarias, publicidad, impuestos. Se reporta aparte.
+  NON_OPERATING
+
+  @@map("expense_kind")
+  @@schema("inventory")
+}
+
+model ExpenseCategory {
+  id       Int         @id @default(autoincrement())
+  name     String      @unique
+  kind     ExpenseKind @default(OVERHEAD)
+  isActive Boolean     @default(true) @map("is_active")
+
+  expenses      Expense[]
+  purchaseItems PurchaseItem[]
+
+  @@map("expense_categories")
+  @@schema("inventory")
+}
+
+enum ExpenseSource {
+  MANUAL
+  PURCHASE
+  /// Generado por el cierre mensual a partir de Asset.
+  DEPRECIATION
+
+  @@map("expense_source")
+  @@schema("inventory")
+}
+
+model Expense {
+  id          Int           @id @default(autoincrement())
+  categoryId  Int           @map("category_id")
+  source      ExpenseSource @default(MANUAL)
+  description String
+  amount      Decimal       @db.Decimal(12, 2)
+  /// Primer dia del mes al que pertenece. Un gasto de gas del 3 de febrero
+  /// que cubre enero se imputa a enero.
+  periodMonth DateTime      @db.Date @map("period_month")
+  incurredAt  DateTime      @db.Date @map("incurred_at")
+  refType     String?       @map("ref_type")
+  refId       Int?          @map("ref_id")
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  category ExpenseCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([periodMonth])
+  @@map("expenses")
+  @@schema("inventory")
+}
+
+/// Cierre mensual. Sustituye la constante $2.50. Una fila por mes; el mes
+/// abierto se recalcula, el cerrado se congela.
+model OverheadPeriod {
+  id    Int @id @default(autoincrement())
+  year  Int
+  month Int
+
+  /// SUM(expenses.amount WHERE kind=OVERHEAD AND periodMonth=este mes), con
+  /// la depreciacion del mes ya incluida.
+  expenseTotal Decimal @db.Decimal(12, 2) @map("expense_total")
+  /// Minutos productivos: SUM(order_items.laborMinutesPerUnit * quantity) de
+  /// los pedidos ENTREGADOS en el mes.
+  producedMinutes Decimal @db.Decimal(14, 3) @map("produced_minutes")
+  producedUnits   Int     @map("produced_units")
+  producedGrams   Decimal @db.Decimal(14, 3) @map("produced_grams")
+
+  /// expenseTotal / producedMinutes, acotado contra el fallback de Settings.
+  ratePerMinute Decimal @db.Decimal(14, 6) @map("rate_per_minute")
+  /// DERIVED | FALLBACK | CLAMPED — por que salio ese numero.
+  rateSource    String  @map("rate_source")
+  /// Solo informativo para la UI: "equivale a $X.XX por pieza".
+  ratePerUnit   Decimal @db.Decimal(14, 6) @map("rate_per_unit")
+
+  closedAt  DateTime? @map("closed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([year, month])
+  @@map("overhead_periods")
+  @@schema("inventory")
+}
+
+// =============================================================================
+// sales
+// =============================================================================
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@map("quotation_status")
+  @@schema("sales")
+}
+
+enum OrderStatus {
+  PENDING_DEPOSIT // cotizacion aceptada, sin anticipo
+  CONFIRMED // anticipo cobrado, entra a produccion
+  IN_PRODUCTION
+  READY
+  DELIVERED
+  CANCELLED
+
+  @@map("order_status")
+  @@schema("sales")
+}
+
+enum PriceTier {
+  RETAIL
+  WHOLESALE
+
+  @@map("price_tier")
+  @@schema("sales")
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+  OTHER
+
+  @@map("payment_method")
+  @@schema("sales")
+}
+
+enum AdjustmentType {
+  PERCENTAGE
+  FIXED
+
+  @@map("adjustment_type")
+  @@schema("sales")
+}
+
+enum QuoteRequestStatus {
+  NEW
+  CONVERTED
+  DISMISSED
+
+  @@map("quote_request_status")
+  @@schema("sales")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  fullName  String   @map("full_name")
+  phone     String
+  whatsapp  String?
+  email     String?
+  address   String?
+  /// "Bautizo de Emilia", "XV de Sofia" — como la duena identifica al cliente.
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  quotations Quotation[]
+  orders     Order[]
+
+  @@index([fullName])
+  @@index([phone])
+  @@map("customers")
+  @@schema("sales")
+}
+
+/// Solicitud cruda que llega del cotizador publico de la landing, antes de
+/// que la duena la convierta en una Quotation con precios reales.
+model QuoteRequest {
+  id     Int                @id @default(autoincrement())
+  status QuoteRequestStatus @default(NEW)
+
+  fullName  String    @map("full_name")
+  whatsapp  String
+  eventDate DateTime? @db.Date @map("event_date")
+  dueDate   DateTime? @db.Date @map("due_date")
+  notes     String?
+
+  /// [{ productId, productName, quantity, candleColor?, ribbonColor?, withFragrance? }]
+  items Json
+
+  convertedQuotationId Int? @unique @map("converted_quotation_id")
+  dismissedReason      String? @map("dismissed_reason")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("quote_requests")
+  @@schema("sales")
+}
+
+model Quotation {
+  id     Int             @id @default(autoincrement())
+  folio  String          @unique
+  status QuotationStatus @default(DRAFT)
+
+  customerId  Int  @map("customer_id")
+  createdById Int? @map("created_by_id")
+
+  issuedAt   DateTime  @default(now()) @map("issued_at")
+  validUntil DateTime  @map("valid_until")
+  /// Fecha del evento. Se valida contra Settings.minLeadTimeDays.
+  eventDate  DateTime? @db.Date @map("event_date")
+
+  // --- BASE DE COSTEO CONGELADA. Se COPIA de Settings al crear y jamas se
+  // relee, para que una cotizacion de hace seis meses siga cuadrando cuando
+  // cambie el precio de la cera o el margen.
+  waxUnitCost           Decimal @db.Decimal(14, 6) @map("wax_unit_cost")
+  laborRatePerMinute    Decimal @db.Decimal(14, 6) @map("labor_rate_per_minute")
+  overheadRatePerMinute Decimal @db.Decimal(14, 6) @map("overhead_rate_per_minute")
+  meltBatchGrams        Int     @map("melt_batch_grams")
+  retailMarkupPct       Decimal @db.Decimal(5, 2) @map("retail_markup_pct")
+  wholesaleMarkupPct    Decimal @db.Decimal(5, 2) @map("wholesale_markup_pct")
+  wholesaleThresholdQty Int     @map("wholesale_threshold_qty")
+  fragranceSurcharge    Decimal @db.Decimal(12, 2) @map("fragrance_surcharge")
+  roundingMultiple      Decimal @db.Decimal(12, 2) @map("rounding_multiple")
+  depositPct            Decimal @db.Decimal(5, 2) @map("deposit_pct")
+
+  // --- Resultado. Todo lo calcula el servidor con calculateQuotationTotals.
+  priceTier       PriceTier      @map("price_tier")
+  totalQuantity   Int            @map("total_quantity")
+  totalWaxGrams   Decimal        @db.Decimal(14, 3) @map("total_wax_grams")
+  subtotal        Decimal        @db.Decimal(12, 2)
+  discountEnabled Boolean        @default(false) @map("discount_enabled")
+  discountType    AdjustmentType @default(PERCENTAGE) @map("discount_type")
+  discountValue   Decimal        @default(0) @db.Decimal(12, 2) @map("discount_value")
+  discountAmount  Decimal        @default(0) @db.Decimal(12, 2) @map("discount_amount")
+  shippingCost    Decimal        @default(0) @db.Decimal(12, 2) @map("shipping_cost")
+  total           Decimal        @db.Decimal(12, 2)
+  depositAmount   Decimal        @db.Decimal(12, 2) @map("deposit_amount")
+  /// Costo y margen de la cotizacion: lo que el Excel nunca supo ver antes de vender.
+  totalCost       Decimal        @db.Decimal(12, 2) @map("total_cost")
+  grossProfit     Decimal        @db.Decimal(12, 2) @map("gross_profit")
+  grossMarginPct  Decimal        @db.Decimal(5, 2) @map("gross_margin_pct")
+  currency        String         @default("MXN")
+
+  notes String?
+  terms String?
+
+  publicToken String    @unique @map("public_token")
+  sentAt      DateTime? @map("sent_at")
+  viewedAt    DateTime? @map("viewed_at")
+  acceptedAt  DateTime? @map("accepted_at")
+  rejectedAt  DateTime? @map("rejected_at")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer  Customer        @relation(fields: [customerId], references: [id])
+  createdBy User?           @relation(fields: [createdById], references: [id])
+  items     QuotationItem[]
+  order     Order?
+
+  @@index([status])
+  @@index([customerId])
+  @@map("quotations")
+  @@schema("sales")
+}
+
+model QuotationItem {
+  id          Int @id @default(autoincrement())
+  quotationId Int @map("quotation_id")
+  productId   Int @map("product_id")
+  sortOrder   Int @default(0) @map("sort_order")
+
+  quantity Int
+  /// Se elige AQUI, no en el producto. La columna "Color, Aroma" de texto
+  /// libre del Excel se vuelve tres campos estructurados.
+  candleColor          String?  @map("candle_color")
+  ribbonColor          String?  @map("ribbon_color")
+  withFragrance        Boolean  @default(false) @map("with_fragrance")
+  fragranceName        String?  @map("fragrance_name")
+  personalizationText  String?  @map("personalization_text")
+  /// Para cuando el cliente reutiliza el arte del ano pasado: no se cobra diseno.
+  setupMinutesOverride Int?     @map("setup_minutes_override")
+
+  // --- Desglose de costo CONGELADO. Un pedido entregado conserva para
+  // siempre el costo que tenia, aunque manana suba la cera.
+  waxGramsPerUnit     Decimal @db.Decimal(10, 3) @map("wax_grams_per_unit")
+  laborMinutesPerUnit Decimal @db.Decimal(10, 4) @map("labor_minutes_per_unit")
+  unitWaxCost         Decimal @db.Decimal(14, 6) @map("unit_wax_cost")
+  unitSupplyCost      Decimal @db.Decimal(14, 6) @map("unit_supply_cost")
+  unitFragranceCost   Decimal @db.Decimal(14, 6) @map("unit_fragrance_cost")
+  unitLaborCost       Decimal @db.Decimal(14, 6) @map("unit_labor_cost")
+  unitOverheadCost    Decimal @db.Decimal(14, 6) @map("unit_overhead_cost")
+  unitTotalCost       Decimal @db.Decimal(14, 6) @map("unit_total_cost")
+
+  /// Precio de lista del bracket que le toco, ANTES de cualquier ajuste manual.
+  unitListPrice Decimal @db.Decimal(12, 2) @map("unit_list_price")
+  /// Precio efectivamente cotizado, aroma incluido.
+  unitPrice     Decimal @db.Decimal(12, 2) @map("unit_price")
+  /// unitPrice - unitListPrice - aroma. Alimenta el reporte de fuga de margen.
+  priceVariance Decimal @default(0) @db.Decimal(12, 2) @map("price_variance")
+  lineTotal     Decimal @db.Decimal(12, 2) @map("line_total")
+  lineCost      Decimal @db.Decimal(12, 2) @map("line_cost")
+  lineMargin    Decimal @db.Decimal(12, 2) @map("line_margin")
+
+  /// Copia inmutable del BOM usado, para poder auditar el costo y explotar
+  /// requerimientos de insumos sin depender de que el producto no haya cambiado.
+  suppliesSnapshot Json @map("supplies_snapshot")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+  @@index([productId])
+  @@map("quotation_items")
+  @@schema("sales")
+}
+
+/// Cotizacion aceptada. Congela todo en `snapshot`: editar la cotizacion
+/// despues NO altera el pedido.
+model Order {
+  id          Int         @id @default(autoincrement())
+  folio       String      @unique
+  quotationId Int?        @unique @map("quotation_id")
+  customerId  Int         @map("customer_id")
+  status      OrderStatus @default(PENDING_DEPOSIT)
+
+  orderDate   DateTime  @db.Date @map("order_date")
+  /// Fecha comprometida de entrega.
+  dueDate     DateTime  @db.Date @map("due_date")
+  deliveredAt DateTime? @db.Date @map("delivered_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  priceTier      PriceTier @map("price_tier")
+  totalQuantity  Int       @map("total_quantity")
+  totalWaxGrams  Decimal   @db.Decimal(14, 3) @map("total_wax_grams")
+  subtotal       Decimal   @db.Decimal(12, 2)
+  discountAmount Decimal   @default(0) @db.Decimal(12, 2) @map("discount_amount")
+  shippingCost   Decimal   @default(0) @db.Decimal(12, 2) @map("shipping_cost")
+  total          Decimal   @db.Decimal(12, 2)
+  /// Derivado: SIEMPRE SUM(payments.amount WHERE isActive). Nunca por deltas.
+  paidAmount     Decimal   @default(0) @db.Decimal(12, 2) @map("paid_amount")
+  depositAmount  Decimal   @db.Decimal(12, 2) @map("deposit_amount")
+
+  totalSupplyCost   Decimal @db.Decimal(12, 2) @map("total_supply_cost")
+  totalLaborCost    Decimal @db.Decimal(12, 2) @map("total_labor_cost")
+  totalOverheadCost Decimal @db.Decimal(12, 2) @map("total_overhead_cost")
+  totalCost         Decimal @db.Decimal(12, 2) @map("total_cost")
+  grossProfit       Decimal @db.Decimal(12, 2) @map("gross_profit")
+  currency          String  @default("MXN")
+
+  /// Copia inmutable de la cotizacion al momento de aceptar.
+  snapshot    Json
+  notes       String?
+  createdById Int?    @map("created_by_id")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  quotation Quotation?  @relation(fields: [quotationId], references: [id])
+  customer  Customer    @relation(fields: [customerId], references: [id])
+  createdBy User?       @relation(fields: [createdById], references: [id])
+  items     OrderItem[]
+  payments  Payment[]
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([deliveredAt])
+  @@map("orders")
+  @@schema("sales")
+}
+
+/// Mismas columnas congeladas que QuotationItem. Es la tabla que alimenta
+/// TODOS los reportes de venta: una fila = una partida, igual que la hoja
+/// "Ventas Enero", pero sin XLOOKUP.
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  orderId   Int @map("order_id")
+  productId Int @map("product_id")
+  sortOrder Int @default(0) @map("sort_order")
+
+  productName         String  @map("product_name")
+  quantity             Int
+  candleColor          String? @map("candle_color")
+  ribbonColor          String? @map("ribbon_color")
+  withFragrance        Boolean @default(false) @map("with_fragrance")
+  fragranceName        String? @map("fragrance_name")
+  personalizationText  String? @map("personalization_text")
+
+  waxGramsPerUnit     Decimal @db.Decimal(10, 3) @map("wax_grams_per_unit")
+  laborMinutesPerUnit Decimal @db.Decimal(10, 4) @map("labor_minutes_per_unit")
+  unitWaxCost       Decimal @db.Decimal(14, 6) @map("unit_wax_cost")
+  unitSupplyCost    Decimal @db.Decimal(14, 6) @map("unit_supply_cost")
+  unitFragranceCost Decimal @db.Decimal(14, 6) @map("unit_fragrance_cost")
+  unitLaborCost     Decimal @db.Decimal(14, 6) @map("unit_labor_cost")
+  unitOverheadCost  Decimal @db.Decimal(14, 6) @map("unit_overhead_cost")
+  unitTotalCost     Decimal @db.Decimal(14, 6) @map("unit_total_cost")
+
+  unitListPrice Decimal @db.Decimal(12, 2) @map("unit_list_price")
+  unitPrice     Decimal @db.Decimal(12, 2) @map("unit_price")
+  priceVariance Decimal @default(0) @db.Decimal(12, 2) @map("price_variance")
+  lineTotal     Decimal @db.Decimal(12, 2) @map("line_total")
+  lineCost      Decimal @db.Decimal(12, 2) @map("line_cost")
+  lineMargin    Decimal @db.Decimal(12, 2) @map("line_margin")
+
+  suppliesSnapshot Json @map("supplies_snapshot")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+  @@schema("sales")
+}
+
+/// Anticipo (40% configurable) y abonos. Se cancela con baja logica.
+model Payment {
+  id           Int           @id @default(autoincrement())
+  folio        String        @unique
+  orderId      Int           @map("order_id")
+  amount       Decimal       @db.Decimal(12, 2)
+  method       PaymentMethod @default(TRANSFER)
+  /// true si es el anticipo que confirma el pedido.
+  isDeposit    Boolean       @default(false) @map("is_deposit")
+  reference    String?
+  paidAt       DateTime      @map("paid_at")
+  notes        String?
+  receivedById Int?          @map("received_by_id")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  order      Order @relation(fields: [orderId], references: [id])
+  receivedBy User? @relation(fields: [receivedById], references: [id])
+
+  @@index([orderId])
+  @@index([paidAt])
+  @@map("payments")
+  @@schema("sales")
+}
+
+model FolioCounter {
+  scope String
+  year  Int
+  value Int    @default(0)
+
+  @@id([scope, year])
+  @@map("folio_counters")
+  @@schema("sales")
+}
+
+// =============================================================================
+// config
+// =============================================================================
+
+enum OverheadRateMode {
+  /// Se usa el cierre del mes anterior. Si no hay, cae al fallback.
+  DERIVED
+  /// Se usa siempre overheadRatePerMinute.
+  FIXED
+
+  @@map("overhead_rate_mode")
+  @@schema("config")
+}
+
+/// Tabla de una sola fila (id = 1), patron AgencySettings del repo de
+/// referencia. Todo lo que en el Excel era una constante en una celda vive
+/// aqui y se edita en /configuracion. Unico archivo donde estos valores
+/// pueden aparecer como literal ademas de este: prisma/seed.ts.
+model Settings {
+  id Int @id @default(1)
+
+  // --- Identidad y contacto
+  legalName     String  @map("legal_name")
+  brandName     String  @default("Lignum Vitae") @map("brand_name")
+  logoUrl       String? @map("logo_url")
+  phone         String
+  whatsapp      String
+  email         String
+  city          String
+  state         String
+  businessHours String  @map("business_hours")
+  instagramUrl  String? @map("instagram_url")
+  facebookUrl   String? @map("facebook_url")
+  tiktokUrl     String? @map("tiktok_url")
+
+  // --- Operacion comercial
+  timezone               String  @default("America/Mexico_City")
+  currency                String  @default("MXN")
+  /// "Pedidos con minimo 7 dias de anticipacion".
+  minLeadTimeDays         Int     @default(7) @map("min_lead_time_days")
+  /// "40% de anticipo para confirmar".
+  depositPct              Decimal @default(40) @db.Decimal(5, 2) @map("deposit_pct")
+  quotationValidityDays   Int     @default(7) @map("quotation_validity_days")
+
+  // --- Mano de obra. laborRatePerMinute NO se guarda: se deriva de estos dos.
+  dailyWage       Decimal @default(278) @db.Decimal(12, 2) @map("daily_wage")
+  workHoursPerDay Int     @default(8) @map("work_hours_per_day")
+
+  // --- Produccion
+  /// Capacidad de la olla. Sustituye el "/30" del Excel.
+  meltBatchGrams  Int     @default(4000) @map("melt_batch_grams")
+  defaultWastePct Decimal @default(0.03) @db.Decimal(5, 4) @map("default_waste_pct")
+
+  // --- Cera y aroma
+  waxSupplyId       Int?    @map("wax_supply_id")
+  fragranceSupplyId Int?    @map("fragrance_supply_id")
+  /// Carga de esencia sobre el peso de la vela. 0.08 = 8%.
+  fragranceLoadPct  Decimal @default(0.08) @db.Decimal(5, 4) @map("fragrance_load_pct")
+  /// Lo que se COBRA por aromatizar. El costo se calcula aparte: el reporte
+  /// de cobertura de aroma dice si este $1.00 alcanza o no.
+  fragranceSurcharge Decimal @default(1.00) @db.Decimal(12, 2) @map("fragrance_surcharge")
+
+  // --- Gastos indirectos
+  overheadRateMode         OverheadRateMode @default(DERIVED) @map("overhead_rate_mode")
+  /// Respaldo y ancla del acotamiento. ~0.641 $/min equivale al $2.50/pieza
+  /// del Excel para una vela empaquetada de 4 minutos.
+  overheadRatePerMinute    Decimal          @default(0.641000) @db.Decimal(14, 6) @map("overhead_rate_per_minute")
+  /// Debajo de estos minutos productivos el mes no es muestra: se usa el fallback.
+  overheadMinSampleMinutes Int              @default(600) @map("overhead_min_sample_minutes")
+  /// La tasa derivada no puede alejarse mas de este % del fallback.
+  overheadMaxDeviationPct  Decimal          @default(50) @db.Decimal(5, 2) @map("overhead_max_deviation_pct")
+
+  // --- Precios
+  retailMarkupPct    Decimal @default(50) @db.Decimal(5, 2) @map("retail_markup_pct")
+  wholesaleMarkupPct Decimal @default(40) @db.Decimal(5, 2) @map("wholesale_markup_pct")
+  /// A partir de ESTA cantidad acumulada del pedido, mayoreo. 31 y no 30: el
+  /// Excel decia "1-30" y "30-50", que se solapaban en 30.
+  wholesaleThresholdQty Int     @default(31) @map("wholesale_threshold_qty")
+  /// Piso de margen SOBRE PRECIO. Un override por debajo se rechaza.
+  minMarginPct          Decimal @default(25) @db.Decimal(5, 2) @map("min_margin_pct")
+  /// Multiplo del precio sugerido. Se redondea SIEMPRE hacia arriba.
+  roundingMultiple      Decimal @default(1.00) @db.Decimal(12, 2) @map("rounding_multiple")
+
+  // --- Costo sugerido de insumos
+  supplyCostWindowDays Int     @default(180) @map("supply_cost_window_days")
+  supplyCostMaxSamples Int     @default(5) @map("supply_cost_max_samples")
+  /// Desfase a partir del cual el admin avisa "aplica el costo sugerido".
+  supplyCostAlertPct   Decimal @default(10) @db.Decimal(5, 2) @map("supply_cost_alert_pct")
+
+  // --- Activos
+  defaultAssetUsefulLifeMonths Int @default(24) @map("default_asset_useful_life_months")
+
+  // --- Textos
+  quotationTerms      String @default("") @map("quotation_terms")
+  quotationFooterNote String @default("") @map("quotation_footer_note")
+  orderPolicyText     String @default("") @map("order_policy_text")
+
+  // --- Folios
+  quotationFolioPrefix String @default("COT") @map("quotation_folio_prefix")
+  orderFolioPrefix      String @default("PED") @map("order_folio_prefix")
+  purchaseFolioPrefix   String @default("COM") @map("purchase_folio_prefix")
+  paymentFolioPrefix    String @default("PAG") @map("payment_folio_prefix")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+  @@schema("config")
+}

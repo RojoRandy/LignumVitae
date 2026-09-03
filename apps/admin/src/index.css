@@ -1,0 +1,74 @@
+@import "tailwindcss";
+@import "@lignumvitae/tailwind-preset/theme.css";
+@import "./styles/tokens.css";
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+
+  --color-surface: var(--color-surface);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-success-fg: var(--color-success-fg);
+  --color-success-bg: var(--color-success-bg);
+  --color-success-solid: var(--color-success-solid);
+  --color-warning-fg: var(--color-warning-fg);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-solid: var(--color-warning-solid);
+  --color-danger-fg: var(--color-danger-fg);
+  --color-danger-bg: var(--color-danger-bg);
+  --color-danger-solid: var(--color-danger-solid);
+  --color-info-fg: var(--color-info-fg);
+  --color-info-bg: var(--color-info-bg);
+  --color-info-solid: var(--color-info-solid);
+
+  --text-micro: var(--text-micro);
+  --text-caption: var(--text-caption);
+  --text-body-sm: var(--text-body-sm);
+  --text-body: var(--text-body);
+  --text-body-lg: var(--text-body-lg);
+  --text-heading-sm: var(--text-heading-sm);
+  --text-heading: var(--text-heading);
+  --text-heading-lg: var(--text-heading-lg);
+  --text-display-lg: var(--text-display-lg);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-panel: var(--shadow-panel);
+
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+}
+
+body {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Plus Jakarta Sans se ve mejor con un poco de tracking negativo en
+   titulos grandes — sin esto, los headings se sienten sueltos/genericos. */
+h1, h2, h3, .font-display {
+  letter-spacing: -0.02em;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+}

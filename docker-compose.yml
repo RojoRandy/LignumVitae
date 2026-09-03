@@ -1,0 +1,24 @@
+# Solo levanta Postgres para desarrollo local. En Railway, Postgres es un
+# recurso administrado aparte (ver .railway/railway.ts) y este archivo no
+# se usa en produccion.
+services:
+  postgres:
+    image: postgres:16.4
+    container_name: lignumvitae-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-lignumvitae}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lignumvitae}
+      POSTGRES_DB: ${DB_NAME:-lignumvitae}
+    ports:
+      - '${DB_PORT:-5434}:5432'
+    volumes:
+      - lignumvitae-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-lignumvitae}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lignumvitae-pgdata:

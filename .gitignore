@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.astro/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Uploads (local storage)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Prisma
+apps/api/prisma/dev.db
+
+# Testing
+coverage/
+apps/admin/playwright-report/
+apps/admin/test-results/
+apps/admin/blob-report/
+.playwright-mcp/
+
+# Claude
+.impeccable/
+graphify-out/
+
+# Railway
+.railway/**/*.local.*
+docs/

@@ -1,0 +1,35 @@
+{
+  "$comment": "No inventar colores fuera de esta paleta. Cada valor esta muestreado a pixel de los dos logotipos y del catalogo impreso (assets/). Ver CLAUDE.md de este paquete para el origen de cada token.",
+  "colors": {
+    "sage": {
+      "50": "#EFF6E9",
+      "100": "#D1E5C2",
+      "200": "#BDD5BA",
+      "300": "#B2CBAE",
+      "400": "#9CBB95"
+    },
+    "moss": {
+      "600": "#5C6E63",
+      "700": "#4D5E55",
+      "800": "#4A5B53",
+      "900": "#374039"
+    },
+    "teal": {
+      "600": "#4A7871",
+      "700": "#3D6660",
+      "800": "#2F504B"
+    },
+    "cream": {
+      "50": "#F7F4EC",
+      "100": "#E9E3D3",
+      "200": "#E4DDCB"
+    },
+    "paper": "#FFFFFF",
+    "ink": "#26302A"
+  },
+  "fonts": {
+    "display": "Fraunces",
+    "body": "Jost",
+    "accent": "Parisienne"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "lignumvitae",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lignum Vitae: landing publica y portal administrativo para venta de velas personalizadas",
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:api": "pnpm --filter @lignumvitae/api start:dev",
+    "dev:admin": "pnpm --filter @lignumvitae/admin dev",
+    "dev:landing": "pnpm --filter @lignumvitae/landing dev",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @lignumvitae/api migrate:dev",
+    "db:seed": "pnpm --filter @lignumvitae/api seed",
+    "db:reset": "pnpm --filter @lignumvitae/api migrate:reset",
+    "db:studio": "pnpm --filter @lignumvitae/api studio",
+    "gen:api": "pnpm --filter @lignumvitae/types gen",
+    "import:catalog": "pnpm --filter @lignumvitae/api import:catalog"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "puppeteer",
+      "esbuild",
+      "sharp"
+    ]
+  },
+  "devDependencies": {
+    "railway": "^3.11.0"
+  }
+}

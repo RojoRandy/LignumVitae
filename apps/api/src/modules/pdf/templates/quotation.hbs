@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #2b2620; margin: 0; padding: 0; font-size: 12px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 32px 16px; border-bottom: 2px solid #7a5c3e; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { height: 48px; }
+  .brand-name { font-size: 22px; font-weight: 700; color: #7a5c3e; }
+  .contact { font-size: 11px; color: #6b645a; margin-top: 4px; }
+  .doc-info { text-align: right; }
+  .doc-title { font-size: 18px; font-weight: 700; }
+  .folio { font-size: 13px; color: #6b645a; }
+  .dates { font-size: 11px; color: #6b645a; margin-top: 4px; }
+  .section { padding: 16px 32px; }
+  .customer-box { background: #f7f4ef; border-radius: 8px; padding: 12px 16px; }
+  .customer-box .name { font-weight: 700; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b645a; padding: 6px 8px; border-bottom: 1px solid #d8d1c5; }
+  td { padding: 8px; border-bottom: 1px solid #ece7dc; font-size: 11px; vertical-align: top; }
+  .num { text-align: right; white-space: nowrap; }
+  .detail { color: #6b645a; font-size: 10px; }
+  .totals { width: 280px; margin-left: auto; margin-top: 12px; }
+  .totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  .totals .total-row { font-weight: 700; font-size: 15px; border-top: 2px solid #2b2620; padding-top: 8px; margin-top: 4px; }
+  .totals .deposit-row { color: #7a5c3e; font-weight: 700; }
+  .terms { margin-top: 24px; font-size: 10px; color: #6b645a; white-space: pre-line; }
+  .footer { padding: 16px 32px 32px; font-size: 10px; color: #999; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{brandName}}" />{{/if}}
+      <div>
+        <div class="brand-name">{{brandName}}</div>
+        <div class="contact">{{phone}}{{#if whatsapp}} &middot; WhatsApp {{whatsapp}}{{/if}}{{#if email}} &middot; {{email}}{{/if}}</div>
+      </div>
+    </div>
+    <div class="doc-info">
+      <div class="doc-title">Cotizacion</div>
+      <div class="folio">{{folio}}</div>
+      <div class="dates">Emitida: {{date issuedAt}}<br />Vigente hasta: {{date validUntil}}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="customer-box">
+      <div class="name">{{customer.fullName}}</div>
+      {{#if customer.phone}}<div>{{customer.phone}}</div>{{/if}}
+      {{#if customer.address}}<div>{{customer.address}}</div>{{/if}}
+      {{#if eventDate}}<div style="margin-top: 6px;">Fecha del evento: {{date eventDate}}</div>{{/if}}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Detalle</th>
+          <th class="num">Cant.</th>
+          <th class="num">Precio</th>
+          <th class="num">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each items}}
+        <tr>
+          <td>{{product.name}}</td>
+          <td class="detail">
+            {{#if candleColor}}Color: {{candleColor}}<br />{{/if}}
+            {{#if ribbonColor}}Liston: {{ribbonColor}}<br />{{/if}}
+            {{#if withFragrance}}Con aroma{{#if fragranceName}} ({{fragranceName}}){{/if}}<br />{{/if}}
+            {{#if personalizationText}}{{personalizationText}}{{/if}}
+          </td>
+          <td class="num">{{quantity}}</td>
+          <td class="num">{{money unitPrice}}</td>
+          <td class="num">{{money lineTotal}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>{{money subtotal}}</span></div>
+      {{#if discountEnabled}}<div class="row"><span>Descuento</span><span>-{{money discountAmount}}</span></div>{{/if}}
+      {{#if (gt shippingCost 0)}}<div class="row"><span>Envio</span><span>{{money shippingCost}}</span></div>{{/if}}
+      <div class="row total-row"><span>Total</span><span>{{money total}}</span></div>
+      <div class="row deposit-row"><span>Anticipo requerido</span><span>{{money depositAmount}}</span></div>
+    </div>
+
+    {{#if terms}}<div class="terms">{{terms}}</div>{{/if}}
+    {{#if notes}}<div class="terms">{{notes}}</div>{{/if}}
+  </div>
+
+  <div class="footer">
+    {{publicUrl}}
+  </div>
+</body>
+</html>

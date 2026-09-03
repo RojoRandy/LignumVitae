@@ -1,0 +1,151 @@
+/*
+ * Capa semantica del portal, encima de @lignumvitae/tailwind-preset. Sin
+ * dark mode (decision deliberada, igual que el repo de referencia): el
+ * portal lo usan una o dos personas desde un escritorio de taller, no vale
+ * la complejidad. Los nombres son semanticos para poder agregarlo despues
+ * redefiniendo solo este bloque.
+ */
+:root {
+  color-scheme: light;
+
+  /*
+   * Plus Jakarta Sans reemplaza a Jost SOLO dentro del portal: mayor
+   * x-height, se lee mejor a los tamanos chicos de una tabla de datos.
+   * Fraunces/Jost siguen siendo la identidad de marca en la landing (Fase
+   * 4) — este override vive aqui, no en el preset compartido, a proposito.
+   */
+  --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --color-surface: var(--color-paper);
+  --color-surface-sunken: var(--color-cream-50);
+  --color-surface-raised: #FFFFFF;
+  --color-border: #E2E8DC;
+  --color-border-strong: var(--color-sage-300);
+
+  --color-text: var(--color-ink);
+  --color-text-muted: #5B6B61;
+  --color-text-faint: #8A988E;
+  --color-text-on-accent: #FFFFFF;
+
+  --color-accent: var(--color-teal-700);
+  --color-accent-hover: var(--color-teal-800);
+  --color-accent-soft: var(--color-sage-100);
+
+  --color-success-fg: #1F6B3F;
+  --color-success-bg: #E4F3E8;
+  --color-success-solid: #2C8C52;
+
+  --color-warning-fg: #8A5A10;
+  --color-warning-bg: #FBF0DD;
+  --color-warning-solid: #C98A2C;
+
+  --color-danger-fg: #A32B2B;
+  --color-danger-bg: #FBEAEA;
+  --color-danger-solid: #C4423F;
+
+  --color-info-fg: #2A5C82;
+  --color-info-bg: #E7F1F8;
+  --color-info-solid: #3B7CAD;
+
+  /*
+   * Escala tipografica cerrada, subida un peldano completo respecto a la
+   * version anterior (14px de base se leia chico en una pantalla de
+   * trabajo). --text-body es ahora el body real del navegador (16px): la
+   * base de la que cuelga el resto de la escala, no un caso especial.
+   */
+  --text-micro: 0.75rem;       /* 12px */
+  --text-caption: 0.8125rem;   /* 13px */
+  --text-body-sm: 0.875rem;    /* 14px */
+  --text-body: 1rem;           /* 16px */
+  --text-body-lg: 1.125rem;    /* 18px */
+  --text-heading-sm: 1.25rem;  /* 20px */
+  --text-heading: 1.625rem;    /* 26px */
+  --text-heading-lg: 2.125rem; /* 34px */
+  --text-display-lg: 2.75rem;  /* 44px */
+
+  /* Sombras con tinte del propio fondo (nunca negro puro), un escalon mas
+     presente que antes para que tarjetas y paneles se sientan con peso. */
+  --shadow-card: 0 1px 2px rgba(38, 48, 42, 0.07), 0 1px 1px rgba(38, 48, 42, 0.05);
+  --shadow-lift: 0 8px 20px -4px rgba(38, 48, 42, 0.14), 0 2px 6px rgba(38, 48, 42, 0.08);
+  --shadow-panel: 0 24px 48px -12px rgba(38, 48, 42, 0.22), 0 4px 12px rgba(38, 48, 42, 0.10);
+
+  /* Curva de drawer estilo iOS (Ionic Framework), para el menu movil. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --animate-fade-in: fade-in 150ms var(--ease-out);
+  --animate-scale-in: scale-in 150ms var(--ease-out);
+  --animate-slide-in-from-top: slide-in-from-top 200ms var(--ease-out);
+  --animate-slide-in-from-right: slide-in-from-right 220ms var(--ease-out);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-in-from-top {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-from-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/*
+ * Vocabulario de entrada/salida compartido por todo lo que Radix abre y
+ * cierra (Dialog, Sheet, Popover, DropdownMenu, Tooltip, Combobox).
+ * Salida siempre mas rapida que entrada (Emil Kowalski: "exit faster than
+ * enter" -- el sistema debe sentirse instantaneo al cerrar, deliberado al
+ * abrir). Nunca se anima desde scale(0): nada en el mundo real aparece de
+ * la nada. Los popovers usan --radix-popper-transform-origin, que Radix ya
+ * calcula apuntando al trigger -- por eso escalan desde donde el usuario
+ * hizo click, no desde el centro.
+ */
+@keyframes overlay-show {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes overlay-hide {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+/*
+ * SOLO opacity/scale, nunca translate: el centrado del modal lo hace un
+ * contenedor con flexbox (items-center justify-center), no un
+ * left-1/2+translate-x-1/2 como antes. Tailwind v4 compone las utilidades
+ * de traslado en la propiedad CSS `translate` (no `transform`), asi que una
+ * keyframe que animaba `transform: translate(...) scale(...)` competia con
+ * la utilidad estatica -translate-x-1/2 (que usa `translate`): mientras la
+ * animacion corria, las dos se SUMABAN, y al terminar (sin
+ * animation-fill-mode) solo quedaba la utilidad -- el modal aparecia
+ * desplazado y luego "saltaba" al centro. Quitar el translate de aqui
+ * elimina el conflicto de raiz, no lo parcha.
+ */
+@keyframes dialog-content-show {
+  from { opacity: 0; scale: 0.96; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes dialog-content-hide {
+  from { opacity: 1; scale: 1; }
+  to { opacity: 0; scale: 0.97; }
+}
+@keyframes popover-show {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes popover-hide {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
+}
+@keyframes sheet-content-show-left {
+  from { opacity: 0; transform: translateX(-8%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes sheet-content-hide-left {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-6%); }
+}

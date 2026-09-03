@@ -1,0 +1,48 @@
+/*
+ * Tokens de marca de Lignum Vitae, en formato @theme de Tailwind v4.
+ *
+ * Origen de cada color (no inventar nada fuera de esta lista):
+ *   sage-*   muestreado del circulo de fondo del Logotipo 2 (#D1E5C2) y de
+ *            los verdes del catalogo impreso (#BDD5BA, #B2CBAE)
+ *   moss-*   trazo y tipografia de los dos logotipos (#4D5E55, #4A5B53)
+ *   teal-700 titulos del catalogo impreso ("Ositos Chicos") — es el ACENTO
+ *            UNICO del sistema, se usa con moderacion
+ *   cream-*  neutro calido del fondo "Categoria Flores.png"
+ *
+ * Cada app agrega su propia capa semantica encima de este archivo
+ * (ver apps/admin/src/styles/tokens.css y apps/landing/src/styles/global.css);
+ * este archivo no se edita a mano fuera de una revision de marca.
+ */
+@theme {
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Jost', ui-sans-serif, system-ui, sans-serif;
+  --font-accent: 'Parisienne', cursive;
+
+  --color-sage-50: #EFF6E9;
+  --color-sage-100: #D1E5C2;
+  --color-sage-200: #BDD5BA;
+  --color-sage-300: #B2CBAE;
+  --color-sage-400: #9CBB95;
+
+  --color-moss-600: #5C6E63;
+  --color-moss-700: #4D5E55;
+  --color-moss-800: #4A5B53;
+  --color-moss-900: #374039;
+
+  --color-teal-600: #4A7871;
+  --color-teal-700: #3D6660;
+  --color-teal-800: #2F504B;
+
+  --color-cream-50: #F7F4EC;
+  --color-cream-100: #E9E3D3;
+  --color-cream-200: #E4DDCB;
+
+  --color-paper: #FFFFFF;
+  --color-ink: #26302A;
+
+  --radius-card: 16px;
+  --radius-input: 10px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
