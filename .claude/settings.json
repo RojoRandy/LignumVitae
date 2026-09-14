@@ -17,6 +17,12 @@
         "source": "github",
         "repo": "dietrichgebert/ponytail"
       }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
     }
   },
   "enabledPlugins": {
@@ -25,6 +31,7 @@
     "superpowers@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
   }
 }
