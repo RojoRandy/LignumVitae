@@ -5,12 +5,12 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export const productInclude = {
   category: true,
   candle: {
-    include: { category: true, supplyTemplate: { include: { supply: true } }, waxSupply: true },
+    include: { category: true, supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } }, waxSupply: { include: { type: true, unit: true } } },
   },
-  packagingType: { include: { supplyTemplate: { include: { supply: true } } } },
-  cardType: { include: { supplyTemplate: { include: { supply: true } } } },
-  supplies: { include: { supply: true } },
-  components: { include: { candle: { include: { waxSupply: true, supplyTemplate: { include: { supply: true } } } } }, orderBy: { sortOrder: 'asc' } },
+  packagingType: { include: { supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } },
+  cardType: { include: { supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } },
+  supplies: { include: { supply: { include: { type: true, unit: true } }, unit: true } },
+  components: { include: { candle: { include: { waxSupply: { include: { type: true, unit: true } }, supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } } }, orderBy: { sortOrder: 'asc' } },
   images: { orderBy: { sortOrder: 'asc' } },
 } satisfies Prisma.ProductInclude;
 
@@ -58,7 +58,7 @@ export class ProductRepository {
     return this.prisma.product.update({ where: { id }, data: { isActive: false } });
   }
 
-  replaceSupplies(id: number, items: { supplyId: number; quantity: number; unit: Prisma.ProductSupplyCreateManyInput['unit']; note?: string; source: Prisma.ProductSupplyCreateManyInput['source'] }[]) {
+  replaceSupplies(id: number, items: { supplyId: number; quantity: number; unitId: number; note?: string; source: Prisma.ProductSupplyCreateManyInput['source'] }[]) {
     return this.prisma.$transaction([
       this.prisma.productSupply.deleteMany({ where: { productId: id } }),
       this.prisma.productSupply.createMany({ data: items.map((i) => ({ ...i, productId: id })) }),

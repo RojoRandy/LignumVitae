@@ -11,10 +11,12 @@ import { CardTypeRepository } from '../card-types/card-type.repository';
 import { ProductRepository } from './product.repository';
 import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
 import { CatalogErrors } from '../../../common/errors/catalog.errors';
+import { InventoryErrors } from '../../../common/errors/inventory.errors';
 import { slugify } from '../../../common/utils/slug';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
 import { RecalculateProductCostingUseCase } from './usecases/recalculate-product-costing.usecase';
 import { SettingsService } from '../../settings/settings.service';
+import { SupplyRepository } from '../../inventory/supplies/supply.repository';
 
 @Injectable()
 export class ProductsService {
@@ -25,6 +27,7 @@ export class ProductsService {
     private readonly cardTypeRepository: CardTypeRepository,
     private readonly recalculateProductCostingUseCase: RecalculateProductCostingUseCase,
     private readonly settingsService: SettingsService,
+    private readonly supplyRepository: SupplyRepository,
   ) {}
 
   async findAll(query: PaginationQueryDto & { categoryId?: number; kind?: ProductKind; needsReview?: boolean }) {
@@ -141,7 +144,11 @@ export class ProductsService {
     if (shouldRecalculateSupplies) {
       await this.applySuppliesFromTemplatesAndManual(id, {
         kind: existing.kind,
-        additionalSupplies: dto.additionalSupplies,
+        additionalSupplies: dto.additionalSupplies !== undefined
+          ? dto.additionalSupplies
+          : existing.supplies.filter((s) => s.source === 'MANUAL').map((s) => ({
+            supplyId: s.supplyId, quantity: s.quantity.toNumber(), unitId: s.unitId, note: s.note ?? undefined,
+          })),
       } as CreateProductDto);
     }
 
@@ -155,7 +162,7 @@ export class ProductsService {
     const manual = product.supplies.filter((s) => s.source === 'MANUAL');
     await this.applySuppliesFromTemplatesAndManual(id, {
       kind: product.kind,
-      additionalSupplies: manual.map((s) => ({ supplyId: s.supplyId, quantity: s.quantity.toNumber(), unit: s.unit, note: s.note ?? undefined })),
+      additionalSupplies: manual.map((s) => ({ supplyId: s.supplyId, quantity: s.quantity.toNumber(), unitId: s.unitId, note: s.note ?? undefined })),
     } as CreateProductDto);
     await this.recalculateProductCostingUseCase.execute(id);
     return this.findById(id);
@@ -213,36 +220,55 @@ export class ProductsService {
 
   /** Copia las plantillas de la vela, el empaque y la tarjeta a ProductSupply, mas los adicionales manuales del DTO. */
   private async applySuppliesFromTemplatesAndManual(productId: number, dto: CreateProductDto | UpdateProductDto) {
-    const items: { supplyId: number; quantity: number; unit: Prisma.ProductSupplyCreateManyInput['unit']; note?: string; source: SupplySource }[] = [];
+    const items: { supplyId: number; quantity: number; unitId: number; note?: string; source: SupplySource }[] = [];
 
-    if (dto.kind !== ProductKind.BOUQUET) {
-      const product = await this.productRepository.findById(productId);
+    const product = await this.productRepository.findById(productId);
+    if (dto.kind === ProductKind.BOUQUET) {
+      const candleSupplies = new Map<number, (typeof items)[number]>();
+      for (const component of product?.components ?? []) {
+        for (const t of component.candle.supplyTemplate) {
+          const previous = candleSupplies.get(t.supplyId);
+          candleSupplies.set(t.supplyId, {
+            supplyId: t.supplyId,
+            quantity: (previous?.quantity ?? 0) + t.quantity.toNumber() * component.quantity,
+            unitId: t.unitId,
+            note: t.note ?? undefined,
+            source: 'CANDLE_TEMPLATE',
+          });
+        }
+      }
+      items.push(...candleSupplies.values());
+    } else {
       if (product?.candleId) {
         const candle = await this.candleRepository.findById(product.candleId);
         candle?.supplyTemplate.forEach((t) =>
-          items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unit: t.unit, note: t.note ?? undefined, source: 'CANDLE_TEMPLATE' }),
-        );
-      }
-      if (product?.packagingTypeId) {
-        const packaging = await this.packagingTypeRepository.findById(product.packagingTypeId);
-        packaging?.supplyTemplate.forEach((t) =>
-          items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unit: t.unit, note: t.note ?? undefined, source: 'PACKAGING_TEMPLATE' }),
-        );
-      }
-      if (product?.cardTypeId) {
-        const card = await this.cardTypeRepository.findById(product.cardTypeId);
-        card?.supplyTemplate.forEach((t) =>
-          items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unit: t.unit, note: t.note ?? undefined, source: 'CARD_TEMPLATE' }),
+          items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitId: t.unitId, note: t.note ?? undefined, source: 'CANDLE_TEMPLATE' }),
         );
       }
     }
+    if (product?.packagingTypeId) {
+      const packaging = await this.packagingTypeRepository.findById(product.packagingTypeId);
+      packaging?.supplyTemplate.forEach((t) =>
+        items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitId: t.unitId, note: t.note ?? undefined, source: 'PACKAGING_TEMPLATE' }),
+      );
+    }
+    if (product?.cardTypeId) {
+      const card = await this.cardTypeRepository.findById(product.cardTypeId);
+      card?.supplyTemplate.forEach((t) =>
+        items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitId: t.unitId, note: t.note ?? undefined, source: 'CARD_TEMPLATE' }),
+      );
+    }
 
-    (dto.additionalSupplies ?? []).forEach((s) =>
-      items.push({ supplyId: s.supplyId, quantity: s.quantity, unit: s.unit, note: s.note, source: 'MANUAL' }),
-    );
+    for (const s of dto.additionalSupplies ?? []) {
+      const supply = await this.supplyRepository.findById(s.supplyId);
+      if (supply?.type.slug === 'WAX') {
+        throw InventoryErrors.Exceptions.SUPPLY_IS_WAX({ supplyId: s.supplyId });
+      }
+      items.push({ supplyId: s.supplyId, quantity: s.quantity, unitId: s.unitId, note: s.note, source: 'MANUAL' });
+    }
 
     // Si dos fuentes traen el mismo insumo (p. ej. la vela y un adicional
-    // manual repiten "colorante"), la ultima gana y se suman las cantidades
+    // manual repiten "colorante"), la ultima gana. Las cantidades
     // NO se suman: se reemplaza, para que el admin vea exactamente lo que
     // capturo sin sorpresas de doble conteo silencioso.
     const bySupplyId = new Map(items.map((i) => [i.supplyId, i]));

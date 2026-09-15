@@ -15,7 +15,7 @@ export interface PreviewCostInput {
   extraPackMinutes?: number;
   assemblyMinutes?: number;
   components?: { candleId: number; quantity: number }[];
-  additionalSupplies?: { supplyId: number; quantity: number; unit: string }[];
+  additionalSupplies?: { supplyId: number; quantity: number; unitId: number }[];
 }
 
 export interface PreviewCostResult {

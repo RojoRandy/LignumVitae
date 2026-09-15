@@ -19,11 +19,14 @@ import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { FormError, PageToolbar } from '@/components/ui/page';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
 
 export default function CandlesPage() {
   const { page, search, setSearch, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  // includeWax: es el unico select del portal donde la cera SI es la respuesta.
+  const { options: waxOptions } = useSupplyOptions({ includeWax: true });
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CandleDto | null>(null);
@@ -71,7 +74,7 @@ export default function CandlesPage() {
   const openEdit = (candle: CandleDto) => {
     setEditing(candle);
     setSupplyRows(
-      (candle.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unit: t.unit, note: t.note ?? undefined })),
+      (candle.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unitId: t.unitId, note: t.note ?? undefined })),
     );
     clear();
     setDialogOpen(true);
@@ -90,7 +93,8 @@ export default function CandlesPage() {
       wastePct: form.get('wastePct') ? Number(form.get('wastePct')) / 100 : undefined,
       meltMinutes: Number(form.get('meltMinutes')),
       meltBatchGrams: form.get('meltBatchGrams') ? Number(form.get('meltBatchGrams')) : undefined,
-      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unit: r.unit, note: r.note })),
+      waxSupplyId: form.get('waxSupplyId') ? Number(form.get('waxSupplyId')) : undefined,
+      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unitId: r.unitId, note: r.note })),
     });
   };
 
@@ -218,6 +222,23 @@ export default function CandlesPage() {
                 tooltip="Cuantos gramos de cera caben en la olla de una sola vez. Con esto se calcula cuantas piezas de ESTA vela salen por lote (capacidad ÷ gramos de la vela), y ese numero es el que reparte el tiempo de derretir entre cada pieza -- reemplaza el '/30' fijo que usaba el Excel para todas las velas por igual."
               >
                 <NumberInput id="meltBatchGrams" name="meltBatchGrams" min={1} step={1} unit="g" defaultValue={editing?.meltBatchGrams ?? undefined} />
+              </Field>
+              <Field
+                label="Cera de esta vela"
+                htmlFor="waxSupplyId"
+                className="col-span-2"
+                hint="Vacio: usa la de Configuracion"
+                tooltip="De que insumo sale el precio por gramo de cera de ESTA vela. Solo hace falta si esta vela se hace con una cera distinta a la de Configuracion (por ejemplo soya en vez de parafina)."
+              >
+                <Select
+                  id="waxSupplyId"
+                  name="waxSupplyId"
+                  options={waxOptions}
+                  defaultValue={editing?.waxSupplyId ? String(editing.waxSupplyId) : undefined}
+                  placeholder="Usar la de Configuracion"
+                  clearable
+                  searchable
+                />
               </Field>
             </div>
 

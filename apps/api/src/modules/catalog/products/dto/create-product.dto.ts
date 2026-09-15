@@ -14,12 +14,12 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { ProductKind, UnitOfMeasure } from '@prisma/client';
+import { ProductKind } from '@prisma/client';
 
 export class ProductSupplyItemDto {
   @ApiProperty() @Type(() => Number) @IsInt() supplyId: number;
   @ApiProperty() @Type(() => Number) @IsNumber() @Min(0.0001) quantity: number;
-  @ApiProperty({ enum: UnitOfMeasure }) @IsEnum(UnitOfMeasure) unit: UnitOfMeasure;
+  @ApiProperty() @Type(() => Number) @IsInt() unitId: number;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
 }
 
