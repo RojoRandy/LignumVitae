@@ -219,7 +219,7 @@ export default function DashboardPage() {
                   <li key={s.id} className="flex items-center justify-between gap-3 rounded-input bg-danger-bg px-3.5 py-2.5">
                     <span className="text-body-sm font-semibold text-danger-fg">{s.name}</span>
                     <span className="text-caption tabular-nums text-danger-fg">
-                      {formatNumber(s.stock_qty, 2)} / {formatNumber(s.min_stock_qty, 2)} {s.unit.toLowerCase()}
+                      {formatNumber(s.stock_qty, 2)} / {formatNumber(s.min_stock_qty, 2)} {s.unit.abbr}
                     </span>
                   </li>
                 ))}

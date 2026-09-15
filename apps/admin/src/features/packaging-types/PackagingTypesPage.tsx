@@ -63,7 +63,7 @@ export default function PackagingTypesPage() {
 
   const openEdit = (item: PackagingTypeDto) => {
     setEditing(item);
-    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unit: t.unit, note: t.note ?? undefined })));
+    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unitId: t.unitId, note: t.note ?? undefined })));
     clear();
     setDialogOpen(true);
   };
@@ -77,7 +77,7 @@ export default function PackagingTypesPage() {
       description: form.get('description') || undefined,
       packMinutes: Number(form.get('packMinutes') || 0),
       setupMinutes: Number(form.get('setupMinutes') || 0),
-      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unit: r.unit, note: r.note })),
+      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unitId: r.unitId, note: r.note })),
     });
   };
 

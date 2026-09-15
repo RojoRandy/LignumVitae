@@ -4,10 +4,12 @@ import { toast } from 'sonner';
 import { Plus, TrendingUp } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
+import { useSupplyTypeOptions } from '@/hooks/use-supply-type-options';
+import { useUnitOfMeasureOptions } from '@/hooks/use-unit-of-measure-options';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { httpDelete, httpPatch, httpPost, httpGet } from '@/lib/http';
-import type { Paginated, SupplyDto, UnitOfMeasure } from '@/lib/types';
+import type { Paginated, SupplyDto } from '@/lib/types';
 import { formatMoney, formatNumber, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,44 +22,17 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip } from '@/components/ui/tooltip';
 import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 
-const SUPPLY_TYPES: { value: string; label: string }[] = [
-  { value: 'WAX', label: 'Cera' },
-  { value: 'FRAGRANCE', label: 'Aroma' },
-  { value: 'WICK', label: 'Mecha' },
-  { value: 'DYE', label: 'Colorante' },
-  { value: 'ALUMINUM_BASE', label: 'Base de aluminio' },
-  { value: 'CELLOPHANE', label: 'Celofan' },
-  { value: 'RIBBON', label: 'Liston' },
-  { value: 'LABEL', label: 'Etiqueta' },
-  { value: 'PRINTING', label: 'Impresion' },
-  { value: 'SEAL', label: 'Sello' },
-  { value: 'BELL', label: 'Cascabel' },
-  { value: 'SILICONE', label: 'Silicon' },
-  { value: 'BOX', label: 'Caja' },
-  { value: 'TULLE', label: 'Tul' },
-  { value: 'ACETATE', label: 'Acetato' },
-  { value: 'PAPER', label: 'Papel' },
-  { value: 'OTHER', label: 'Otro' },
-];
-
-const UNITS: { value: UnitOfMeasure; label: string }[] = [
-  { value: 'GRAM', label: 'Gramo' },
-  { value: 'KILOGRAM', label: 'Kilogramo' },
-  { value: 'MILLILITER', label: 'Mililitro' },
-  { value: 'LITER', label: 'Litro' },
-  { value: 'CENTIMETER', label: 'Centimetro' },
-  { value: 'METER', label: 'Metro' },
-  { value: 'PIECE', label: 'Pieza' },
-  { value: 'SHEET', label: 'Pliego' },
-];
-
 export default function SuppliesPage() {
   const { page, search, setSearch, setPage } = useTableParams();
   const queryClient = useQueryClient();
+  const { supplyTypes, options: typeOptions } = useSupplyTypeOptions();
+  const { units, options: unitOptions } = useUnitOfMeasureOptions();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SupplyDto | null>(null);
+  const defaultTypeId = String(editing?.typeId ?? supplyTypes.find((t) => t.slug === 'OTHER')?.id ?? '');
+  const defaultUnitId = String(editing?.unitId ?? units.find((u) => u.slug === 'PIECE')?.id ?? '');
 
   const { data, isLoading } = useQuery({
     queryKey: ['supplies', { page, search }],
@@ -120,11 +95,10 @@ export default function SuppliesPage() {
     const form = new FormData(e.currentTarget);
     saveMutation.mutate({
       name: form.get('name'),
-      type: form.get('type'),
-      unit: form.get('unit'),
+      typeId: Number(form.get('typeId')),
+      unitId: Number(form.get('unitId')),
       currentUnitCost: Number(form.get('currentUnitCost')),
       minStockQty: form.get('minStockQty') ? Number(form.get('minStockQty')) : undefined,
-      defaultPackLabel: form.get('defaultPackLabel') || undefined,
       defaultBaseQtyPerPack: form.get('defaultBaseQtyPerPack') ? Number(form.get('defaultBaseQtyPerPack')) : undefined,
       notes: form.get('notes') || undefined,
     });
@@ -143,7 +117,7 @@ export default function SuppliesPage() {
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-medium text-text">{row.original.name}</span>
-          <span className="text-caption text-text-muted">{SUPPLY_TYPES.find((t) => t.value === row.original.type)?.label}</span>
+          <span className="text-caption text-text-muted">{row.original.type.name}</span>
         </div>
       ),
     },
@@ -155,7 +129,7 @@ export default function SuppliesPage() {
         return (
           <div className="flex items-center gap-1.5">
             <span>{formatMoney(supply.currentUnitCost)}</span>
-            <span className="text-caption text-text-faint">/ {UNITS.find((u) => u.value === supply.unit)?.label.toLowerCase()}</span>
+            <span className="text-caption text-text-faint">/ {supply.unit.name.toLowerCase()}</span>
             {driftPct !== undefined && (
               <Tooltip content={`Sugerido: ${formatMoney(supply.suggestedUnitCost)} (${formatPercent(driftPct)} de desfase)`}>
                 <button
@@ -217,11 +191,11 @@ export default function SuppliesPage() {
                 <Input id="name" name="name" defaultValue={editing?.name} required />
               </Field>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Tipo" htmlFor="type" required>
-                  <Select id="type" name="type" options={SUPPLY_TYPES} defaultValue={editing?.type ?? 'OTHER'} required />
+                <Field label="Tipo" htmlFor="typeId" required>
+                  <Select key={defaultTypeId} id="typeId" name="typeId" options={typeOptions} defaultValue={defaultTypeId} required />
                 </Field>
-                <Field label="Unidad base" htmlFor="unit" required>
-                  <Select id="unit" name="unit" options={UNITS} defaultValue={editing?.unit ?? 'PIECE'} required />
+                <Field label="Unidad de medida" htmlFor="unitId" required>
+                  <Select key={defaultUnitId} id="unitId" name="unitId" options={unitOptions} defaultValue={defaultUnitId} required />
                 </Field>
               </div>
               <Field
@@ -234,24 +208,19 @@ export default function SuppliesPage() {
                 <NumberInput id="currentUnitCost" name="currentUnitCost" step={0.000001} min={0} unit="$" unitPosition="prefix" required defaultValue={editing?.currentUnitCost ? Number(editing.currentUnitCost) : undefined} />
               </Field>
               <Field
+                label="Contenido por unidad"
+                htmlFor="defaultBaseQtyPerPack"
+                tooltip="Cuantas unidades base (gramos, piezas, metros...) trae cada unidad de compra. Se usa para precargar el renglon de compra de este insumo, para no tener que calcularlo a mano cada vez."
+              >
+                <NumberInput id="defaultBaseQtyPerPack" name="defaultBaseQtyPerPack" min={0} defaultValue={editing?.defaultBaseQtyPerPack ? Number(editing.defaultBaseQtyPerPack) : undefined} />
+              </Field>
+              <Field
                 label="Existencia minima"
                 htmlFor="minStockQty"
                 tooltip="Cuando la existencia baja de este numero, el insumo se marca en rojo como 'Bajo' en el listado, para avisar que hay que comprar mas antes de quedarse sin material."
               >
                 <NumberInput id="minStockQty" name="minStockQty" step={0.001} min={0} defaultValue={editing?.minStockQty ? Number(editing.minStockQty) : 0} />
               </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Como se compra" htmlFor="defaultPackLabel" hint='Ej. "bulto de 20 kg"'>
-                  <Input id="defaultPackLabel" name="defaultPackLabel" defaultValue={editing?.defaultPackLabel ?? ''} />
-                </Field>
-                <Field
-                  label="Unidades base por paquete"
-                  htmlFor="defaultBaseQtyPerPack"
-                  tooltip="Cuantas unidades base (gramos, piezas, metros...) trae el paquete de arriba. Se usa para precargar el renglon de compra de este insumo, para no tener que calcularlo a mano cada vez."
-                >
-                  <NumberInput id="defaultBaseQtyPerPack" name="defaultBaseQtyPerPack" min={0} defaultValue={editing?.defaultBaseQtyPerPack ? Number(editing.defaultBaseQtyPerPack) : undefined} />
-                </Field>
-              </div>
               <Field label="Notas" htmlFor="notes">
                 <Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} />
               </Field>

@@ -44,7 +44,8 @@ export const NAV: NavGroup[] = [
   },
   {
     // Velas/Categorias/Empaques/Tarjetas eran 4 entradas de primer nivel;
-    // ahora son pestanas de /catalogo -- se tocan al dar de alta un modelo,
+    // ahora son pestanas de /catalogo, junto con tipos de insumo y unidades
+    // de medida -- se tocan al dar de alta un modelo,
     // no a diario.
     group: 'Taller',
     items: [

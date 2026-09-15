@@ -31,15 +31,39 @@ export interface CandleCategoryDto {
   updatedAt: string;
 }
 
-export type UnitOfMeasure = 'GRAM' | 'KILOGRAM' | 'MILLILITER' | 'LITER' | 'CENTIMETER' | 'METER' | 'PIECE' | 'SHEET';
+export interface SupplyTypeDto {
+  id: number;
+  slug: string;
+  name: string;
+  sortOrder: number;
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UnitOfMeasureDto {
+  id: number;
+  slug: string;
+  name: string;
+  abbr: string;
+  sortOrder: number;
+  isSystem: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type SupplySource = 'CANDLE_TEMPLATE' | 'PACKAGING_TEMPLATE' | 'CARD_TEMPLATE' | 'MANUAL';
 
 export interface SupplyDto {
   id: number;
   name: string;
   sku: string | null;
-  type: string;
-  unit: UnitOfMeasure;
+  typeId: number;
+  unitId: number;
+  type: Omit<SupplyTypeDto, 'createdAt' | 'updatedAt'>;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   currentUnitCost: string;
   suggestedUnitCost: string | null;
   suggestedCostSampleSize: number;
@@ -59,7 +83,8 @@ export interface SupplyTemplateItemDto {
   id: number;
   supplyId: number;
   quantity: string;
-  unit: UnitOfMeasure;
+  unitId: number;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   note: string | null;
   supply: SupplyDto;
 }
@@ -123,7 +148,8 @@ export interface ProductSupplyDto {
   productId: number;
   supplyId: number;
   quantity: string;
-  unit: UnitOfMeasure;
+  unitId: number;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   source: SupplySource;
   note: string | null;
   supply: SupplyDto;
@@ -227,7 +253,6 @@ export interface CustomerDto {
   id: number;
   fullName: string;
   phone: string;
-  whatsapp: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
@@ -563,5 +588,5 @@ export interface LowStockSupplyRow {
   name: string;
   stock_qty: string;
   min_stock_qty: string;
-  unit: UnitOfMeasure;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
 }

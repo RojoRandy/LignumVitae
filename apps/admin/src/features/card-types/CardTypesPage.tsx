@@ -64,7 +64,7 @@ export default function CardTypesPage() {
 
   const openEdit = (item: CardTypeDto) => {
     setEditing(item);
-    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unit: t.unit, note: t.note ?? undefined })));
+    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unitId: t.unitId, note: t.note ?? undefined })));
     clear();
     setDialogOpen(true);
   };
@@ -80,7 +80,7 @@ export default function CardTypesPage() {
       heightCm: form.get('heightCm') ? Number(form.get('heightCm')) : undefined,
       printedSides: Number(form.get('printedSides') || 1),
       setupMinutes: Number(form.get('setupMinutes') || 0),
-      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unit: r.unit, note: r.note })),
+      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unitId: r.unitId, note: r.note })),
     });
   };
 

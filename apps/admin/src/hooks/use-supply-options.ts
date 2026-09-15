@@ -14,11 +14,11 @@ export const useSupplyOptions = (opts: { includeWax?: boolean } = {}) => {
     staleTime: 30_000,
   });
 
-  const supplies = (data?.items ?? []).filter((s) => opts.includeWax || s.type !== 'WAX');
+  const supplies = (data?.items ?? []).filter((s) => opts.includeWax || s.type.slug !== 'WAX');
   const options = supplies.map((s) => ({
     value: String(s.id),
     label: s.name,
-    hint: `${formatMoney(s.currentUnitCost)} / ${s.unit.toLowerCase()}`,
+    hint: `${formatMoney(s.currentUnitCost)} / ${s.unit.abbr}`,
   }));
 
   return { supplies, options, isLoading };
