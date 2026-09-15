@@ -77,7 +77,6 @@ export default function CustomersPage() {
     saveMutation.mutate({
       fullName: form.get('fullName'),
       phone: form.get('phone'),
-      whatsapp: form.get('whatsapp') || undefined,
       email: form.get('email') || undefined,
       address: form.get('address') || undefined,
       notes: form.get('notes') || undefined,
@@ -92,7 +91,6 @@ export default function CustomersPage() {
   const columns: ColumnDef<CustomerDto, unknown>[] = [
     { header: 'Nombre', accessorKey: 'fullName' },
     { header: 'Telefono', accessorKey: 'phone' },
-    { header: 'WhatsApp', cell: ({ row }) => row.original.whatsapp ?? '—' },
     { header: 'Correo', cell: ({ row }) => row.original.email ?? '—' },
     { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
@@ -132,14 +130,18 @@ export default function CustomersPage() {
             <Field label="Nombre completo" htmlFor="fullName" required error={fieldErrors.fullName}>
               <Input id="fullName" name="fullName" defaultValue={editing?.fullName} required />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Telefono" htmlFor="phone" required>
-                <Input id="phone" name="phone" defaultValue={editing?.phone} required />
-              </Field>
-              <Field label="WhatsApp" htmlFor="whatsapp" hint="Si es distinto al telefono">
-                <Input id="whatsapp" name="whatsapp" defaultValue={editing?.whatsapp ?? ''} />
-              </Field>
-            </div>
+            <Field label="Telefono" htmlFor="phone" required error={fieldErrors.phone} hint="10 digitos">
+                <Input
+                  id="phone"
+                  name="phone"
+                  inputMode="numeric"
+                  maxLength={10}
+                  pattern="\d{10}"
+                  title="10 digitos, sin espacios ni guiones"
+                  defaultValue={editing?.phone}
+                required
+              />
+            </Field>
             <Field label="Correo" htmlFor="email">
               <Input id="email" name="email" type="email" defaultValue={editing?.email ?? ''} />
             </Field>
