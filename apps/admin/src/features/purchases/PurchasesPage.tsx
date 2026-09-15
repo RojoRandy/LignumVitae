@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
-import { httpGet, httpPost } from '@/lib/http';
-import type { Paginated, PurchaseDto, ExpenseCategoryDto, UnitOfMeasure } from '@/lib/types';
+import { httpDelete, httpGet, httpPatch, httpPost } from '@/lib/http';
+import type { Paginated, PurchaseDto, ExpenseCategoryDto } from '@/lib/types';
 import { formatDate, formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -19,12 +19,15 @@ import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader, ReadonlyAmount } from '@/components/ui/page';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 interface LineItem {
   kind: 'SUPPLY' | 'ASSET' | 'EXPENSE';
   description: string;
   supplyId?: number;
   assetName?: string;
+  /** Solo al editar: sigue sumando al MISMO activo en vez de crear otro. */
+  assetId?: number;
   assetKind: 'MOLD' | 'TOOL' | 'EQUIPMENT';
   expenseCategoryId?: number;
   // number | null (en vez de solo number) para que el renglon pueda quedar
@@ -43,16 +46,14 @@ const ASSET_KIND_OPTIONS = [
   { value: 'EQUIPMENT', label: 'Equipo' },
 ];
 
-const UNIT_ABBR: Record<UnitOfMeasure, string> = {
-  GRAM: 'g', KILOGRAM: 'kg', MILLILITER: 'ml', LITER: 'l', CENTIMETER: 'cm', METER: 'm', PIECE: 'pz', SHEET: 'pliegos',
-};
-
 export default function PurchasesPage() {
   const { page, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
   const [purchasedAt, setPurchasedAt] = useState<Date>(new Date());
+  const [editing, setEditing] = useState<PurchaseDto | null>(null);
+  const confirm = useConfirm();
 
   const { data, isLoading } = useQuery({
     queryKey: ['purchases', { page }],
@@ -65,17 +66,80 @@ export default function PurchasesPage() {
     queryFn: () => httpGet<ExpenseCategoryDto[]>('/expenses/categories'),
   });
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['purchases'] });
+    // Tambien los insumos: el stock y el costo sugerido cambian con la compra.
+    queryClient.invalidateQueries({ queryKey: ['supplies'] });
+  };
+
   const createMutation = useMutation({
-    mutationFn: (body: Record<string, unknown>) => httpPost('/purchases', body),
+    mutationFn: (body: Record<string, unknown>) =>
+      editing ? httpPatch(`/purchases/${editing.id}`, body) : httpPost('/purchases', body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      queryClient.invalidateQueries({ queryKey: ['supplies'] });
-      toast.success('Compra registrada');
+      invalidate();
+      toast.success(editing ? 'Compra corregida' : 'Compra registrada');
       setDialogOpen(false);
       setItems([]);
+      setEditing(null);
     },
     onError: (error) => toast.error((error as Error).message),
   });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => httpDelete(`/purchases/${id}`),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Compra eliminada');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const openCreate = () => {
+    setEditing(null);
+    setItems([]);
+    setPurchasedAt(new Date());
+    setDialogOpen(true);
+  };
+
+  /*
+   * Editar reusa el MISMO dialogo del alta: en el servidor una edicion es
+   * cancelar la compra vieja y crear la corregida, asi que el formulario que
+   * se llena es exactamente el mismo. Los renglones se reconstruyen desde lo
+   * guardado; para un molde se manda su assetId para seguir sumando al mismo
+   * activo en vez de crear uno nuevo.
+   */
+  const openEdit = (purchase: PurchaseDto) => {
+    setEditing(purchase);
+    // La fecha se parte a mano en vez de `new Date(purchase.purchasedAt)`:
+    // la API la manda como medianoche UTC y en un huso al oeste eso cae el
+    // DIA ANTERIOR, asi que abrir y guardar sin tocar nada movia la compra
+    // un dia hacia atras.
+    const [year, month, day] = purchase.purchasedAt.slice(0, 10).split('-').map(Number);
+    setPurchasedAt(new Date(year, month - 1, day));
+    setItems(
+      purchase.items.map((it) => ({
+        kind: it.kind,
+        description: it.description,
+        supplyId: it.supplyId ?? undefined,
+        assetId: it.assetId ?? undefined,
+        assetName: it.description,
+        assetKind: 'MOLD' as const,
+        expenseCategoryId: it.expenseCategoryId ?? undefined,
+        packsQty: Number(it.packsQty),
+        baseQtyPerPack: Number(it.baseQtyPerPack),
+        pricePerPack: Number(it.pricePerPack),
+      })),
+    );
+    setDialogOpen(true);
+  };
+
+  const handleRemove = async (purchase: PurchaseDto) => {
+    const ok = await confirm({
+      title: `¿Eliminar la compra ${purchase.folio}?`,
+      description: 'Se revierte el stock que entro, el gasto del mes y el activo que haya creado.',
+    });
+    if (ok) removeMutation.mutate(purchase.id);
+  };
 
   const addItem = (kind: LineItem['kind']) =>
     setItems((prev) => [...prev, { kind, description: '', assetKind: 'MOLD', packsQty: 1, baseQtyPerPack: 1, pricePerPack: null }]);
@@ -102,7 +166,8 @@ export default function PurchasesPage() {
         kind: it.kind,
         description: it.description,
         supplyId: it.kind === 'SUPPLY' ? it.supplyId : undefined,
-        assetName: it.kind === 'ASSET' ? it.assetName || it.description : undefined,
+        assetId: it.kind === 'ASSET' ? it.assetId : undefined,
+        assetName: it.kind === 'ASSET' && !it.assetId ? it.assetName || it.description : undefined,
         assetKind: it.kind === 'ASSET' ? it.assetKind : undefined,
         expenseCategoryId: it.kind === 'EXPENSE' ? it.expenseCategoryId : undefined,
         packsQty: it.packsQty ?? 0,
@@ -121,6 +186,16 @@ export default function PurchasesPage() {
     { header: 'Plataforma', cell: ({ row }) => row.original.platform ?? '—' },
     { header: 'Renglones', cell: ({ row }) => row.original.items.length },
     { header: 'Total', cell: ({ row }) => formatMoney(row.original.total) },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
+          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Eliminar</Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -129,7 +204,7 @@ export default function PurchasesPage() {
         title="Compras"
         description="Insumos, moldes y gastos. El costo por unidad y el flete se calculan solos."
         actions={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="size-4" /> Nueva compra
           </Button>
         }
@@ -140,15 +215,15 @@ export default function PurchasesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="xl">
           <DialogHeader>
-            <DialogTitle>Nueva compra</DialogTitle>
+            <DialogTitle>{editing ? `Corregir ${editing.folio}` : 'Nueva compra'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form key={editing?.id ?? 'nueva'} onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="Fecha" required>
                 <DatePicker value={purchasedAt} onChange={(d) => d && setPurchasedAt(d)} />
               </Field>
               <Field label="Plataforma" htmlFor="platform" hint="Shein, Mercado Libre, local...">
-                <Input id="platform" name="platform" />
+                <Input id="platform" name="platform" defaultValue={editing?.platform ?? ''} />
               </Field>
               <Field
                 label="Flete"
@@ -156,7 +231,7 @@ export default function PurchasesPage() {
                 hint="Se prorratea entre los insumos"
                 tooltip="Costo de envio de toda la compra. Se reparte proporcionalmente entre los renglones de insumo segun su importe, para que el costo por unidad base de cada insumo ya incluya su parte del flete."
               >
-                <NumberInput id="shippingCost" name="shippingCost" step={0.01} min={0} unit="$" unitPosition="prefix" defaultValue={0} />
+                <NumberInput id="shippingCost" name="shippingCost" step={0.01} min={0} unit="$" unitPosition="prefix" defaultValue={editing ? Number(editing.shippingCost) : 0} />
               </Field>
             </div>
 
@@ -197,7 +272,7 @@ export default function PurchasesPage() {
                           />
                         </div>
                         <Input
-                          placeholder="Descripcion (ej. 20 kilos de cera)"
+                          placeholder="Descripcion opcional: si la dejas vacia se llena sola"
                           className="col-span-12 sm:col-span-7"
                           value={item.description}
                           onChange={(e) => updateItem(index, { description: e.target.value })}
@@ -235,18 +310,18 @@ export default function PurchasesPage() {
                     <div className="grid grid-cols-12 gap-2">
                       {item.kind === 'SUPPLY' && (
                         <>
-                          <RowField label="Paquetes" htmlFor={`packsQty-${index}`} className="col-span-12 sm:col-span-3">
+                          <RowField label="Cantidad" htmlFor={`packsQty-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`packsQty-${index}`} step={0.001} min={0.001} required value={item.packsQty} onChange={(v) => updateItem(index, { packsQty: v })} />
                           </RowField>
                           <RowField
-                            label={`Contenido / paquete${supplyUnit ? ` (${UNIT_ABBR[supplyUnit]})` : ''}`}
+                            label={`Contenido por unidad${supplyUnit ? ` (${supplyUnit.abbr})` : ''}`}
                             htmlFor={`baseQtyPerPack-${index}`}
                             className="col-span-12 sm:col-span-3"
                             tooltip="Cuantas unidades base (gramos, piezas, metros...) trae CADA paquete que compraste. Con esto el sistema calcula el costo por unidad base del insumo, no solo el costo del paquete completo."
                           >
-                            <NumberInput id={`baseQtyPerPack-${index}`} step={0.001} min={0.001} unit={supplyUnit ? UNIT_ABBR[supplyUnit] : undefined} required value={item.baseQtyPerPack} onChange={(v) => updateItem(index, { baseQtyPerPack: v })} />
+                            <NumberInput id={`baseQtyPerPack-${index}`} step={0.001} min={0.001} unit={supplyUnit ? supplyUnit.abbr : undefined} required value={item.baseQtyPerPack} onChange={(v) => updateItem(index, { baseQtyPerPack: v })} />
                           </RowField>
-                          <RowField label="Precio / paquete" htmlFor={`pricePerPack-${index}`} className="col-span-12 sm:col-span-3">
+                          <RowField label="Precio unitario" htmlFor={`pricePerPack-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`pricePerPack-${index}`} step={0.01} min={0} unit="$" unitPosition="prefix" required value={item.pricePerPack} onChange={(v) => updateItem(index, { pricePerPack: v })} />
                           </RowField>
                           <RowField label="Importe" className="col-span-12 sm:col-span-3">
@@ -294,7 +369,7 @@ export default function PurchasesPage() {
             </div>
 
             <Field label="Notas" htmlFor="notes">
-              <Input id="notes" name="notes" />
+              <Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} />
             </Field>
 
             <DialogFooter>
