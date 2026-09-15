@@ -16,8 +16,7 @@
     "migrate:reset": "prisma migrate reset --force",
     "seed": "tsx prisma/seed.ts",
     "import:catalog": "tsx prisma/import-catalog.ts",
-    "studio": "prisma studio",
-    "import:catalog": "tsx prisma/import-catalog.ts"
+    "studio": "prisma studio"
   },
   "dependencies": {
     "@lignumvitae/types": "workspace:*",

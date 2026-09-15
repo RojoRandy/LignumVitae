@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, UnitOfMeasure } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
@@ -7,7 +7,7 @@ export class SupplyRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findMany(args: Prisma.SupplyFindManyArgs) {
-    return this.prisma.supply.findMany(args);
+    return this.prisma.supply.findMany({ ...args, include: { type: true, unit: true } });
   }
 
   count(where: Prisma.SupplyWhereInput) {
@@ -15,23 +15,23 @@ export class SupplyRepository {
   }
 
   findById(id: number) {
-    return this.prisma.supply.findUnique({ where: { id } });
+    return this.prisma.supply.findUnique({ where: { id }, include: { type: true, unit: true } });
   }
 
   findByName(name: string) {
-    return this.prisma.supply.findUnique({ where: { name } });
+    return this.prisma.supply.findUnique({ where: { name }, include: { type: true, unit: true } });
   }
 
   create(data: Prisma.SupplyCreateInput) {
-    return this.prisma.supply.create({ data });
+    return this.prisma.supply.create({ data, include: { type: true, unit: true } });
   }
 
   update(id: number, data: Prisma.SupplyUpdateInput) {
-    return this.prisma.supply.update({ where: { id }, data });
+    return this.prisma.supply.update({ where: { id }, data, include: { type: true, unit: true } });
   }
 
   deactivate(id: number) {
-    return this.prisma.supply.update({ where: { id }, data: { isActive: false } });
+    return this.prisma.supply.update({ where: { id }, data: { isActive: false }, include: { type: true, unit: true } });
   }
 
   countProductSupplies(id: number) {
@@ -47,6 +47,7 @@ export class SupplyRepository {
     return tx.supply.update({
       where: { id: supplyId },
       data: { stockQty: result._sum.quantity ?? 0 },
+      include: { type: true, unit: true },
     });
   }
 
@@ -57,11 +58,14 @@ export class SupplyRepository {
    */
   findLowStock() {
     return this.prisma.$queryRaw<
-      Array<{ id: number; name: string; stock_qty: Prisma.Decimal; min_stock_qty: Prisma.Decimal; unit: string }>
-    >`SELECT id, name, stock_qty, min_stock_qty, unit
-      FROM inventory.supplies
-      WHERE is_active = true AND stock_qty <= min_stock_qty
-      ORDER BY (stock_qty - min_stock_qty) ASC`;
+      Array<{ id: number; name: string; stock_qty: Prisma.Decimal; min_stock_qty: Prisma.Decimal; unit: Pick<UnitOfMeasure, 'id' | 'slug' | 'name' | 'abbr' | 'sortOrder' | 'isSystem' | 'isActive'> }>
+    >`SELECT s.id, s.name, s.stock_qty, s.min_stock_qty,
+        json_build_object('id', u.id, 'slug', u.slug, 'name', u.name, 'abbr', u.abbr,
+          'sortOrder', u.sort_order, 'isSystem', u.is_system, 'isActive', u.is_active) AS unit
+      FROM inventory.supplies s
+      JOIN inventory.units_of_measure u ON u.id = s.unit_id
+      WHERE s.is_active = true AND s.stock_qty <= s.min_stock_qty
+      ORDER BY (s.stock_qty - s.min_stock_qty) ASC`;
   }
 
   /** Compras recientes de este insumo, para alimentar suggestSupplyUnitCost. */

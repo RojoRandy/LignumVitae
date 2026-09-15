@@ -70,36 +70,39 @@ async function seedAdmin() {
 async function seedSupplies() {
   const supplies: Array<{
     name: string;
-    type: 'WAX' | 'FRAGRANCE' | 'WICK' | 'DYE' | 'ALUMINUM_BASE' | 'CELLOPHANE' | 'RIBBON' | 'LABEL' | 'PRINTING' | 'SEAL' | 'BELL' | 'SILICONE' | 'BOX' | 'TULLE' | 'ACETATE' | 'PAPER' | 'OTHER';
-    unit: 'GRAM' | 'PIECE' | 'MILLILITER';
+    typeSlug: string;
+    unitSlug: string;
     currentUnitCost: number;
     defaultPackLabel?: string;
     defaultBaseQtyPerPack?: number;
   }> = [
     // Cera: $1978 / 20kg = $0.0989/g, del renglon de compra real de enero.
-    { name: 'Parafina', type: 'WAX', unit: 'GRAM', currentUnitCost: 0.0989, defaultPackLabel: 'bulto de 20 kg', defaultBaseQtyPerPack: 20000 },
-    { name: 'Mecha', type: 'WICK', unit: 'PIECE', currentUnitCost: 0.4 },
-    { name: 'Base de aluminio', type: 'ALUMINUM_BASE', unit: 'PIECE', currentUnitCost: 0.5 },
-    { name: 'Colorante / aditivo', type: 'DYE', unit: 'PIECE', currentUnitCost: 0.5 },
-    { name: 'Celofan', type: 'CELLOPHANE', unit: 'PIECE', currentUnitCost: 0.45 },
-    { name: 'Liston', type: 'RIBBON', unit: 'PIECE', currentUnitCost: 0.3 },
-    { name: 'Etiqueta 5x5 impresa a una cara', type: 'LABEL', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Tarjeta 9x12', type: 'LABEL', unit: 'PIECE', currentUnitCost: 0.66 },
-    { name: 'Impresion', type: 'PRINTING', unit: 'PIECE', currentUnitCost: 0.2 },
-    { name: 'Sello', type: 'SEAL', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Cascabel', type: 'BELL', unit: 'PIECE', currentUnitCost: 0.2 },
-    { name: 'Silicon', type: 'SILICONE', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Caja personalizada', type: 'BOX', unit: 'PIECE', currentUnitCost: 0.66 },
-    { name: 'Tul', type: 'TULLE', unit: 'PIECE', currentUnitCost: 1.5 },
-    { name: 'Caja de acetato', type: 'ACETATE', unit: 'PIECE', currentUnitCost: 2.0 },
-    { name: 'Papel coreano', type: 'PAPER', unit: 'SHEET' as never, currentUnitCost: 0.625 },
-    { name: 'Aroma (esencia)', type: 'FRAGRANCE', unit: 'MILLILITER', currentUnitCost: 0.5 },
+    { name: 'Parafina', typeSlug: 'WAX', unitSlug: 'GRAM', currentUnitCost: 0.0989, defaultPackLabel: 'bulto de 20 kg', defaultBaseQtyPerPack: 20000 },
+    { name: 'Mecha', typeSlug: 'WICK', unitSlug: 'PIECE', currentUnitCost: 0.4 },
+    { name: 'Base de aluminio', typeSlug: 'ALUMINUM_BASE', unitSlug: 'PIECE', currentUnitCost: 0.5 },
+    { name: 'Colorante / aditivo', typeSlug: 'DYE', unitSlug: 'PIECE', currentUnitCost: 0.5 },
+    { name: 'Celofan', typeSlug: 'CELLOPHANE', unitSlug: 'PIECE', currentUnitCost: 0.45 },
+    { name: 'Liston', typeSlug: 'RIBBON', unitSlug: 'PIECE', currentUnitCost: 0.3 },
+    { name: 'Etiqueta 5x5 impresa a una cara', typeSlug: 'LABEL', unitSlug: 'PIECE', currentUnitCost: 0.1 },
+    { name: 'Tarjeta 9x12', typeSlug: 'LABEL', unitSlug: 'PIECE', currentUnitCost: 0.66 },
+    { name: 'Impresion', typeSlug: 'PRINTING', unitSlug: 'PIECE', currentUnitCost: 0.2 },
+    { name: 'Sello', typeSlug: 'SEAL', unitSlug: 'PIECE', currentUnitCost: 0.1 },
+    { name: 'Cascabel', typeSlug: 'BELL', unitSlug: 'PIECE', currentUnitCost: 0.2 },
+    { name: 'Silicon', typeSlug: 'SILICONE', unitSlug: 'PIECE', currentUnitCost: 0.1 },
+    { name: 'Caja personalizada', typeSlug: 'BOX', unitSlug: 'PIECE', currentUnitCost: 0.66 },
+    { name: 'Tul', typeSlug: 'TULLE', unitSlug: 'PIECE', currentUnitCost: 1.5 },
+    { name: 'Caja de acetato', typeSlug: 'ACETATE', unitSlug: 'PIECE', currentUnitCost: 2.0 },
+    { name: 'Papel coreano', typeSlug: 'PAPER', unitSlug: 'SHEET', currentUnitCost: 0.625 },
+    { name: 'Aroma (esencia)', typeSlug: 'FRAGRANCE', unitSlug: 'MILLILITER', currentUnitCost: 0.5 },
   ];
 
   for (const supply of supplies) {
     const existing = await prisma.supply.findUnique({ where: { name: supply.name } });
     if (existing) continue;
-    await prisma.supply.create({ data: supply as never });
+    const { typeSlug, unitSlug, ...data } = supply;
+    const type = await prisma.supplyType.findUniqueOrThrow({ where: { slug: typeSlug } });
+    const unit = await prisma.unitOfMeasure.findUniqueOrThrow({ where: { slug: unitSlug } });
+    await prisma.supply.create({ data: { ...data, typeId: type.id, unitId: unit.id } });
   }
   console.log(`Insumos base sembrados (${supplies.length}).`);
 }
@@ -123,6 +126,8 @@ async function seedCategories() {
 }
 
 async function seedPackagingTypes() {
+  const piece = await prisma.unitOfMeasure.findUniqueOrThrow({ where: { slug: 'PIECE' } });
+  const sheet = await prisma.unitOfMeasure.findUniqueOrThrow({ where: { slug: 'SHEET' } });
   const wax = await prisma.supply.findUnique({ where: { name: 'Parafina' } });
   const cellophane = await prisma.supply.findUnique({ where: { name: 'Celofan' } });
   const ribbon = await prisma.supply.findUnique({ where: { name: 'Liston' } });
@@ -135,17 +140,17 @@ async function seedPackagingTypes() {
   if (!cellophane || !ribbon || !label || !printing || !box || !tulle || !acetate || !paper) return;
 
   const types = [
-    { name: 'Sola', slug: 'sola', packMinutes: 0, setupMinutes: 0, supplyTemplate: [] as { supplyId: number; quantity: number; unit: 'PIECE' }[] },
+    { name: 'Sola', slug: 'sola', packMinutes: 0, setupMinutes: 0, supplyTemplate: [] as { supplyId: number; quantity: number; unitId: number }[] },
     {
       name: 'Celofan con Liston',
       slug: 'celofan-con-liston',
       packMinutes: 2,
       setupMinutes: 15,
       supplyTemplate: [
-        { supplyId: cellophane.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
+        { supplyId: cellophane.id, quantity: 1, unitId: piece.id },
+        { supplyId: ribbon.id, quantity: 1, unitId: piece.id },
+        { supplyId: label.id, quantity: 1, unitId: piece.id },
+        { supplyId: printing.id, quantity: 1, unitId: piece.id },
       ],
     },
     {
@@ -154,8 +159,8 @@ async function seedPackagingTypes() {
       packMinutes: 3,
       setupMinutes: 30,
       supplyTemplate: [
-        { supplyId: box.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
+        { supplyId: box.id, quantity: 1, unitId: piece.id },
+        { supplyId: printing.id, quantity: 1, unitId: piece.id },
       ],
     },
     {
@@ -164,10 +169,10 @@ async function seedPackagingTypes() {
       packMinutes: 3,
       setupMinutes: 15,
       supplyTemplate: [
-        { supplyId: tulle.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
+        { supplyId: tulle.id, quantity: 1, unitId: piece.id },
+        { supplyId: ribbon.id, quantity: 1, unitId: piece.id },
+        { supplyId: label.id, quantity: 1, unitId: piece.id },
+        { supplyId: printing.id, quantity: 1, unitId: piece.id },
       ],
     },
     {
@@ -175,7 +180,7 @@ async function seedPackagingTypes() {
       slug: 'caja-de-acetato',
       packMinutes: 3,
       setupMinutes: 15,
-      supplyTemplate: [{ supplyId: acetate.id, quantity: 1, unit: 'PIECE' as const }],
+      supplyTemplate: [{ supplyId: acetate.id, quantity: 1, unitId: piece.id }],
     },
     {
       // La hoja "Catalogo Ramos" del Excel: una vela envuelta en papel
@@ -185,10 +190,10 @@ async function seedPackagingTypes() {
       packMinutes: 5,
       setupMinutes: 0,
       supplyTemplate: [
-        { supplyId: paper.id, quantity: 1, unit: 'SHEET' as never },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
+        { supplyId: paper.id, quantity: 1, unitId: sheet.id },
+        { supplyId: ribbon.id, quantity: 1, unitId: piece.id },
+        { supplyId: label.id, quantity: 1, unitId: piece.id },
+        { supplyId: printing.id, quantity: 1, unitId: piece.id },
       ],
     },
   ];
@@ -211,6 +216,7 @@ async function seedPackagingTypes() {
 }
 
 async function seedCardTypes() {
+  const piece = await prisma.unitOfMeasure.findUniqueOrThrow({ where: { slug: 'PIECE' } });
   const label = await prisma.supply.findUnique({ where: { name: 'Etiqueta 5x5 impresa a una cara' } });
   const card912 = await prisma.supply.findUnique({ where: { name: 'Tarjeta 9x12' } });
   if (!label || !card912) return;
@@ -223,7 +229,7 @@ async function seedCardTypes() {
       heightCm: 5,
       printedSides: 1,
       setupMinutes: 15,
-      supplyTemplate: [{ supplyId: label.id, quantity: 1, unit: 'PIECE' as const }],
+      supplyTemplate: [{ supplyId: label.id, quantity: 1, unitId: piece.id }],
     },
     {
       name: 'Etiqueta 5x5 dos caras',
@@ -232,7 +238,7 @@ async function seedCardTypes() {
       heightCm: 5,
       printedSides: 2,
       setupMinutes: 15,
-      supplyTemplate: [{ supplyId: label.id, quantity: 1, unit: 'PIECE' as const }],
+      supplyTemplate: [{ supplyId: label.id, quantity: 1, unitId: piece.id }],
     },
     {
       name: 'Tarjeta 9x12',
@@ -241,7 +247,7 @@ async function seedCardTypes() {
       heightCm: 12,
       printedSides: 1,
       setupMinutes: 30,
-      supplyTemplate: [{ supplyId: card912.id, quantity: 1, unit: 'PIECE' as const }],
+      supplyTemplate: [{ supplyId: card912.id, quantity: 1, unitId: piece.id }],
     },
   ];
 

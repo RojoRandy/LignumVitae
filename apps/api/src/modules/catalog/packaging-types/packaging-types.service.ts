@@ -41,7 +41,7 @@ export class PackagingTypesService {
             create: dto.supplyTemplate.map((t) => ({
               supply: { connect: { id: t.supplyId } },
               quantity: t.quantity,
-              unit: t.unit,
+              unit: { connect: { id: t.unitId } },
               note: t.note,
             })),
           }
@@ -59,7 +59,7 @@ export class PackagingTypesService {
     if (supplyTemplate) {
       await this.repository.replaceTemplate(
         id,
-        supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unit: t.unit, note: t.note, packagingTypeId: id })),
+        supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unitId: t.unitId, note: t.note, packagingTypeId: id })),
       );
     }
     return this.findById(id);

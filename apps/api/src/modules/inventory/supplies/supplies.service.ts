@@ -1,5 +1,5 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { Prisma, SupplyType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { suggestSupplyUnitCost } from '@lignumvitae/types';
 import { SupplyRepository } from './supply.repository';
 import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
@@ -18,11 +18,11 @@ export class SuppliesService {
     private readonly recalculateAllProductsUseCase: RecalculateAllProductsUseCase,
   ) {}
 
-  async findAll(query: PaginationQueryDto & { type?: SupplyType }) {
+  async findAll(query: PaginationQueryDto & { type?: string }) {
     const { page = 1, limit = 20, search, onlyActive = true, type } = query;
     const where: Prisma.SupplyWhereInput = {
       ...(onlyActive ? { isActive: true } : {}),
-      ...(type ? { type } : {}),
+      ...(type ? { type: { slug: type } } : {}),
       ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
     };
 
@@ -44,11 +44,10 @@ export class SuppliesService {
     return this.supplyRepository.create({
       name: dto.name,
       sku: dto.sku,
-      type: dto.type,
-      unit: dto.unit,
+      type: { connect: { id: dto.typeId } },
+      unit: { connect: { id: dto.unitId } },
       currentUnitCost: dto.currentUnitCost,
       minStockQty: dto.minStockQty ?? 0,
-      defaultPackLabel: dto.defaultPackLabel,
       defaultBaseQtyPerPack: dto.defaultBaseQtyPerPack,
       yieldPerBaseUnit: dto.yieldPerBaseUnit ?? 1,
       notes: dto.notes,
@@ -57,7 +56,12 @@ export class SuppliesService {
 
   async update(id: number, dto: UpdateSupplyDto) {
     await this.findById(id);
-    return this.supplyRepository.update(id, dto as Prisma.SupplyUpdateInput);
+    const { typeId, unitId, ...rest } = dto;
+    return this.supplyRepository.update(id, {
+      ...rest,
+      ...(typeId !== undefined ? { type: { connect: { id: typeId } } } : {}),
+      ...(unitId !== undefined ? { unit: { connect: { id: unitId } } } : {}),
+    });
   }
 
   async deactivate(id: number) {
