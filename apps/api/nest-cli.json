@@ -13,6 +13,6 @@
         }
       }
     ],
-    "assets": [{ "include": "modules/pdf/templates/**/*", "outDir": "dist/src" }]
+    "assets": [{ "include": "modules/pdf/templates/**/*", "outDir": "dist" }]
   }
 }
