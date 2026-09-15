@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Spinner } from '@/components/ui/spinner';
+import { PageState } from '@/components/ui/page';
 
 const SIDEBAR_COLLAPSED_KEY = 'lignumvitae.sidebar-collapsed';
 
@@ -26,8 +26,8 @@ const SidebarNav = ({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate
   return (
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-5">
       {NAV.map((group) => (
-        <div key={group.group} className="flex flex-col gap-1">
-          {!collapsed && (
+        <div key={group.group || group.items[0].to} className="flex flex-col gap-1">
+          {!collapsed && group.group && (
             <p className="px-2.5 pb-1 text-micro font-bold uppercase tracking-wider text-text-faint">{group.group}</p>
           )}
           {group.items
@@ -161,9 +161,7 @@ export const AppLayout = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-7">
           <Suspense
             fallback={
-              <div className="flex h-40 items-center justify-center">
-                <Spinner className="size-6" />
-              </div>
+              <PageState isLoading />
             }
           >
             <Outlet />

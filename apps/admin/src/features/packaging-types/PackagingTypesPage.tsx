@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -15,6 +15,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { FormError, PageToolbar } from '@/components/ui/page';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
 
 export default function PackagingTypesPage() {
@@ -104,20 +105,14 @@ export default function PackagingTypesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Empaques</h1>
-          <p className="text-body-sm text-text-muted">Celofan, cajita, tul, acetato... con los insumos y minutos que aporta cada uno.</p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" /> Nuevo empaque
-        </Button>
-      </div>
-
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-        <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="size-4" /> Nuevo empaque
+          </Button>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin empaques" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -152,7 +147,7 @@ export default function PackagingTypesPage() {
               </Field>
             </div>
             <SupplyTemplateEditor rows={supplyRows} onChange={setSupplyRows} label="Insumos que incluye este empaque" />
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" loading={saveMutation.isPending}>Guardar</Button>

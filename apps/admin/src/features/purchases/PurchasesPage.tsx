@@ -17,6 +17,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader, ReadonlyAmount } from '@/components/ui/page';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 
 interface LineItem {
@@ -124,15 +125,15 @@ export default function PurchasesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Compras</h1>
-          <p className="text-body-sm text-text-muted">Insumos, moldes y gastos. El costo por unidad y el flete se calculan solos.</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="size-4" /> Nueva compra
-        </Button>
-      </div>
+      <PageHeader
+        title="Compras"
+        description="Insumos, moldes y gastos. El costo por unidad y el flete se calculan solos."
+        actions={
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="size-4" /> Nueva compra
+          </Button>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin compras registradas" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -160,9 +161,9 @@ export default function PurchasesPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-body-sm font-medium text-text">Renglones</p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="secondary" size="sm" onClick={() => addItem('SUPPLY')}>+ Insumo</Button>
                   <Button type="button" variant="secondary" size="sm" onClick={() => addItem('ASSET')}>+ Molde</Button>
                   <Button type="button" variant="secondary" size="sm" onClick={() => addItem('EXPENSE')}>+ Gasto</Button>
@@ -176,7 +177,7 @@ export default function PurchasesPage() {
                   <div key={index} className="flex flex-col gap-3 rounded-input border border-border p-3">
                     <div className="flex items-center justify-between">
                       <Badge variant="accent">{KIND_LABEL[item.kind]}</Badge>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                      <Button type="button" variant="ghost" size="icon" aria-label="Quitar renglon" onClick={() => removeItem(index)}>
                         <Trash2 className="size-4 text-danger-fg" />
                       </Button>
                     </div>
@@ -234,51 +235,51 @@ export default function PurchasesPage() {
                     <div className="grid grid-cols-12 gap-2">
                       {item.kind === 'SUPPLY' && (
                         <>
-                          <RowField label="Paquetes" htmlFor={`packsQty-${index}`} className="col-span-4 sm:col-span-3">
+                          <RowField label="Paquetes" htmlFor={`packsQty-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`packsQty-${index}`} step={0.001} min={0.001} required value={item.packsQty} onChange={(v) => updateItem(index, { packsQty: v })} />
                           </RowField>
                           <RowField
                             label={`Contenido / paquete${supplyUnit ? ` (${UNIT_ABBR[supplyUnit]})` : ''}`}
                             htmlFor={`baseQtyPerPack-${index}`}
-                            className="col-span-8 sm:col-span-3"
+                            className="col-span-12 sm:col-span-3"
                             tooltip="Cuantas unidades base (gramos, piezas, metros...) trae CADA paquete que compraste. Con esto el sistema calcula el costo por unidad base del insumo, no solo el costo del paquete completo."
                           >
                             <NumberInput id={`baseQtyPerPack-${index}`} step={0.001} min={0.001} unit={supplyUnit ? UNIT_ABBR[supplyUnit] : undefined} required value={item.baseQtyPerPack} onChange={(v) => updateItem(index, { baseQtyPerPack: v })} />
                           </RowField>
-                          <RowField label="Precio / paquete" htmlFor={`pricePerPack-${index}`} className="col-span-6 sm:col-span-3">
+                          <RowField label="Precio / paquete" htmlFor={`pricePerPack-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`pricePerPack-${index}`} step={0.01} min={0} unit="$" unitPosition="prefix" required value={item.pricePerPack} onChange={(v) => updateItem(index, { pricePerPack: v })} />
                           </RowField>
-                          <RowField label="Importe" className="col-span-6 sm:col-span-3">
-                            <div className="flex h-9 items-center px-1 text-body-sm font-medium text-text">{formatMoney(lineTotal)}</div>
+                          <RowField label="Importe" className="col-span-12 sm:col-span-3">
+                            <ReadonlyAmount>{formatMoney(lineTotal)}</ReadonlyAmount>
                           </RowField>
                         </>
                       )}
                       {item.kind === 'ASSET' && (
                         <>
-                          <RowField label="Tipo" htmlFor={`assetKind-${index}`} className="col-span-6 sm:col-span-3">
+                          <RowField label="Tipo" htmlFor={`assetKind-${index}`} className="col-span-12 sm:col-span-3">
                             <Select id={`assetKind-${index}`} options={ASSET_KIND_OPTIONS} value={item.assetKind} onChange={(v) => updateItem(index, { assetKind: v as LineItem['assetKind'] })} />
                           </RowField>
-                          <RowField label="Piezas" htmlFor={`packsQty-${index}`} className="col-span-6 sm:col-span-3">
+                          <RowField label="Piezas" htmlFor={`packsQty-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`packsQty-${index}`} step={1} min={1} required value={item.packsQty} onChange={(v) => updateItem(index, { packsQty: v })} />
                           </RowField>
-                          <RowField label="Costo / pieza" htmlFor={`pricePerPack-${index}`} className="col-span-6 sm:col-span-3">
+                          <RowField label="Costo / pieza" htmlFor={`pricePerPack-${index}`} className="col-span-12 sm:col-span-3">
                             <NumberInput id={`pricePerPack-${index}`} step={0.01} min={0} unit="$" unitPosition="prefix" required value={item.pricePerPack} onChange={(v) => updateItem(index, { pricePerPack: v })} />
                           </RowField>
-                          <RowField label="Importe" className="col-span-6 sm:col-span-3">
-                            <div className="flex h-9 items-center px-1 text-body-sm font-medium text-text">{formatMoney(lineTotal)}</div>
+                          <RowField label="Importe" className="col-span-12 sm:col-span-3">
+                            <ReadonlyAmount>{formatMoney(lineTotal)}</ReadonlyAmount>
                           </RowField>
                         </>
                       )}
                       {item.kind === 'EXPENSE' && (
                         <>
-                          <RowField label="Cantidad" htmlFor={`packsQty-${index}`} className="col-span-4">
+                          <RowField label="Cantidad" htmlFor={`packsQty-${index}`} className="col-span-12 sm:col-span-4">
                             <NumberInput id={`packsQty-${index}`} step={1} min={1} required value={item.packsQty} onChange={(v) => updateItem(index, { packsQty: v })} />
                           </RowField>
-                          <RowField label="Importe unitario" htmlFor={`pricePerPack-${index}`} className="col-span-4">
+                          <RowField label="Importe unitario" htmlFor={`pricePerPack-${index}`} className="col-span-12 sm:col-span-4">
                             <NumberInput id={`pricePerPack-${index}`} step={0.01} min={0} unit="$" unitPosition="prefix" required value={item.pricePerPack} onChange={(v) => updateItem(index, { pricePerPack: v })} />
                           </RowField>
-                          <RowField label="Importe" className="col-span-4">
-                            <div className="flex h-9 items-center px-1 text-body-sm font-medium text-text">{formatMoney(lineTotal)}</div>
+                          <RowField label="Importe" className="col-span-12 sm:col-span-4">
+                            <ReadonlyAmount>{formatMoney(lineTotal)}</ReadonlyAmount>
                           </RowField>
                         </>
                       )}

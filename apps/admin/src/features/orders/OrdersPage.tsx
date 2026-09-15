@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader, PageToolbar } from '@/components/ui/page';
+import { PaymentProgress } from '@/components/domain/payment-progress';
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING_DEPOSIT: 'Pendiente anticipo',
@@ -40,24 +42,29 @@ export default function OrdersPage() {
 
   const columns: ColumnDef<OrderDto, unknown>[] = [
     { header: 'Folio', accessorKey: 'folio' },
-    { header: 'Cliente', cell: ({ row }) => row.original.customer?.fullName ?? '—' },
+    {
+      header: 'Cliente',
+      cell: ({ row }) => row.original.customer?.fullName ?? '—',
+      // Bajo el folio en la tarjeta movil, como el SKU bajo el nombre en Productos.
+      meta: { mobile: 'subtitle' },
+    },
     { header: 'Entrega', cell: ({ row }) => formatDate(row.original.dueDate) },
     { header: 'Total', cell: ({ row }) => formatMoney(row.original.total) },
     {
       header: 'Cobrado',
-      cell: ({ row }) => {
-        const pct = Number(row.original.total) > 0 ? Math.min(100, (Number(row.original.paidAmount) / Number(row.original.total)) * 100) : 0;
-        return (
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-sunken">
-              <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-caption text-text-muted">{formatMoney(row.original.paidAmount)}</span>
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <PaymentProgress paid={row.original.paidAmount} total={row.original.total} size="sm" />
+          <span className="text-caption text-text-muted">{formatMoney(row.original.paidAmount)}</span>
+        </div>
+      ),
     },
-    { header: 'Estado', cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge> },
+    {
+      header: 'Estado',
+      cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>,
+      // Junto al boton "Ver" en la tarjeta movil: se ve de inmediato sin bajar la vista.
+      meta: { mobile: 'trailing' },
+    },
     {
       id: 'actions',
       header: '',
@@ -71,20 +78,24 @@ export default function OrdersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-heading-lg font-semibold text-text">Pedidos</h1>
-        <p className="text-body-sm text-text-muted">Ordenados por fecha de entrega: la cola de produccion.</p>
-      </div>
+      <PageHeader
+        title="Pedidos"
+        description="Ordenados por fecha de entrega: la cola de produccion."
+      />
 
-      <div className="max-w-xs">
-        <Select
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-          value={status}
-          onChange={setStatus}
-          placeholder="Todos los estados"
-          clearable
-        />
-      </div>
+      <PageToolbar
+        filters={
+          <div className="w-full sm:w-64">
+            <Select
+              options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+              value={status}
+              onChange={setStatus}
+              placeholder="Todos los estados"
+              clearable
+            />
+          </div>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin pedidos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
     </div>

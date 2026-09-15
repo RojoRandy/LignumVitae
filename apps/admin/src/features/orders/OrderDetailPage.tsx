@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import { httpGet, httpPatch, errorMessage } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
@@ -11,9 +11,17 @@ import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select } from '@/components/ui/select';
 import { Tooltip } from '@/components/ui/tooltip';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader, PageState } from '@/components/ui/page';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PaymentProgress } from '@/components/domain/payment-progress';
 import { PaymentDialog } from './components/payment-dialog';
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -21,6 +29,19 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   READY: 'Listo', DELIVERED: 'Entregado', CANCELLED: 'Cancelado',
 };
 const METHOD_LABEL: Record<string, string> = { CASH: 'Efectivo', TRANSFER: 'Transferencia', CARD: 'Tarjeta', OTHER: 'Otro' };
+
+/*
+ * Avance manual real: PENDING_DEPOSIT -> CONFIRMED lo hace solo el backend
+ * al registrar el abono (registerPaymentUseCase), no esta aqui a proposito
+ * -- el "boton primario" para ese estado es "Registrar abono", que ya vive
+ * en la tarjeta de Pagos. De CONFIRMED en adelante si es un paso manual del
+ * taller, uno a la vez.
+ */
+const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
+  CONFIRMED: { status: 'IN_PRODUCTION', label: 'Marcar en produccion' },
+  IN_PRODUCTION: { status: 'READY', label: 'Marcar listo' },
+  READY: { status: 'DELIVERED', label: 'Marcar entregado' },
+};
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -62,40 +83,64 @@ export default function OrderDetailPage() {
 
   if (isLoading || !order) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
+      <PageState isLoading />
     );
   }
 
-  const paidPct = Number(order.total) > 0 ? Math.min(100, (Number(order.paidAmount) / Number(order.total)) * 100) : 0;
   const depositCovered = Number(order.paidAmount) >= Number(order.depositAmount);
+  const nextStatus = NEXT_STATUS[order.status];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/pedidos')}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-heading-lg font-semibold text-text">{order.folio}</h1>
-          <p className="text-body-sm text-text-muted">
+      <PageHeader
+        backTo="/pedidos"
+        title={order.folio}
+        badge={<Badge variant={order.status === 'CANCELLED' ? 'danger' : order.status === 'DELIVERED' ? 'success' : 'info'}>{STATUS_LABEL[order.status]}</Badge>}
+        description={
+          <>
             {order.customer?.fullName}
             {order.quotation && (
-              <> · <button type="button" className="underline" onClick={() => navigate(`/cotizaciones/${order.quotation!.id}`)}>de {order.quotation.folio}</button></>
+              <>
+                {' · '}
+                <button type="button" className="underline" onClick={() => navigate(`/cotizaciones/${order.quotation!.id}`)}>
+                  de {order.quotation.folio}
+                </button>
+              </>
             )}
-          </p>
-        </div>
-        <Tooltip content="El estado se cambia manualmente, no hay flujo automatico (excepto el anticipo, que confirma el pedido solo)">
-          <div className="w-52">
-            <Select
-              options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-              value={order.status}
-              onChange={(v) => statusMutation.mutate(v as OrderStatus)}
-            />
-          </div>
-        </Tooltip>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            {nextStatus && (
+              <Button onClick={() => statusMutation.mutate(nextStatus.status)} loading={statusMutation.isPending}>
+                {nextStatus.label}
+              </Button>
+            )}
+            {order.status !== 'CANCELLED' && (
+              <Tooltip content="El estado se cambia manualmente, no hay flujo automatico (excepto el anticipo, que confirma el pedido solo)">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="icon" aria-label="Cambiar estado manualmente">
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Cambiar estado manualmente</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {(Object.entries(STATUS_LABEL) as [OrderStatus, string][])
+                      .filter(([value]) => value !== order.status)
+                      .map(([value, label]) => (
+                        <DropdownMenuItem key={value} onSelect={() => statusMutation.mutate(value)}>
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Tooltip>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
@@ -154,15 +199,16 @@ export default function OrderDetailPage() {
           </Card>
         </div>
 
-        <Card className="sticky top-4 flex h-fit flex-col gap-3 p-4">
+        <Card className="order-first flex h-fit flex-col gap-3 p-4 lg:order-none lg:sticky lg:top-4">
+          {/* order-first en movil: el panel de cobro quedaba al fondo, tras
+              dos Cards; en lg+ vuelve a su lugar natural (columna derecha,
+              sticky) porque order-none restaura el orden del DOM. */}
           <div>
             <div className="mb-1 flex items-center justify-between text-body-sm">
               <span className="text-text-muted">Cobrado</span>
               <span className="font-medium text-text">{formatMoney(order.paidAmount)} / {formatMoney(order.total)}</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
-              <div className="h-full bg-accent transition-all" style={{ width: `${paidPct}%` }} />
-            </div>
+            <PaymentProgress paid={order.paidAmount} total={order.total} />
           </div>
           {depositCovered && <Badge variant="success">Anticipo cubierto</Badge>}
           <div className="flex flex-col gap-1.5 text-body-sm">

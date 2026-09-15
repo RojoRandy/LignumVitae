@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -18,6 +18,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { FormError, PageToolbar } from '@/components/ui/page';
 
 const KIND_LABEL: Record<string, string> = { MOLD: 'Molde', TOOL: 'Herramienta', EQUIPMENT: 'Equipo' };
 const KIND_OPTIONS = [
@@ -100,20 +101,14 @@ export default function AssetsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Activos</h1>
-          <p className="text-body-sm text-text-muted">Moldes y herramienta. Se amortizan en el tiempo, no se cargan completos al mes que se compran.</p>
-        </div>
-        <Button onClick={() => { clear(); setDialogOpen(true); }}>
-          <Plus className="size-4" /> Nuevo activo
-        </Button>
-      </div>
-
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-        <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        actions={
+          <Button onClick={() => { clear(); setDialogOpen(true); }}>
+            <Plus className="size-4" /> Nuevo activo
+          </Button>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin activos registrados" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -151,7 +146,7 @@ export default function AssetsPage() {
             <Field label="Notas" htmlFor="notes">
               <Input id="notes" name="notes" />
             </Field>
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" loading={createMutation.isPending}>Guardar</Button>

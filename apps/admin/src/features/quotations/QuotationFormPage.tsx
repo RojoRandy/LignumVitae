@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
 import { httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
@@ -23,6 +22,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { FormError, PageHeader, PageState } from '@/components/ui/page';
+import { MoneyRow } from '@/components/domain/money-row';
 import { QuotationLineItemEditor, type QuotationLineItemRow } from './components/quotation-line-item-editor';
 import { useQuotationTotalsPreview } from './use-quotation-totals-preview';
 
@@ -150,26 +151,20 @@ export default function QuotationFormPage() {
 
   if (isEditing && loadingExisting) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
+      <PageState isLoading />
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/cotizaciones')}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">{isEditing ? `Editar ${existing?.folio ?? ''}` : 'Nueva cotizacion'}</h1>
-          <p className="text-body-sm text-text-muted">Elige el cliente, agrega renglones y ajusta descuentos o envio.</p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/cotizaciones"
+        title={isEditing ? `Editar ${existing?.folio ?? ''}` : 'Nueva cotizacion'}
+        description="Elige el cliente, agrega renglones y ajusta descuentos o envio."
+      />
 
       {readOnly && (
-        <Card className="border-warning-border bg-warning-bg p-4">
+        <Card className="border-warning-solid/40 bg-warning-bg p-4">
           <p className="text-body-sm text-warning-fg">
             Esta cotizacion ya no esta en borrador ({existing?.status}), asi que no se puede editar.{' '}
             <button type="button" className="font-semibold underline" onClick={() => navigate(`/cotizaciones/${id}`)}>
@@ -244,7 +239,7 @@ export default function QuotationFormPage() {
             </Field>
           </Card>
 
-          {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+          <FormError>{formError}</FormError>
 
           {!readOnly && (
             <div className="flex justify-end gap-2">
@@ -263,15 +258,15 @@ export default function QuotationFormPage() {
             {preview ? (
               <>
                 <div className="flex flex-col gap-1.5 text-body-sm">
-                  <Row label="Subtotal" value={formatMoney(preview.totals.subtotal)} />
-                  {discountEnabled && <Row label="Descuento" value={`-${formatMoney(preview.totals.discountAmount)}`} />}
-                  <Row label="Envio" value={formatMoney(preview.totals.shippingCost)} />
+                  <MoneyRow label="Subtotal" value={formatMoney(preview.totals.subtotal)} />
+                  {discountEnabled && <MoneyRow label="Descuento" value={`-${formatMoney(preview.totals.discountAmount)}`} />}
+                  <MoneyRow label="Envio" value={formatMoney(preview.totals.shippingCost)} />
                   <Separator />
-                  <Row label="Total" value={formatMoney(preview.totals.total)} strong />
-                  <Row label="Anticipo requerido" value={formatMoney(preview.totals.depositAmount)} accent />
+                  <MoneyRow label="Total" value={formatMoney(preview.totals.total)} strong />
+                  <MoneyRow label="Anticipo requerido" value={formatMoney(preview.totals.depositAmount)} accent />
                   <Separator />
-                  <Row label="Costo total" value={formatMoney(preview.totals.totalCost)} muted />
-                  <Row label="Margen" value={`${formatMoney(preview.totals.grossProfit)} (${formatPercent(preview.totals.grossMarginPct)})`} muted />
+                  <MoneyRow label="Costo total" value={formatMoney(preview.totals.totalCost)} muted />
+                  <MoneyRow label="Margen" value={`${formatMoney(preview.totals.grossProfit)} (${formatPercent(preview.totals.grossMarginPct)})`} muted />
                 </div>
                 <p className="text-caption text-text-faint">Vista previa — se recalcula al guardar.</p>
               </>
@@ -285,9 +280,3 @@ export default function QuotationFormPage() {
   );
 }
 
-const Row = ({ label, value, strong, accent, muted }: { label: string; value: string; strong?: boolean; accent?: boolean; muted?: boolean }) => (
-  <div className="flex items-center justify-between">
-    <span className={muted ? 'text-text-muted' : 'text-text'}>{label}</span>
-    <span className={strong ? 'text-heading font-semibold text-text' : accent ? 'font-semibold text-accent' : muted ? 'text-text-muted' : 'font-medium text-text'}>{value}</span>
-  </div>
-);

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search, AlertTriangle, EyeOff } from 'lucide-react';
+import { Plus, AlertTriangle, EyeOff } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
@@ -9,7 +9,7 @@ import { httpDelete, httpGet } from '@/lib/http';
 import type { Paginated, ProductDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 
@@ -101,20 +101,17 @@ export default function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Productos</h1>
-          <p className="text-body-sm text-text-muted">La vela + su empaque + su tarjeta. Es lo que se cotiza.</p>
-        </div>
-        <Button onClick={() => navigate('/productos/nuevo')}>
-          <Plus className="size-4" /> Nuevo producto
-        </Button>
-      </div>
+      <PageHeader
+        title="Productos"
+        description="La vela + su empaque + su tarjeta. Es lo que se cotiza."
+        actions={
+          <Button onClick={() => navigate('/productos/nuevo')}>
+            <Plus className="size-4" /> Nuevo producto
+          </Button>
+        }
+      />
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-        <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar productos...' }} />
 
       <DataTable
         columns={columns}

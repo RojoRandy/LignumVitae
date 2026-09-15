@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 
 const ROLE_LABEL: Record<string, string> = { employee: 'Empleada', admin: 'Admin', super_user: 'Administradora' };
 
@@ -111,17 +112,17 @@ export default function UsersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Usuarios</h1>
-          <p className="text-body-sm text-text-muted">Sin correo: entran con nombre de usuario y contrasena.</p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" /> Nuevo usuario
-        </Button>
-      </div>
+      <PageHeader
+        title="Usuarios"
+        description="Sin correo: entran con nombre de usuario y contrasena."
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="size-4" /> Nuevo usuario
+          </Button>
+        }
+      />
 
-      <Input placeholder="Buscar..." className="max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }} />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin usuarios" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -153,7 +154,7 @@ export default function UsersPage() {
                 required
               />
             </Field>
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" loading={saveMutation.isPending}>Guardar</Button>

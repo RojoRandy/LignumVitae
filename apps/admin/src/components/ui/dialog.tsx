@@ -12,7 +12,7 @@ export const DialogContent = ({
   size = 'md',
   ...props
 }: React.ComponentProps<typeof RadixDialog.Content> & { size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
-  const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+  const widths = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' };
   return (
     <RadixDialog.Portal>
       <RadixDialog.Overlay
@@ -39,8 +39,19 @@ export const DialogContent = ({
             // como Content ya no es "fixed" (el centrado lo hace el
             // contenedor de afuera), sin esto se posicionaria contra el
             // wrapper de pantalla completa en vez de contra la tarjeta.
-            'relative max-h-[90vh] w-full overflow-y-auto',
-            'rounded-card bg-surface-raised p-6 shadow-panel',
+            'relative w-full overflow-y-auto bg-surface-raised p-6 shadow-panel',
+            // Movil: pantalla completa. Un formulario de varios renglones
+            // (Compras) se siente atrapado en un modal centrado de 90vh con
+            // margen alrededor; desde sm: vuelve al modal centrado y acotado
+            // de siempre. ponytail: reusa la misma transicion opacity/scale
+            // en vez de una entrada deslizada propia para movil -- subir a
+            // eso si el fundido en pantalla completa se siente brusco.
+            // Sin rounded-none aqui: compite con sm:rounded-card por la misma
+            // propiedad y Tailwind los emite en un orden donde rounded-none
+            // gana siempre, incluso en sm:+. Sin clase, el radio ya es 0 por
+            // defecto del navegador -- no hace falta forzarlo.
+            'fixed inset-0 h-dvh max-h-none',
+            'sm:static sm:inset-auto sm:h-auto sm:max-h-[90vh] sm:rounded-card',
             'data-[state=open]:animate-[dialog-content-show_220ms_var(--ease-out)]',
             'data-[state=closed]:animate-[dialog-content-hide_150ms_var(--ease-in-out)]',
             widths[size],

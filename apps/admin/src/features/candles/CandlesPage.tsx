@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -17,6 +17,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { FormError, PageToolbar } from '@/components/ui/page';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
 
 export default function CandlesPage() {
@@ -137,20 +138,14 @@ export default function CandlesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Velas / Moldes</h1>
-          <p className="text-body-sm text-text-muted">El molde y su fisica: gramos, medidas y los insumos que le son propios (mecha, colorante).</p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" /> Nueva vela
-        </Button>
-      </div>
-
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-        <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="size-4" /> Nueva vela
+          </Button>
+        }
+      />
 
       <DataTable
         columns={columns}
@@ -232,7 +227,7 @@ export default function CandlesPage() {
               label="Insumos propios de la vela (mecha, colorante...)"
             />
 
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>
                 Cancelar

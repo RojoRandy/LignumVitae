@@ -18,6 +18,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
+import { FormError, PageToolbar } from '@/components/ui/page';
 
 const SOURCE_LABEL: Record<string, string> = { MANUAL: 'Manual', PURCHASE: 'Compra', DEPRECIATION: 'Depreciacion' };
 
@@ -98,10 +99,16 @@ export default function ExpensesPage() {
   };
 
   const columns: ColumnDef<ExpenseDto, unknown>[] = [
-    { header: 'Fecha', cell: ({ row }) => formatDate(row.original.incurredAt) },
-    { header: 'Categoria', cell: ({ row }) => row.original.category?.name ?? '—' },
-    { header: 'Descripcion', accessorKey: 'description' },
-    { header: 'Origen', cell: ({ row }) => <Badge variant="neutral">{SOURCE_LABEL[row.original.source]}</Badge> },
+    // La fecha es index 0, pero como titulo de tarjeta no identifica nada;
+    // Descripcion es lo que de verdad distingue un gasto de otro.
+    { header: 'Fecha', cell: ({ row }) => formatDate(row.original.incurredAt), meta: { mobile: 'meta' } },
+    { header: 'Categoria', cell: ({ row }) => row.original.category?.name ?? '—', meta: { mobile: 'subtitle' } },
+    { header: 'Descripcion', accessorKey: 'description', meta: { mobile: 'title' } },
+    {
+      header: 'Origen',
+      cell: ({ row }) => <Badge variant="neutral">{SOURCE_LABEL[row.original.source]}</Badge>,
+      meta: { mobile: 'trailing' },
+    },
     { header: 'Importe', cell: ({ row }) => formatMoney(row.original.amount) },
     {
       id: 'actions',
@@ -116,18 +123,16 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Gastos</h1>
-          <p className="text-body-sm text-text-muted">Gas, luz, renta, envios... alimentan la bolsa de gastos indirectos del cierre mensual.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setCategoryDialogOpen(true)}>Nueva categoria</Button>
-          <Button onClick={() => { clear(); setDialogOpen(true); }}>
-            <Plus className="size-4" /> Nuevo gasto
-          </Button>
-        </div>
-      </div>
+      <PageToolbar
+        actions={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setCategoryDialogOpen(true)}>Nueva categoria</Button>
+            <Button onClick={() => { clear(); setDialogOpen(true); }}>
+              <Plus className="size-4" /> Nuevo gasto
+            </Button>
+          </div>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin gastos registrados" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -157,7 +162,7 @@ export default function ExpensesPage() {
                 <DatePicker value={incurredAt} onChange={(d) => d && setIncurredAt(d)} />
               </Field>
             </div>
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" loading={createMutation.isPending}>Guardar</Button>

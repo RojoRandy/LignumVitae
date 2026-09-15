@@ -3,15 +3,10 @@ import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { MoneyRow } from '@/components/domain/money-row';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { useProductCostPreview, type PreviewCostInput } from '../use-product-cost-preview';
 
-const Row = ({ label, value, muted }: { label: string; value: string; muted?: boolean }) => (
-  <div className="flex items-center justify-between text-body-sm">
-    <span className={muted ? 'text-text-muted' : 'text-text'}>{label}</span>
-    <span className={muted ? 'text-text-muted' : 'font-medium text-text'}>{value}</span>
-  </div>
-);
 
 export const CostPreviewPanel = ({ input }: { input: PreviewCostInput }) => {
   const { data, isFetching, isLoading } = useProductCostPreview(input);
@@ -37,12 +32,12 @@ export const CostPreviewPanel = ({ input }: { input: PreviewCostInput }) => {
       ) : data ? (
         <>
           <div className="flex flex-col gap-1.5">
-            <Row label="Cera" value={formatMoney(data.breakdown.unitWaxCost)} muted />
-            <Row label="Insumos" value={formatMoney(data.breakdown.unitSupplyCost)} muted />
-            <Row label="Mano de obra" value={formatMoney(data.breakdown.unitLaborCost)} muted />
-            <Row label="Gastos indirectos" value={formatMoney(data.breakdown.unitOverheadCost)} muted />
+            <MoneyRow label="Cera" value={formatMoney(data.breakdown.unitWaxCost)} muted />
+            <MoneyRow label="Insumos" value={formatMoney(data.breakdown.unitSupplyCost)} muted />
+            <MoneyRow label="Mano de obra" value={formatMoney(data.breakdown.unitLaborCost)} muted />
+            <MoneyRow label="Gastos indirectos" value={formatMoney(data.breakdown.unitOverheadCost)} muted />
             <Separator />
-            <Row label="Costo total" value={formatMoney(data.breakdown.unitTotalCost)} />
+            <MoneyRow label="Costo total" value={formatMoney(data.breakdown.unitTotalCost)} />
           </div>
 
           <Separator />

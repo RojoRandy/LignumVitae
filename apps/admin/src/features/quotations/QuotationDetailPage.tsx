@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Download, FileStack, Send, X } from 'lucide-react';
+import { Copy, Download, FileStack, MoreHorizontal, Send, X } from 'lucide-react';
 import { downloadPdf, errorMessage, httpGet, httpPost } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
@@ -10,7 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader, PageState } from '@/components/ui/page';
+import { MoneyRow } from '@/components/domain/money-row';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const STATUS_LABEL: Record<QuotationStatus, string> = {
   DRAFT: 'Borrador', SENT: 'Enviada', VIEWED: 'Vista', ACCEPTED: 'Aceptada', REJECTED: 'Rechazada', EXPIRED: 'Vencida',
@@ -93,9 +101,7 @@ export default function QuotationDetailPage() {
 
   if (isLoading || !quotation) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
+      <PageState isLoading />
     );
   }
 
@@ -104,51 +110,62 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/cotizaciones')}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-heading-lg font-semibold text-text">{quotation.folio}</h1>
-            <Badge variant={STATUS_TONE[quotation.status]}>{STATUS_LABEL[quotation.status]}</Badge>
-          </div>
-          <p className="text-body-sm text-text-muted">{quotation.customer?.fullName}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {canSend && (
-            <Button onClick={() => sendMutation.mutate()} loading={sendMutation.isPending}>
-              <Send className="size-4" /> Enviar
-            </Button>
-          )}
-          {quotation.status !== 'DRAFT' && (
-            <Button variant="secondary" onClick={copyPublicLink}>
-              <Copy className="size-4" /> Copiar enlace
-            </Button>
-          )}
-          <Button variant="secondary" onClick={() => downloadPdf(`/quotations/${id}/pdf`, `${quotation.folio}.pdf`)}>
-            <Download className="size-4" /> PDF
-          </Button>
-          <Button variant="secondary" onClick={() => duplicateMutation.mutate()} loading={duplicateMutation.isPending}>
-            <FileStack className="size-4" /> Duplicar
-          </Button>
-          {canAcceptReject && (
-            <>
-              <Button variant="secondary" className="text-danger-fg" onClick={handleReject} loading={rejectMutation.isPending}>
-                <X className="size-4" /> Rechazar
+      <PageHeader
+        backTo="/cotizaciones"
+        title={quotation.folio}
+        description={quotation.customer?.fullName}
+        badge={<Badge variant={STATUS_TONE[quotation.status]}>{STATUS_LABEL[quotation.status]}</Badge>}
+        actions={
+          <>
+            {/* Una sola accion primaria, la que toca segun el estado. Antes
+                eran hasta 7 botones del mismo peso que en movil se
+                envolvian en un muro y no decian por donde seguir. */}
+            {canSend && (
+              <Button onClick={() => sendMutation.mutate()} loading={sendMutation.isPending}>
+                <Send className="size-4" /> Enviar
               </Button>
+            )}
+            {canAcceptReject && (
               <Button onClick={handleAccept} loading={acceptMutation.isPending}>
                 Aceptar y crear pedido
               </Button>
-            </>
-          )}
-          {quotation.order && (
-            <Button variant="secondary" onClick={() => navigate(`/pedidos/${quotation.order!.id}`)}>
-              Ver pedido {quotation.order.folio}
-            </Button>
-          )}
-        </div>
-      </div>
+            )}
+            {quotation.order && (
+              <Button variant="secondary" onClick={() => navigate(`/pedidos/${quotation.order!.id}`)}>
+                Ver pedido {quotation.order.folio}
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" aria-label="Mas acciones">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => downloadPdf(`/quotations/${id}/pdf`, `${quotation.folio}.pdf`)}>
+                  <Download className="size-3.5" /> Descargar PDF
+                </DropdownMenuItem>
+                {quotation.status !== 'DRAFT' && (
+                  <DropdownMenuItem onSelect={copyPublicLink}>
+                    <Copy className="size-3.5" /> Copiar enlace
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => duplicateMutation.mutate()}>
+                  <FileStack className="size-3.5" /> Duplicar
+                </DropdownMenuItem>
+                {canAcceptReject && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleReject} className="text-danger-fg">
+                      <X className="size-3.5" /> Rechazar
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
@@ -190,24 +207,18 @@ export default function QuotationDetailPage() {
         </div>
 
         <Card className="sticky top-4 flex h-fit flex-col gap-1.5 p-4 text-body-sm">
-          <Row label="Subtotal" value={formatMoney(quotation.subtotal)} />
-          {quotation.discountEnabled && <Row label="Descuento" value={`-${formatMoney(quotation.discountAmount)}`} />}
-          <Row label="Envio" value={formatMoney(quotation.shippingCost)} />
+          <MoneyRow label="Subtotal" value={formatMoney(quotation.subtotal)} />
+          {quotation.discountEnabled && <MoneyRow label="Descuento" value={`-${formatMoney(quotation.discountAmount)}`} />}
+          <MoneyRow label="Envio" value={formatMoney(quotation.shippingCost)} />
           <Separator />
-          <Row label="Total" value={formatMoney(quotation.total)} strong />
-          <Row label="Anticipo requerido" value={formatMoney(quotation.depositAmount)} accent />
+          <MoneyRow label="Total" value={formatMoney(quotation.total)} strong />
+          <MoneyRow label="Anticipo requerido" value={formatMoney(quotation.depositAmount)} accent />
           <Separator />
-          <Row label="Costo total" value={formatMoney(quotation.totalCost)} muted />
-          <Row label="Margen" value={`${formatMoney(quotation.grossProfit)} (${formatPercent(quotation.grossMarginPct)})`} muted />
+          <MoneyRow label="Costo total" value={formatMoney(quotation.totalCost)} muted />
+          <MoneyRow label="Margen" value={`${formatMoney(quotation.grossProfit)} (${formatPercent(quotation.grossMarginPct)})`} muted />
         </Card>
       </div>
     </div>
   );
 }
 
-const Row = ({ label, value, strong, accent, muted }: { label: string; value: string; strong?: boolean; accent?: boolean; muted?: boolean }) => (
-  <div className="flex items-center justify-between">
-    <span className={muted ? 'text-text-muted' : 'text-text'}>{label}</span>
-    <span className={strong ? 'text-heading font-semibold text-text' : accent ? 'font-semibold text-accent' : muted ? 'text-text-muted' : 'font-medium text-text'}>{value}</span>
-  </div>
-);

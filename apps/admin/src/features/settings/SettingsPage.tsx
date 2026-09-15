@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Field } from '@/components/ui/field';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Spinner } from '@/components/ui/spinner';
+import { PageHeader, PageState } from '@/components/ui/page';
 
 export default function SettingsPage() {
   const { data, isLoading } = useSettings();
@@ -55,23 +55,21 @@ export default function SettingsPage() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Spinner className="size-6" />
-      </div>
+      <PageState isLoading />
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Configuracion</h1>
-          <p className="text-body-sm text-text-muted">Todo lo que en el Excel era una celda capturada a mano vive aqui.</p>
-        </div>
-        <Button type="submit" loading={saveMutation.isPending}>
-          Guardar cambios
-        </Button>
-      </div>
+      <PageHeader
+        title="Configuracion"
+        description="Todo lo que en el Excel era una celda capturada a mano vive aqui."
+        actions={
+          <Button type="submit" loading={saveMutation.isPending}>
+            Guardar cambios
+          </Button>
+        }
+      />
 
       <Tabs defaultValue="identidad">
         <TabsList>

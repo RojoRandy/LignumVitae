@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search, TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field } from '@/components/ui/field';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip } from '@/components/ui/tooltip';
+import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 
 const SUPPLY_TYPES: { value: string; label: string }[] = [
   { value: 'WAX', label: 'Cera' },
@@ -192,20 +193,17 @@ export default function SuppliesPage() {
 
   return (
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-heading-lg font-semibold text-text">Insumos</h1>
-            <p className="text-body-sm text-text-muted">Cera, mecha, empaques... con su costo, existencia y costo sugerido desde las compras.</p>
-          </div>
-          <Button onClick={openCreate}>
-            <Plus className="size-4" /> Nuevo insumo
-          </Button>
-        </div>
+        <PageHeader
+          title="Insumos"
+          description="Cera, mecha, empaques... con su costo, existencia y costo sugerido desde las compras."
+          actions={
+            <Button onClick={openCreate}>
+              <Plus className="size-4" /> Nuevo insumo
+            </Button>
+          }
+        />
 
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-          <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+        <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }} />
 
         <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin insumos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -257,7 +255,7 @@ export default function SuppliesPage() {
               <Field label="Notas" htmlFor="notes">
                 <Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} />
               </Field>
-              {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+              <FormError>{formError}</FormError>
               <DialogFooter>
                 <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>
                 <Button type="submit" loading={saveMutation.isPending}>Guardar</Button>

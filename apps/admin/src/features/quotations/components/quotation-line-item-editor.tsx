@@ -10,6 +10,7 @@ import { RowField } from '@/components/ui/row-field';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
 import { formatMoney } from '@/lib/format';
 
@@ -85,7 +86,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                   Margen {formatMoney(preview.lineMargin)}
                 </Badge>
               )}
-              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+              <Button type="button" variant="ghost" size="icon" aria-label="Quitar renglon" onClick={() => remove(index)}>
                 <Trash2 className="size-4 text-danger-fg" />
               </Button>
             </div>
@@ -131,10 +132,10 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 <NumberInput id={`price-${index}`} min={0} step={0.01} unit="$" unitPosition="prefix" value={row.unitPriceOverride} onChange={(v) => update(index, { unitPriceOverride: v })} />
               </RowField>
               <RowField label="Precio final" className="col-span-6 sm:col-span-3">
-                <div className="flex h-9 items-center px-1 text-body-sm font-medium text-text">{preview ? formatMoney(preview.unitPrice) : '—'}</div>
+                <ReadonlyAmount>{preview ? formatMoney(preview.unitPrice) : '—'}</ReadonlyAmount>
               </RowField>
               <RowField label="Importe" className="col-span-6 sm:col-span-3">
-                <div className="flex h-9 items-center px-1 text-body-sm font-medium text-text">{preview ? formatMoney(preview.lineTotal) : '—'}</div>
+                <ReadonlyAmount>{preview ? formatMoney(preview.lineTotal) : '—'}</ReadonlyAmount>
               </RowField>
             </div>
           </div>

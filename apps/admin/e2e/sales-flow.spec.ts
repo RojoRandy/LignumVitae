@@ -78,7 +78,10 @@ test('acepta una cotizacion enviada y registra un abono que confirma el pedido',
   await page.getByRole('button', { name: 'Aceptar y crear pedido' }).last().click();
 
   await expect(page).toHaveURL(/\/pedidos\/\d+$/);
-  await expect(page.getByRole('button', { name: 'Pendiente anticipo' })).toBeVisible();
+  // El estado ya no es un <Select> disfrazado de boton: es un Badge de
+  // solo lectura: el avance real vive en el boton primario / menu
+  // secundario del PageHeader.
+  await expect(page.getByText('Pendiente anticipo')).toBeVisible();
 
   await page.getByRole('button', { name: 'Registrar abono' }).click();
   const depositHint = await page.getByText(/Saldo pendiente: \$/).textContent();
@@ -86,6 +89,6 @@ test('acepta una cotizacion enviada y registra un abono que confirma el pedido',
   await page.getByRole('textbox').first().fill(balance);
   await page.getByRole('button', { name: 'Registrar' }).click();
 
-  await expect(page.getByRole('button', { name: 'Confirmado' })).toBeVisible();
+  await expect(page.getByText('Confirmado')).toBeVisible();
   await expect(page.getByText('Anticipo cubierto')).toBeVisible();
 });

@@ -7,13 +7,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Plus, Trash2 } from 'lucide-react';
-import { ApiError, validateMinMargin } from '@lignumvitae/types';
-import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
+import { Plus, Trash2 } from 'lucide-react';
+import { httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
-import { useSettings } from '@/hooks/use-settings';
 import type { CandleCategoryDto, CandleDto, CardTypeDto, Paginated, PackagingTypeDto, ProductDto } from '@/lib/types';
-import { formatMoney, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
@@ -24,8 +21,10 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { FormError, PageHeader } from '@/components/ui/page';
 import { CostPreviewPanel } from './components/cost-preview-panel';
+import { PriceOverrideCard } from './components/price-override-card';
+import { DuplicateWithPackaging } from './components/duplicate-with-packaging';
 import type { PreviewCostInput } from './use-product-cost-preview';
 
 export default function ProductWizardPage() {
@@ -181,15 +180,11 @@ export default function ProductWizardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/productos')}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">{isEditing ? 'Editar producto' : 'Nuevo producto'}</h1>
-          <p className="text-body-sm text-text-muted">Combina una vela con su empaque para armar el modelo que se cotiza.</p>
-        </div>
-      </div>
+      <PageHeader
+        backTo="/productos"
+        title={isEditing ? 'Editar producto' : 'Nuevo producto'}
+        description="Combina una vela con su empaque para armar el modelo que se cotiza."
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:col-span-2">
@@ -237,7 +232,7 @@ export default function ProductWizardPage() {
                   <RowField label="Piezas" htmlFor={`bouquet-quantity-${index}`} className="w-20">
                     <NumberInput id={`bouquet-quantity-${index}`} min={1} step={1} required value={component.quantity} onChange={(v) => updateComponent(index, { quantity: v })} />
                   </RowField>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removeComponent(index)}>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Quitar vela del ramo" onClick={() => removeComponent(index)}>
                     <Trash2 className="size-4 text-danger-fg" />
                   </Button>
                 </div>
@@ -318,7 +313,7 @@ export default function ProductWizardPage() {
             </div>
           </Card>
 
-          {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+          <FormError>{formError}</FormError>
 
           <div className="flex items-center justify-between gap-2">
             {isEditing && kind === 'SIMPLE' && (
@@ -346,102 +341,3 @@ export default function ProductWizardPage() {
     </div>
   );
 }
-
-// Fija un precio de menudeo/mayoreo distinto al sugerido para ESTE producto
-// (una promocion, un cliente frecuente...). Solo tiene sentido una vez que
-// el producto ya existe: valida contra product.unitTotalCost, que solo se
-// conoce despues del primer guardado. La API (setPriceOverride en
-// products.service.ts) es la que de verdad manda: aqui el margen se
-// recalcula en vivo con la misma formula (validateMinMargin) nada mas para
-// que la persona vea el rechazo ANTES de intentar guardar, no en vez de
-// validar del lado del servidor.
-const PriceOverrideCard = ({ product }: { product: ProductDto }) => {
-  const queryClient = useQueryClient();
-  const { data: settings } = useSettings();
-  const [retail, setRetail] = useState<number | null>(product.retailPriceOverride ? Number(product.retailPriceOverride) : null);
-  const [wholesale, setWholesale] = useState<number | null>(product.wholesalePriceOverride ? Number(product.wholesalePriceOverride) : null);
-  const [fieldErrors, setFieldErrors] = useState<{ retailPriceOverride?: string; wholesalePriceOverride?: string }>({});
-
-  const unitTotalCost = Number(product.unitTotalCost);
-  const minMarginPct = settings ? Number(settings.minMarginPct) : 0;
-
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      httpPatch(`/products/${product.id}/price-override`, {
-        retailPriceOverride: retail,
-        wholesalePriceOverride: wholesale,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products', String(product.id)] });
-      setFieldErrors({});
-      toast.success('Precio manual guardado');
-    },
-    onError: (error) => {
-      const details = error instanceof ApiError ? (error.details as { field?: 'retailPriceOverride' | 'wholesalePriceOverride'; minPrice?: number } | undefined) : undefined;
-      if (details?.field) {
-        setFieldErrors({ [details.field]: `Deja menos del ${minMarginPct}% de margen minimo. El precio mas bajo permitido es ${formatMoney(details.minPrice ?? 0)}.` });
-      } else {
-        setFieldErrors({});
-        toast.error(errorMessage(error));
-      }
-    },
-  });
-
-  const retailCheck = retail !== null ? validateMinMargin(retail, unitTotalCost, minMarginPct) : null;
-  const wholesaleCheck = wholesale !== null ? validateMinMargin(wholesale, unitTotalCost, minMarginPct) : null;
-
-  return (
-    <Card className="flex flex-col gap-4 p-4">
-      <div>
-        <h3 className="text-body font-semibold text-text">Precio manual</h3>
-        <p className="text-caption text-text-muted">
-          Opcional, para este producto en particular (una promocion, un cliente frecuente...). Debe dejar al menos el{' '}
-          {minMarginPct}% de margen configurado en Precios. Deja el campo vacio para volver a usar el precio sugerido.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Menudeo" htmlFor="retailPriceOverride" error={fieldErrors.retailPriceOverride} hint={`Sugerido: ${formatMoney(product.retailListPrice)}`}>
-          <NumberInput id="retailPriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={retail} onChange={setRetail} />
-        </Field>
-        <Field label="Mayoreo" htmlFor="wholesalePriceOverride" error={fieldErrors.wholesalePriceOverride} hint={`Sugerido: ${formatMoney(product.wholesaleListPrice)}`}>
-          <NumberInput id="wholesalePriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={wholesale} onChange={setWholesale} />
-        </Field>
-      </div>
-      {(retailCheck || wholesaleCheck) && (
-        <div className="flex flex-wrap gap-2">
-          {retailCheck && (
-            <Badge variant={retailCheck.ok ? 'success' : 'danger'}>Margen menudeo: {formatPercent(retailCheck.marginPct)}</Badge>
-          )}
-          {wholesaleCheck && (
-            <Badge variant={wholesaleCheck.ok ? 'success' : 'danger'}>Margen mayoreo: {formatPercent(wholesaleCheck.marginPct)}</Badge>
-          )}
-        </div>
-      )}
-      <Button type="button" variant="secondary" size="sm" onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} className="self-start">
-        Guardar precio manual
-      </Button>
-    </Card>
-  );
-};
-
-const DuplicateWithPackaging = ({
-  packagingOptions,
-  onDuplicate,
-  loading,
-}: {
-  packagingOptions: { value: string; label: string }[];
-  onDuplicate: (packagingTypeId: number) => void;
-  loading: boolean;
-}) => {
-  const [value, setValue] = useState<string | undefined>();
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-48">
-        <Select options={packagingOptions} value={value} onChange={setValue} placeholder="Otro empaque..." />
-      </div>
-      <Button type="button" variant="secondary" disabled={!value} loading={loading} onClick={() => value && onDuplicate(Number(value))}>
-        <Copy className="size-3.5" /> Duplicar
-      </Button>
-    </div>
-  );
-};

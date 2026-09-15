@@ -70,14 +70,6 @@ export default function OverheadPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-heading-lg font-semibold text-text">Cierre mensual</h1>
-        <p className="text-body-sm text-text-muted">
-          Genera la depreciacion de los activos vigentes y deriva la tasa de gastos indirectos por minuto, en vez de la
-          constante fija del Excel.
-        </p>
-      </div>
-
       <Card className="p-4">
         <div className="flex flex-col items-end gap-3 sm:flex-row">
           <Field label="Mes">

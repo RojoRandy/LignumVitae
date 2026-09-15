@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader, PageToolbar } from '@/components/ui/page';
 
 const STATUS_LABEL: Record<QuotationStatus, string> = {
   DRAFT: 'Borrador',
@@ -41,11 +42,19 @@ export default function QuotationsPage() {
 
   const columns: ColumnDef<QuotationDto, unknown>[] = [
     { header: 'Folio', accessorKey: 'folio' },
-    { header: 'Cliente', cell: ({ row }) => row.original.customer?.fullName ?? '—' },
+    {
+      header: 'Cliente',
+      cell: ({ row }) => row.original.customer?.fullName ?? '—',
+      meta: { mobile: 'subtitle' },
+    },
     { header: 'Emitida', cell: ({ row }) => formatDate(row.original.issuedAt) },
     { header: 'Vigente hasta', cell: ({ row }) => formatDate(row.original.validUntil) },
     { header: 'Total', cell: ({ row }) => formatMoney(row.original.total) },
-    { header: 'Estado', cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge> },
+    {
+      header: 'Estado',
+      cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>,
+      meta: { mobile: 'trailing' },
+    },
     {
       id: 'actions',
       header: '',
@@ -59,25 +68,29 @@ export default function QuotationsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Cotizaciones</h1>
-          <p className="text-body-sm text-text-muted">Cada una congela su propio costo y precio, aunque el catalogo cambie despues.</p>
-        </div>
-        <Button onClick={() => navigate('/cotizaciones/nueva')}>
-          <Plus className="size-4" /> Nueva cotizacion
-        </Button>
-      </div>
+      <PageHeader
+        title="Cotizaciones"
+        description="Cada una congela su propio costo y precio, aunque el catalogo cambie despues."
+        actions={
+          <Button onClick={() => navigate('/cotizaciones/nueva')}>
+            <Plus className="size-4" /> Nueva cotizacion
+          </Button>
+        }
+      />
 
-      <div className="max-w-xs">
-        <Select
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-          value={status}
-          onChange={setStatus}
-          placeholder="Todos los estados"
-          clearable
-        />
-      </div>
+      <PageToolbar
+        filters={
+          <div className="w-full sm:w-64">
+            <Select
+              options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+              value={status}
+              onChange={setStatus}
+              placeholder="Todos los estados"
+              clearable
+            />
+          </div>
+        }
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin cotizaciones" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
     </div>

@@ -54,8 +54,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         {...props}
       >
-        {loading && <Loader2 className="size-4 animate-spin" />}
-        {children}
+        {/* Con asChild el hijo pasa TAL CUAL: Slot de Radix exige un unico
+            elemento, y el hueco de {loading && ...} contaba como un segundo
+            hijo, asi que cualquier <Button asChild> reventaba en runtime. */}
+        {asChild ? (
+          children
+        ) : (
+          <>
+            {loading && <Loader2 className="size-4 animate-spin" />}
+            {children}
+          </>
+        )}
       </Comp>
     );
   },

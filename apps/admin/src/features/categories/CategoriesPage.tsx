@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field } from '@/components/ui/field';
 import { ColorInput } from '@/components/ui/color-input';
 import { Switch } from '@/components/ui/switch';
+import { FormError, PageToolbar } from '@/components/ui/page';
 
 export default function CategoriesPage() {
   const { page, search, setSearch, setPage } = useTableParams();
@@ -127,20 +128,14 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-heading-lg font-semibold text-text">Categorias</h1>
-          <p className="text-body-sm text-text-muted">Agrupan el catalogo por tipo: Animalitos, Flores, Ramos...</p>
-        </div>
-        <Button onClick={openCreate}>
-          <Plus className="size-4" /> Nueva categoria
-        </Button>
-      </div>
-
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-        <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus className="size-4" /> Nueva categoria
+          </Button>
+        }
+      />
 
       <DataTable
         columns={columns}
@@ -180,7 +175,7 @@ export default function CategoriesPage() {
               <span className="text-body-sm text-text">Visible en la landing</span>
               <Switch name="isVisibleOnLanding" defaultChecked={editing?.isVisibleOnLanding ?? true} />
             </div>
-            {formError && <p className="text-body-sm text-danger-fg">{formError}</p>}
+            <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>
                 Cancelar

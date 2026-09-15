@@ -44,8 +44,16 @@
   --shadow-lift: var(--shadow-lift);
   --shadow-panel: var(--shadow-panel);
 
-  --radius-card: var(--radius-card);
-  --radius-input: var(--radius-input);
+  /*
+   * --radius-card y --radius-input NO se re-exportan aqui: a diferencia de
+   * los colores/texto/sombras de arriba (que viven en tokens.css como
+   * :root plano y necesitan este remap para que Tailwind genere clases),
+   * los radios ya estan en un bloque @theme real en theme.css. Declararlos
+   * tambien aqui como referencia circular (--radius-card: var(--radius-card))
+   * ganaba la cascada por ser el import mas reciente y dejaba el valor
+   * invalido -- toda esquina rounded-card/rounded-input de la app
+   * aplanada a 0, sin que se notara a simple vista en una captura.
+   */
 }
 
 body {

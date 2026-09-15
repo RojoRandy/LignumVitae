@@ -9,9 +9,8 @@ import { httpGet } from '@/lib/http';
 import type { Paginated, ProductDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
-import { Spinner } from '@/components/ui/spinner';
+import { PageState } from '@/components/ui/page';
 
 export const FeaturedProducts = () => {
   const navigate = useNavigate();
@@ -32,17 +31,16 @@ export const FeaturedProducts = () => {
         <CardDescription>Marcados desde el editor de producto — son los primeros que ve un cliente en el catalogo</CardDescription>
       </CardHeader>
       <CardContent className="pt-2">
-        {isLoading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Spinner className="size-6" />
-          </div>
-        ) : featured.length === 0 ? (
-          <EmptyState
-            icon={<Sparkles className="size-6" />}
-            title="Sin productos destacados"
-            description='Marca "Producto destacado" al editar un producto para que aparezca aqui.'
-          />
-        ) : (
+        <PageState
+          isLoading={isLoading}
+          isEmpty={featured.length === 0}
+          empty={{
+            icon: <Sparkles className="size-6" />,
+            title: 'Sin productos destacados',
+            description: 'Marca "Producto destacado" al editar un producto para que aparezca aqui.',
+          }}
+        >
+          {(
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {featured.slice(0, 10).map((product) => {
               const image = product.images?.find((i) => i.isPrimary) ?? product.images?.[0];
@@ -64,7 +62,7 @@ export const FeaturedProducts = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-caption font-bold text-accent-hover">{formatMoney(product.retailPriceOverride ?? product.retailListPrice)}</span>
                       {product.needsReview && (
-                        <Badge variant="warning" className="px-1.5 py-0.5 text-[10px]">
+                        <Badge variant="warning" className="px-1.5 py-0.5 text-micro">
                           Revisar
                         </Badge>
                       )}
@@ -74,7 +72,8 @@ export const FeaturedProducts = () => {
               );
             })}
           </div>
-        )}
+          )}
+        </PageState>
       </CardContent>
     </Card>
   );

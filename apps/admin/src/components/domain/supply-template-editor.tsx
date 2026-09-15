@@ -82,7 +82,7 @@ export const SupplyTemplateEditor = ({
                 onChange={(value) => update(index, { quantity: value })}
               />
             </RowField>
-            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+            <Button type="button" variant="ghost" size="icon" aria-label="Quitar insumo" onClick={() => remove(index)}>
               <Trash2 className="size-4 text-danger-fg" />
             </Button>
           </div>

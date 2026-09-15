@@ -2,14 +2,10 @@
 import {
   LayoutDashboard,
   Package,
-  FlaskConical,
-  Palette,
-  CreditCard,
+  Layers,
   Boxes,
   ShoppingCart,
-  Wrench,
-  Receipt,
-  CalendarClock,
+  Wallet,
   Users,
   Users2,
   FileText,
@@ -26,46 +22,44 @@ export interface NavItem {
 }
 
 export interface NavGroup {
+  /** Vacio = sin encabezado de grupo (un solo item no necesita titulo). */
   group: string;
   items: NavItem[];
 }
 
 export const NAV: NavGroup[] = [
   {
-    group: 'Panel',
+    group: '',
     items: [{ label: 'Dashboard', to: '/', icon: LayoutDashboard }],
   },
   {
+    // Orden por frecuencia real: el flujo empieza en cotizar, no en el alta
+    // de cliente.
     group: 'Operacion',
     items: [
-      { label: 'Clientes', to: '/clientes', icon: Users2 },
       { label: 'Cotizaciones', to: '/cotizaciones', icon: FileText },
       { label: 'Pedidos', to: '/pedidos', icon: ClipboardList },
+      { label: 'Clientes', to: '/clientes', icon: Users2 },
     ],
   },
   {
-    group: 'Catalogo',
+    // Velas/Categorias/Empaques/Tarjetas eran 4 entradas de primer nivel;
+    // ahora son pestanas de /catalogo -- se tocan al dar de alta un modelo,
+    // no a diario.
+    group: 'Taller',
     items: [
       { label: 'Productos', to: '/productos', icon: Package },
-      { label: 'Velas / Moldes', to: '/velas', icon: FlaskConical },
-      { label: 'Categorias', to: '/categorias', icon: Palette },
-      { label: 'Empaques', to: '/empaques', icon: CreditCard },
-      { label: 'Tarjetas', to: '/tarjetas', icon: CreditCard },
-    ],
-  },
-  {
-    group: 'Inventario',
-    items: [
+      { label: 'Catalogo', to: '/catalogo', icon: Layers },
       { label: 'Insumos', to: '/insumos', icon: Boxes },
       { label: 'Compras', to: '/compras', icon: ShoppingCart },
-      { label: 'Activos', to: '/activos', icon: Wrench },
-      { label: 'Gastos', to: '/gastos', icon: Receipt },
-      { label: 'Cierre mensual', to: '/cierre-mensual', icon: CalendarClock },
     ],
   },
   {
+    // Activos/Gastos/Cierre mensual eran 3 entradas sueltas; los tres son
+    // de cierre de mes, ninguno es navegacion diaria -- ahora /finanzas.
     group: 'Administracion',
     items: [
+      { label: 'Finanzas', to: '/finanzas', icon: Wallet },
       { label: 'Usuarios', to: '/usuarios', icon: Users, adminOnly: true },
       { label: 'Configuracion', to: '/configuracion', icon: Settings, adminOnly: true },
     ],
