@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Download, FileStack, MoreHorizontal, Send, X } from 'lucide-react';
+import { Copy, Download, FileStack, MoreHorizontal, Pencil, Send, X } from 'lucide-react';
 import { downloadPdf, errorMessage, httpGet, httpPost } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
@@ -77,6 +77,11 @@ export default function QuotationDetailPage() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const downloadMutation = useMutation({
+    mutationFn: (filename: string) => downloadPdf(`/quotations/${id}/pdf`, filename),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   const handleReject = async () => {
     const ok = await confirm({ title: '¿Rechazar esta cotizacion?', description: 'El cliente no podra aceptarla despues.' });
     if (ok) rejectMutation.mutate();
@@ -142,7 +147,12 @@ export default function QuotationDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => downloadPdf(`/quotations/${id}/pdf`, `${quotation.folio}.pdf`)}>
+                {quotation.status === 'DRAFT' && (
+                  <DropdownMenuItem onSelect={() => navigate(`/cotizaciones/${id}/editar`)}>
+                    <Pencil className="size-3.5" /> Editar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => downloadMutation.mutate(`${quotation.folio}.pdf`)}>
                   <Download className="size-3.5" /> Descargar PDF
                 </DropdownMenuItem>
                 {quotation.status !== 'DRAFT' && (

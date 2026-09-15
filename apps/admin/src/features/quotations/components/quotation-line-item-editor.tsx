@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { formatMoney } from '@/lib/format';
 
 export interface QuotationLineItemRow {
@@ -55,6 +56,10 @@ interface QuotationLineItemEditorProps {
 
 export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationLineItemEditorProps) => {
   const { options: productOptions } = useProductOptions();
+  const { supplies } = useSupplyOptions();
+  const fragranceOptions = supplies
+    .filter((supply) => supply.type.slug === 'FRAGRANCE' && Number(supply.stockQty) > 0)
+    .map((supply) => ({ value: supply.name, label: supply.name }));
 
   const update = (index: number, patch: Partial<QuotationLineItemRow>) =>
     onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -69,6 +74,9 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
 
       {rows.map((row, index) => {
         const preview = previews?.[index];
+        const rowFragranceOptions = row.fragranceName && !fragranceOptions.some((option) => option.value === row.fragranceName)
+          ? [...fragranceOptions, { value: row.fragranceName, label: row.fragranceName }]
+          : fragranceOptions;
         return (
           <div key={index} className="flex flex-col gap-3 rounded-input border border-border p-3">
             <div className="flex items-center gap-2">
@@ -103,13 +111,20 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
               </RowField>
               <div className="col-span-6 sm:col-span-4 flex items-end gap-2 pb-0.5">
                 <label className="flex items-center gap-2 text-body-sm text-text">
-                  <Switch checked={row.withFragrance} onCheckedChange={(v) => update(index, { withFragrance: v })} />
+                  <Switch checked={row.withFragrance} onCheckedChange={(v) => update(index, { withFragrance: v, fragranceName: v ? row.fragranceName : '' })} />
                   Con aroma
                 </label>
               </div>
               {row.withFragrance && (
                 <RowField label="Nombre del aroma" htmlFor={`fragrance-${index}`} className="col-span-12 sm:col-span-6">
-                  <Input id={`fragrance-${index}`} value={row.fragranceName} onChange={(e) => update(index, { fragranceName: e.target.value })} />
+                  <Select
+                    id={`fragrance-${index}`}
+                    options={rowFragranceOptions}
+                    value={row.fragranceName}
+                    onChange={(v) => update(index, { fragranceName: v })}
+                    placeholder="Elegir aroma..."
+                    searchable
+                  />
                 </RowField>
               )}
               <RowField label="Personalizacion" htmlFor={`personalization-${index}`} className="col-span-12 sm:col-span-6">

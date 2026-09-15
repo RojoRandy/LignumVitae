@@ -70,12 +70,18 @@ export const downloadPdf = async (path: string, filename: string) => {
   const response = await fetch(`${API_ORIGIN}/api${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
+  if (response.status === 401) {
+    tokenStore.clear();
+    if (!location.pathname.startsWith('/login')) location.href = '/login';
+  }
   if (!response.ok) throw new Error('No se pudo descargar el PDF');
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };

@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { httpGet, httpPatch, httpPost } from '@/lib/http';
+import { Plus } from 'lucide-react';
+import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
 import type { AdjustmentTypeValue, QuotationDto, SettingsDto } from '@/lib/types';
@@ -24,8 +25,9 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { FormError, PageHeader, PageState } from '@/components/ui/page';
 import { MoneyRow } from '@/components/domain/money-row';
+import { CustomerQuickCreateDialog } from '@/features/customers/quick-create-dialog';
 import { QuotationLineItemEditor, type QuotationLineItemRow } from './components/quotation-line-item-editor';
-import { useQuotationTotalsPreview } from './use-quotation-totals-preview';
+import { useQuotationTotalsPreview, type PreviewQuotationTotalsInput } from './use-quotation-totals-preview';
 
 export default function QuotationFormPage() {
   const { id } = useParams();
@@ -44,6 +46,7 @@ export default function QuotationFormPage() {
   const [discountValue, setDiscountValue] = useState<number | null>(0);
   const [shippingCost, setShippingCost] = useState<number | null>(0);
   const [rows, setRows] = useState<QuotationLineItemRow[]>([]);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: ['quotations', id],
@@ -89,30 +92,49 @@ export default function QuotationFormPage() {
     setTerms(settings.quotationTerms ?? '');
   }, [settings, isEditing]);
 
-  const previewInput = useMemo(
-    () => ({
-      items: rows
-        .filter((r): r is QuotationLineItemRow & { productId: number; quantity: number } => Boolean(r.productId) && Boolean(r.quantity))
-        .map((r) => ({
-          productId: r.productId,
-          quantity: r.quantity,
-          candleColor: r.candleColor || undefined,
-          ribbonColor: r.ribbonColor || undefined,
-          withFragrance: r.withFragrance,
-          fragranceName: r.fragranceName || undefined,
-          personalizationText: r.personalizationText || undefined,
-          setupMinutesOverride: r.setupMinutesOverride ?? undefined,
-          unitPriceOverride: r.unitPriceOverride ?? undefined,
-        })),
-      discountEnabled,
-      discountType,
-      discountValue: discountValue ?? 0,
-      shippingCost: shippingCost ?? 0,
-    }),
-    [rows, discountEnabled, discountType, discountValue, shippingCost],
-  );
+  /*
+   * previewIndexByRow existe porque el `.filter()` compactaba los renglones y
+   * luego se buscaba el preview por (productId, quantity): dos renglones del
+   * MISMO producto con la MISMA cantidad caian los dos en el primero, asi que
+   * el segundo mostraba el precio y el margen del primero aunque tuviera otro
+   * precio manual. Aqui cada renglon se queda con el indice que de verdad le
+   * toco en la peticion, y los renglones incompletos valen undefined.
+   */
+  const { previewInput, previewIndexByRow } = useMemo(() => {
+    const items: PreviewQuotationTotalsInput['items'] = [];
+    const previewIndexByRow = rows.map((r) => {
+      if (!r.productId || !r.quantity) return undefined;
+      items.push({
+        productId: r.productId,
+        quantity: r.quantity,
+        candleColor: r.candleColor || undefined,
+        ribbonColor: r.ribbonColor || undefined,
+        withFragrance: r.withFragrance,
+        fragranceName: r.fragranceName || undefined,
+        personalizationText: r.personalizationText || undefined,
+        setupMinutesOverride: r.setupMinutesOverride ?? undefined,
+        unitPriceOverride: r.unitPriceOverride ?? undefined,
+      });
+      return items.length - 1;
+    });
 
-  const { data: preview, isFetching: previewLoading } = useQuotationTotalsPreview(previewInput);
+    return {
+      previewInput: {
+        items,
+        discountEnabled,
+        discountType,
+        discountValue: discountValue ?? 0,
+        shippingCost: shippingCost ?? 0,
+      },
+      previewIndexByRow,
+    };
+  }, [rows, discountEnabled, discountType, discountValue, shippingCost]);
+
+  const {
+    data: preview,
+    isFetching: previewLoading,
+    error: previewError,
+  } = useQuotationTotalsPreview(previewInput);
 
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -174,12 +196,25 @@ export default function QuotationFormPage() {
         </Card>
       )}
 
+      <CustomerQuickCreateDialog
+        open={quickCreateOpen}
+        onOpenChange={setQuickCreateOpen}
+        onCreated={(customer) => setCustomerId(String(customer.id))}
+      />
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:col-span-2" inert={readOnly || undefined}>
           <Card className="flex flex-col gap-4 p-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Cliente" required>
-                <Select options={customerOptions} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Select options={customerOptions} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
+                  </div>
+                  <Button type="button" variant="secondary" size="icon" aria-label="Nuevo cliente" onClick={() => setQuickCreateOpen(true)}>
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
               </Field>
               <Field
                 label="Fecha del evento"
@@ -201,9 +236,9 @@ export default function QuotationFormPage() {
             <QuotationLineItemEditor
               rows={rows}
               onChange={setRows}
-              previews={rows.map((row) => {
-                const idx = previewInput.items.findIndex((i) => i.productId === row.productId && i.quantity === row.quantity);
-                const item = idx >= 0 ? preview?.totals.items[idx] : undefined;
+              previews={rows.map((_row, rowIndex) => {
+                const idx = previewIndexByRow[rowIndex];
+                const item = idx === undefined ? undefined : preview?.totals.items[idx];
                 return item ? { unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
               })}
             />
@@ -239,7 +274,13 @@ export default function QuotationFormPage() {
             </Field>
           </Card>
 
-          <FormError>{formError}</FormError>
+          {/*
+           * El error del preview se pinta aqui porque antes no se pintaba en
+           * ningun lado: con un precio manual bajo el piso de margen la API
+           * responde 400, keepPreviousData deja los totales viejos en pantalla
+           * y el usuario lee "bajé el precio y no recalculó".
+           */}
+          <FormError>{formError ?? (previewError ? errorMessage(previewError) : undefined)}</FormError>
 
           {!readOnly && (
             <div className="flex justify-end gap-2">
