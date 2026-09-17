@@ -21,7 +21,7 @@ export interface QuotationLineItemRow {
   candleColor: string;
   ribbonColor: string;
   withFragrance: boolean;
-  fragranceName: string;
+  fragranceSupplyId: number | null;
   personalizationText: string;
   /** null = usa los minutos de diseno de la plantilla del producto; 0 = el
    *  cliente reutiliza el diseno, no se cobra. */
@@ -36,7 +36,7 @@ export const emptyQuotationLineRow = (): QuotationLineItemRow => ({
   candleColor: '',
   ribbonColor: '',
   withFragrance: false,
-  fragranceName: '',
+  fragranceSupplyId: null,
   personalizationText: '',
   setupMinutesOverride: null,
   unitPriceOverride: null,
@@ -58,8 +58,8 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
   const { options: productOptions } = useProductOptions();
   const { supplies } = useSupplyOptions();
   const fragranceOptions = supplies
-    .filter((supply) => supply.type.slug === 'FRAGRANCE' && Number(supply.stockQty) > 0)
-    .map((supply) => ({ value: supply.name, label: supply.name }));
+    .filter((supply) => supply.isFragrance)
+    .map((supply) => ({ value: String(supply.id), label: supply.name }));
 
   const update = (index: number, patch: Partial<QuotationLineItemRow>) =>
     onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -74,9 +74,6 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
 
       {rows.map((row, index) => {
         const preview = previews?.[index];
-        const rowFragranceOptions = row.fragranceName && !fragranceOptions.some((option) => option.value === row.fragranceName)
-          ? [...fragranceOptions, { value: row.fragranceName, label: row.fragranceName }]
-          : fragranceOptions;
         return (
           <div key={index} className="flex flex-col gap-3 rounded-input border border-border p-3">
             <div className="flex items-center gap-2">
@@ -111,20 +108,24 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
               </RowField>
               <div className="col-span-6 sm:col-span-4 flex items-end gap-2 pb-0.5">
                 <label className="flex items-center gap-2 text-body-sm text-text">
-                  <Switch checked={row.withFragrance} onCheckedChange={(v) => update(index, { withFragrance: v, fragranceName: v ? row.fragranceName : '' })} />
+                  <Switch checked={row.withFragrance} onCheckedChange={(v) => update(index, { withFragrance: v, fragranceSupplyId: v ? row.fragranceSupplyId : null })} />
                   Con aroma
                 </label>
               </div>
               {row.withFragrance && (
-                <RowField label="Nombre del aroma" htmlFor={`fragrance-${index}`} className="col-span-12 sm:col-span-6">
+                <RowField label="Aroma" htmlFor={`fragrance-${index}`} className="col-span-12 sm:col-span-6">
                   <Select
                     id={`fragrance-${index}`}
-                    options={rowFragranceOptions}
-                    value={row.fragranceName}
-                    onChange={(v) => update(index, { fragranceName: v })}
+                    options={fragranceOptions}
+                    value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : undefined}
+                    onChange={(v) => update(index, { fragranceSupplyId: v ? Number(v) : null })}
                     placeholder="Elegir aroma..."
                     searchable
+                    required
                   />
+                  {fragranceOptions.length === 0 && (
+                    <p className="text-caption text-text-muted">No hay insumos marcados como aroma en Inventario.</p>
+                  )}
                 </RowField>
               )}
               <RowField label="Personalizacion" htmlFor={`personalization-${index}`} className="col-span-12 sm:col-span-6">

@@ -3,7 +3,13 @@ import { SupplyTypesService } from './supply-types.service';
 import { UnitOfMeasureRepository } from '../units-of-measure/unit-of-measure.repository';
 import { UnitsOfMeasureService } from '../units-of-measure/units-of-measure.service';
 
-describe.each(['supply-types', 'units-of-measure'])('%s protections', (catalog) => {
+// Ya no hay filas "de sistema": el tipo que cuenta como cera o como aroma lo
+// decide Settings por id (waxSupplyTypeId/fragranceSupplyTypeId), asi que
+// cualquier fila del catalogo -- incluidas las 17+8 que sembro la
+// migracion original -- se puede renombrar, cambiar de slug o dar de baja
+// igual que una creada por el usuario. Lo unico que sigue protegido es no
+// dejar un insumo sin tipo/unidad.
+describe.each(['supply-types', 'units-of-measure'])('%s', (catalog) => {
   const repository = {
     findById: jest.fn(),
     countDependents: jest.fn(),
@@ -16,38 +22,23 @@ describe.each(['supply-types', 'units-of-measure'])('%s protections', (catalog) 
 
   beforeEach(() => {
     jest.resetAllMocks();
-    repository.findById.mockResolvedValue({ id: 1, slug: 'SYSTEM', isSystem: true });
+    repository.findById.mockResolvedValue({ id: 1, slug: 'WAX' });
     repository.countDependents.mockResolvedValue(0);
   });
 
-  it('blocks system deletion and slug changes before writing', async () => {
-    await expect(service.deactivate(1)).rejects.toMatchObject({
-      status: 400, response: { code: 'SYSTEM_ROW_PROTECTED' },
-    });
-    await expect(service.update(1, { slug: 'CHANGED' })).rejects.toMatchObject({
-      status: 400, response: { code: 'SYSTEM_ROW_PROTECTED' },
-    });
-    expect(repository.deactivate).not.toHaveBeenCalled();
-    expect(repository.update).not.toHaveBeenCalled();
-  });
-
-  it('allows system labels and ordering to change with the original slug', async () => {
-    const dto = { slug: 'SYSTEM', name: 'Nuevo nombre', sortOrder: 20 };
+  it('permite renombrar y cambiar el slug de cualquier fila, incluida una sembrada por la migracion', async () => {
+    const dto = { slug: 'CERA', name: 'Cera de parafina', sortOrder: 20 };
     await service.update(1, dto);
     expect(repository.update).toHaveBeenCalledWith(1, dto);
-    if (service instanceof UnitsOfMeasureService) {
-      await service.update(1, { abbr: 'u' });
-      expect(repository.update).toHaveBeenLastCalledWith(1, { abbr: 'u' });
-    }
   });
 
-  it('blocks dependent supplies and allows unused user rows to deactivate', async () => {
-    repository.findById.mockResolvedValue({ id: 1, slug: 'CUSTOM', isSystem: false });
+  it('bloquea dar de baja una fila con insumos dependientes y permite una sin uso', async () => {
     repository.countDependents.mockResolvedValue(2);
     await expect(service.deactivate(1)).rejects.toMatchObject({
       status: 409, response: { code: 'HAS_DEPENDENTS' },
     });
     expect(repository.deactivate).not.toHaveBeenCalled();
+
     repository.countDependents.mockResolvedValue(0);
     await service.deactivate(1);
     expect(repository.deactivate).toHaveBeenCalledWith(1);

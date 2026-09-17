@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 
 export default function CustomersPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -26,8 +26,8 @@ export default function CustomersPage() {
   const [editing, setEditing] = useState<CustomerDto | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['customers', { page, search }],
-    queryFn: () => httpGet<Paginated<CustomerDto>>('/customers', { page, search, limit: 20 }),
+    queryKey: ['customers', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<CustomerDto>>('/customers', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['customers'] });
@@ -57,6 +57,15 @@ export default function CustomersPage() {
         toast.error((error as Error).message);
       }
     },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/customers/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Cliente reactivado');
+    },
+    onError: (error) => toast.error((error as Error).message),
   });
 
   const openCreate = () => {
@@ -99,7 +108,11 @@ export default function CustomersPage() {
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -117,7 +130,10 @@ export default function CustomersPage() {
         }
       />
 
-      <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar por nombre o telefono...' }} />
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar por nombre o telefono...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin clientes registrados" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 

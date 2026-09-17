@@ -380,33 +380,33 @@ export default function ProductWizardPage() {
                 Un insumo adicional que ya viene incluido reemplaza a la cantidad heredada, no se suma.
               </p>
             )}
+
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Permite aroma</p>
+                  <p className="text-caption text-text-muted">Se cobra y se elige en cada cotizacion</p>
+                </div>
+                <Switch checked={allowsFragrance} onCheckedChange={setAllowsFragrance} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Visible en la landing</p>
+                  <p className="text-caption text-text-muted">Sin precios, solo catalogo</p>
+                </div>
+                <Switch checked={isVisibleOnLanding} onCheckedChange={setIsVisibleOnLanding} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Producto destacado</p>
+                  <p className="text-caption text-text-muted">Aparece en "Destacados" del dashboard y primero en la landing</p>
+                </div>
+                <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
+              </div>
+            </div>
           </Card>
 
           {isEditing && existing && <PriceOverrideCard product={existing} />}
-
-          <Card className="flex flex-col gap-3 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Permite aroma</p>
-                <p className="text-caption text-text-muted">Se cobra y se elige en cada cotizacion</p>
-              </div>
-              <Switch checked={allowsFragrance} onCheckedChange={setAllowsFragrance} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Visible en la landing</p>
-                <p className="text-caption text-text-muted">Sin precios, solo catalogo</p>
-              </div>
-              <Switch checked={isVisibleOnLanding} onCheckedChange={setIsVisibleOnLanding} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Producto destacado</p>
-                <p className="text-caption text-text-muted">Aparece en "Destacados" del dashboard y primero en la landing</p>
-              </div>
-              <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
-            </div>
-          </Card>
 
           <FormError>{formError}</FormError>
 

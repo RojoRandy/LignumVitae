@@ -13,6 +13,7 @@ import type { Paginated, SupplyDto } from '@/lib/types';
 import { formatMoney, formatNumber, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { NumberInput } from '@/components/ui/number-input';
 import { Select } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
@@ -23,7 +24,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 
 export default function SuppliesPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const { supplyTypes, options: typeOptions } = useSupplyTypeOptions();
   const { units, options: unitOptions } = useUnitOfMeasureOptions();
@@ -35,8 +36,8 @@ export default function SuppliesPage() {
   const defaultUnitId = String(editing?.unitId ?? units.find((u) => u.slug === 'PIECE')?.id ?? '');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['supplies', { page, search }],
-    queryFn: () => httpGet<Paginated<SupplyDto>>('/supplies', { page, search, limit: 20 }),
+    queryKey: ['supplies', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<SupplyDto>>('/supplies', { page, search, onlyActive, limit: 20 }),
   });
 
   const { data: drift } = useQuery({
@@ -78,6 +79,15 @@ export default function SuppliesPage() {
     onError: (error) => toast.error((error as Error).message),
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/supplies/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Insumo reactivado');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
   const openCreate = () => {
     setEditing(null);
     clear();
@@ -95,6 +105,7 @@ export default function SuppliesPage() {
     const form = new FormData(e.currentTarget);
     saveMutation.mutate({
       name: form.get('name'),
+      isFragrance: form.get('isFragrance') === 'on',
       typeId: Number(form.get('typeId')),
       unitId: Number(form.get('unitId')),
       currentUnitCost: Number(form.get('currentUnitCost')),
@@ -118,6 +129,7 @@ export default function SuppliesPage() {
         <div className="flex flex-col">
           <span className="font-medium text-text">{row.original.name}</span>
           <span className="text-caption text-text-muted">{row.original.type.name}</span>
+          {row.original.isFragrance && <Badge variant="neutral" className="self-start">Aroma</Badge>}
         </div>
       ),
     },
@@ -153,13 +165,18 @@ export default function SuppliesPage() {
         return low ? <Badge variant="danger">Bajo</Badge> : <Badge variant="success">OK</Badge>;
       },
     },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -177,7 +194,10 @@ export default function SuppliesPage() {
           }
         />
 
-        <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }} />
+        <PageToolbar
+          search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+          showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+        />
 
         <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin insumos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 
@@ -190,6 +210,10 @@ export default function SuppliesPage() {
               <Field label="Nombre" htmlFor="name" required error={fieldErrors.name}>
                 <Input id="name" name="name" defaultValue={editing?.name} required />
               </Field>
+              <label htmlFor="isFragrance" className="flex items-center gap-2 text-body-sm text-text">
+                <Checkbox id="isFragrance" name="isFragrance" defaultChecked={editing?.isFragrance} />
+                Aroma
+              </label>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Tipo" htmlFor="typeId" required>
                   <Select key={defaultTypeId} id="typeId" name="typeId" options={typeOptions} defaultValue={defaultTypeId} required />

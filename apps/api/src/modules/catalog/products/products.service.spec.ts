@@ -11,7 +11,9 @@ const candleTemplate = (supplyId: number, quantity: number) => ({
   note: null,
 });
 
-const build = ({ product, supplyType = 'WICK' }: { product: unknown; supplyType?: string }) => {
+// El tipo "cera" se decide por id (Settings.waxSupplyTypeId), no por el
+// texto de un slug -- por eso el mock trae un typeId, no un type.slug.
+const build = ({ product, supplyTypeId = 3 }: { product: unknown; supplyTypeId?: number }) => {
   const replaceSupplies = jest.fn();
   const service = new ProductsService(
     { findById: jest.fn().mockResolvedValue(product), replaceSupplies } as never,
@@ -19,8 +21,8 @@ const build = ({ product, supplyType = 'WICK' }: { product: unknown; supplyType?
     { findById: jest.fn() } as never,
     { findById: jest.fn() } as never,
     { execute: jest.fn() } as never,
-    {} as never,
-    { findById: jest.fn().mockResolvedValue({ id: 99, type: { slug: supplyType } }) } as never,
+    { get: jest.fn().mockResolvedValue({ waxSupplyTypeId: 1 }) } as never,
+    { findById: jest.fn().mockResolvedValue({ id: 99, typeId: supplyTypeId }) } as never,
   );
   return { service, replaceSupplies };
 };
@@ -60,7 +62,7 @@ it('rechaza un insumo de cera entre los adicionales', async () => {
       components: [],
       supplies: [{ supplyId: 99, quantity: { toNumber: () => 1 }, unitId: 7, note: null, source: 'MANUAL' }],
     },
-    supplyType: 'WAX',
+    supplyTypeId: 1, // coincide con el waxSupplyTypeId mockeado en build()
   });
 
   await expect(reapply(service)).rejects.toMatchObject({

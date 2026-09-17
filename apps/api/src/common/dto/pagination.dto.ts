@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class PaginationQueryDto {
@@ -28,7 +28,7 @@ export class PaginationQueryDto {
 
   @ApiPropertyOptional({ description: 'Si es false, incluye tambien los registros dados de baja' })
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   onlyActive?: boolean = true;
 }

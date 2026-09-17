@@ -74,12 +74,6 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
     const defaultWaxUnitCost = settings.waxSupplyId
       ? ((await this.supplyRepository.findById(settings.waxSupplyId))?.currentUnitCost.toNumber() ?? 0)
       : 0;
-    const fragrance = settings.fragranceSupplyId
-      ? {
-          unitCost: (await this.supplyRepository.findById(settings.fragranceSupplyId))?.currentUnitCost.toNumber() ?? 0,
-          loadPct: settings.fragranceLoadPct.toNumber(),
-        }
-      : null;
 
     const products = await this.productRepository.findManyByIds(items.map((i) => i.productId));
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -88,11 +82,28 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       if (!product || !product.isActive) throw CatalogErrors.Exceptions.PRODUCT_NOT_FOUND({ productId: item.productId });
     }
 
+    const fragranceIds = [...new Set(items.map((i) => i.fragranceSupplyId).filter((id): id is number => id != null))];
+    const fragranceMap = new Map(
+      (fragranceIds.length ? await this.supplyRepository.findMany({ where: { id: { in: fragranceIds } } }) : []).map((s) => [s.id, s]),
+    );
+    for (const item of items) {
+      if (item.fragranceSupplyId == null) continue;
+      const s = fragranceMap.get(item.fragranceSupplyId);
+      if (!s || !s.isActive || !s.isFragrance) {
+        throw SalesErrors.Exceptions.INVALID_FRAGRANCE_SUPPLY({ fragranceSupplyId: item.fragranceSupplyId });
+      }
+    }
+
     const costings = items.map((item) =>
       this.lineCosting.costLine(
         productMap.get(item.productId)!,
-        { quantity: item.quantity, setupMinutesOverride: item.setupMinutesOverride, withFragrance: Boolean(item.withFragrance) },
-        { settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, fragrance },
+        {
+          quantity: item.quantity,
+          setupMinutesOverride: item.setupMinutesOverride,
+          withFragrance: Boolean(item.withFragrance),
+          fragranceUnitCost: item.fragranceSupplyId ? (fragranceMap.get(item.fragranceSupplyId)?.currentUnitCost.toNumber() ?? null) : null,
+        },
+        { settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, fragranceLoadPct: settings.fragranceLoadPct.toNumber() },
       ),
     );
 
@@ -208,7 +219,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
         candleColor: item.candleColor,
         ribbonColor: item.ribbonColor,
         withFragrance: Boolean(item.withFragrance),
-        fragranceName: item.fragranceName,
+        fragranceSupplyId: item.withFragrance ? (item.fragranceSupplyId ?? null) : null,
         personalizationText: item.personalizationText,
         setupMinutesOverride: item.setupMinutesOverride,
         waxGramsPerUnit: c.waxGramsPerUnit,

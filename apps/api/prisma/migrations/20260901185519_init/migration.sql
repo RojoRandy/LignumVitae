@@ -20,13 +20,7 @@ CREATE TYPE "auth"."user_roles" AS ENUM ('employee', 'admin', 'super_user');
 CREATE TYPE "catalog"."product_kind" AS ENUM ('SIMPLE', 'BOUQUET');
 
 -- CreateEnum
-CREATE TYPE "catalog"."supply_source" AS ENUM ('PACKAGING_TEMPLATE', 'CARD_TEMPLATE', 'MANUAL');
-
--- CreateEnum
-CREATE TYPE "inventory"."supply_type" AS ENUM ('WAX', 'FRAGRANCE', 'WICK', 'DYE', 'ALUMINUM_BASE', 'CELLOPHANE', 'RIBBON', 'LABEL', 'PRINTING', 'SEAL', 'BELL', 'SILICONE', 'BOX', 'TULLE', 'ACETATE', 'PAPER', 'OTHER');
-
--- CreateEnum
-CREATE TYPE "inventory"."unit_of_measure" AS ENUM ('GRAM', 'KILOGRAM', 'MILLILITER', 'LITER', 'CENTIMETER', 'METER', 'PIECE', 'SHEET');
+CREATE TYPE "catalog"."supply_source" AS ENUM ('CANDLE_TEMPLATE', 'PACKAGING_TEMPLATE', 'CARD_TEMPLATE', 'MANUAL');
 
 -- CreateEnum
 CREATE TYPE "inventory"."stock_movement_kind" AS ENUM ('PURCHASE', 'CONSUMPTION', 'ADJUSTMENT', 'WASTE');
@@ -118,6 +112,18 @@ CREATE TABLE "catalog"."candles" (
 );
 
 -- CreateTable
+CREATE TABLE "catalog"."candle_supply_templates" (
+    "id" SERIAL NOT NULL,
+    "candle_id" INTEGER NOT NULL,
+    "supply_id" INTEGER NOT NULL,
+    "quantity" DECIMAL(14,4) NOT NULL,
+    "unit_id" INTEGER NOT NULL,
+    "note" TEXT,
+
+    CONSTRAINT "candle_supply_templates_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "catalog"."packaging_types" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -157,7 +163,7 @@ CREATE TABLE "catalog"."packaging_supply_templates" (
     "packaging_type_id" INTEGER NOT NULL,
     "supply_id" INTEGER NOT NULL,
     "quantity" DECIMAL(14,4) NOT NULL,
-    "unit" "inventory"."unit_of_measure" NOT NULL,
+    "unit_id" INTEGER NOT NULL,
     "note" TEXT,
 
     CONSTRAINT "packaging_supply_templates_pkey" PRIMARY KEY ("id")
@@ -169,7 +175,7 @@ CREATE TABLE "catalog"."card_supply_templates" (
     "card_type_id" INTEGER NOT NULL,
     "supply_id" INTEGER NOT NULL,
     "quantity" DECIMAL(14,4) NOT NULL,
-    "unit" "inventory"."unit_of_measure" NOT NULL,
+    "unit_id" INTEGER NOT NULL,
     "note" TEXT,
 
     CONSTRAINT "card_supply_templates_pkey" PRIMARY KEY ("id")
@@ -230,7 +236,7 @@ CREATE TABLE "catalog"."product_supplies" (
     "product_id" INTEGER NOT NULL,
     "supply_id" INTEGER NOT NULL,
     "quantity" DECIMAL(14,4) NOT NULL,
-    "unit" "inventory"."unit_of_measure" NOT NULL,
+    "unit_id" INTEGER NOT NULL,
     "source" "catalog"."supply_source" NOT NULL DEFAULT 'MANUAL',
     "note" TEXT,
 
@@ -250,12 +256,40 @@ CREATE TABLE "catalog"."product_images" (
 );
 
 -- CreateTable
+CREATE TABLE "inventory"."supply_types" (
+    "id" SERIAL NOT NULL,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "supply_types_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "inventory"."units_of_measure" (
+    "id" SERIAL NOT NULL,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "abbr" TEXT NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "units_of_measure_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "inventory"."supplies" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "sku" TEXT,
-    "type" "inventory"."supply_type" NOT NULL,
-    "unit" "inventory"."unit_of_measure" NOT NULL,
+    "type_id" INTEGER NOT NULL,
+    "is_fragrance" BOOLEAN NOT NULL DEFAULT false,
+    "unit_id" INTEGER NOT NULL,
     "current_unit_cost" DECIMAL(14,6) NOT NULL,
     "suggested_unit_cost" DECIMAL(14,6),
     "suggested_cost_sample_size" INTEGER NOT NULL DEFAULT 0,
@@ -493,7 +527,7 @@ CREATE TABLE "sales"."quotation_items" (
     "candle_color" TEXT,
     "ribbon_color" TEXT,
     "with_fragrance" BOOLEAN NOT NULL DEFAULT false,
-    "fragrance_name" TEXT,
+    "fragrance_supply_id" INTEGER,
     "personalization_text" TEXT,
     "setup_minutes_override" INTEGER,
     "wax_grams_per_unit" DECIMAL(10,3) NOT NULL,
@@ -636,7 +670,7 @@ CREATE TABLE "config"."settings" (
     "melt_batch_grams" INTEGER NOT NULL DEFAULT 4000,
     "default_waste_pct" DECIMAL(5,4) NOT NULL DEFAULT 0.03,
     "wax_supply_id" INTEGER,
-    "fragrance_supply_id" INTEGER,
+    "wax_supply_type_id" INTEGER,
     "fragrance_load_pct" DECIMAL(5,4) NOT NULL DEFAULT 0.08,
     "fragrance_surcharge" DECIMAL(12,2) NOT NULL DEFAULT 1.00,
     "overhead_rate_mode" "config"."overhead_rate_mode" NOT NULL DEFAULT 'DERIVED',
@@ -684,6 +718,12 @@ CREATE UNIQUE INDEX "candles_slug_key" ON "catalog"."candles"("slug");
 CREATE INDEX "candles_category_id_idx" ON "catalog"."candles"("category_id");
 
 -- CreateIndex
+CREATE INDEX "candle_supply_templates_unit_id_idx" ON "catalog"."candle_supply_templates"("unit_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "candle_supply_templates_candle_id_supply_id_key" ON "catalog"."candle_supply_templates"("candle_id", "supply_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "packaging_types_name_key" ON "catalog"."packaging_types"("name");
 
 -- CreateIndex
@@ -696,7 +736,13 @@ CREATE UNIQUE INDEX "card_types_name_key" ON "catalog"."card_types"("name");
 CREATE UNIQUE INDEX "card_types_slug_key" ON "catalog"."card_types"("slug");
 
 -- CreateIndex
+CREATE INDEX "packaging_supply_templates_unit_id_idx" ON "catalog"."packaging_supply_templates"("unit_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "packaging_supply_templates_packaging_type_id_supply_id_key" ON "catalog"."packaging_supply_templates"("packaging_type_id", "supply_id");
+
+-- CreateIndex
+CREATE INDEX "card_supply_templates_unit_id_idx" ON "catalog"."card_supply_templates"("unit_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "card_supply_templates_card_type_id_supply_id_key" ON "catalog"."card_supply_templates"("card_type_id", "supply_id");
@@ -723,10 +769,25 @@ CREATE UNIQUE INDEX "product_components_product_id_candle_id_key" ON "catalog"."
 CREATE INDEX "product_supplies_supply_id_idx" ON "catalog"."product_supplies"("supply_id");
 
 -- CreateIndex
+CREATE INDEX "product_supplies_unit_id_idx" ON "catalog"."product_supplies"("unit_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "product_supplies_product_id_supply_id_key" ON "catalog"."product_supplies"("product_id", "supply_id");
 
 -- CreateIndex
 CREATE INDEX "product_images_product_id_idx" ON "catalog"."product_images"("product_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "supply_types_slug_key" ON "inventory"."supply_types"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "supply_types_name_key" ON "inventory"."supply_types"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "units_of_measure_slug_key" ON "inventory"."units_of_measure"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "units_of_measure_name_key" ON "inventory"."units_of_measure"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "supplies_name_key" ON "inventory"."supplies"("name");
@@ -735,7 +796,10 @@ CREATE UNIQUE INDEX "supplies_name_key" ON "inventory"."supplies"("name");
 CREATE UNIQUE INDEX "supplies_sku_key" ON "inventory"."supplies"("sku");
 
 -- CreateIndex
-CREATE INDEX "supplies_type_idx" ON "inventory"."supplies"("type");
+CREATE INDEX "supplies_type_id_idx" ON "inventory"."supplies"("type_id");
+
+-- CreateIndex
+CREATE INDEX "supplies_unit_id_idx" ON "inventory"."supplies"("unit_id");
 
 -- CreateIndex
 CREATE INDEX "stock_movements_supply_id_occurred_at_idx" ON "inventory"."stock_movements"("supply_id", "occurred_at");
@@ -798,6 +862,9 @@ CREATE INDEX "quotation_items_quotation_id_idx" ON "sales"."quotation_items"("qu
 CREATE INDEX "quotation_items_product_id_idx" ON "sales"."quotation_items"("product_id");
 
 -- CreateIndex
+CREATE INDEX "quotation_items_fragrance_supply_id_idx" ON "sales"."quotation_items"("fragrance_supply_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "orders_folio_key" ON "sales"."orders"("folio");
 
 -- CreateIndex
@@ -837,16 +904,31 @@ ALTER TABLE "catalog"."candles" ADD CONSTRAINT "candles_wax_supply_id_fkey" FORE
 ALTER TABLE "catalog"."candles" ADD CONSTRAINT "candles_mold_asset_id_fkey" FOREIGN KEY ("mold_asset_id") REFERENCES "inventory"."assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "catalog"."candle_supply_templates" ADD CONSTRAINT "candle_supply_templates_candle_id_fkey" FOREIGN KEY ("candle_id") REFERENCES "catalog"."candles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "catalog"."candle_supply_templates" ADD CONSTRAINT "candle_supply_templates_supply_id_fkey" FOREIGN KEY ("supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "catalog"."candle_supply_templates" ADD CONSTRAINT "candle_supply_templates_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "inventory"."units_of_measure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "catalog"."packaging_supply_templates" ADD CONSTRAINT "packaging_supply_templates_packaging_type_id_fkey" FOREIGN KEY ("packaging_type_id") REFERENCES "catalog"."packaging_types"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "catalog"."packaging_supply_templates" ADD CONSTRAINT "packaging_supply_templates_supply_id_fkey" FOREIGN KEY ("supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "catalog"."packaging_supply_templates" ADD CONSTRAINT "packaging_supply_templates_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "inventory"."units_of_measure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "catalog"."card_supply_templates" ADD CONSTRAINT "card_supply_templates_card_type_id_fkey" FOREIGN KEY ("card_type_id") REFERENCES "catalog"."card_types"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "catalog"."card_supply_templates" ADD CONSTRAINT "card_supply_templates_supply_id_fkey" FOREIGN KEY ("supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "catalog"."card_supply_templates" ADD CONSTRAINT "card_supply_templates_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "inventory"."units_of_measure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "catalog"."products" ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "catalog"."candle_categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -873,7 +955,16 @@ ALTER TABLE "catalog"."product_supplies" ADD CONSTRAINT "product_supplies_produc
 ALTER TABLE "catalog"."product_supplies" ADD CONSTRAINT "product_supplies_supply_id_fkey" FOREIGN KEY ("supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "catalog"."product_supplies" ADD CONSTRAINT "product_supplies_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "inventory"."units_of_measure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "catalog"."product_images" ADD CONSTRAINT "product_images_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "catalog"."products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "inventory"."supplies" ADD CONSTRAINT "supplies_type_id_fkey" FOREIGN KEY ("type_id") REFERENCES "inventory"."supply_types"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "inventory"."supplies" ADD CONSTRAINT "supplies_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "inventory"."units_of_measure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inventory"."stock_movements" ADD CONSTRAINT "stock_movements_supply_id_fkey" FOREIGN KEY ("supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -909,6 +1000,9 @@ ALTER TABLE "sales"."quotation_items" ADD CONSTRAINT "quotation_items_quotation_
 ALTER TABLE "sales"."quotation_items" ADD CONSTRAINT "quotation_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "catalog"."products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "sales"."quotation_items" ADD CONSTRAINT "quotation_items_fragrance_supply_id_fkey" FOREIGN KEY ("fragrance_supply_id") REFERENCES "inventory"."supplies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "sales"."orders" ADD CONSTRAINT "orders_quotation_id_fkey" FOREIGN KEY ("quotation_id") REFERENCES "sales"."quotations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -928,3 +1022,7 @@ ALTER TABLE "sales"."payments" ADD CONSTRAINT "payments_order_id_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "sales"."payments" ADD CONSTRAINT "payments_received_by_id_fkey" FOREIGN KEY ("received_by_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "config"."settings" ADD CONSTRAINT "settings_wax_supply_type_id_fkey" FOREIGN KEY ("wax_supply_type_id") REFERENCES "inventory"."supply_types"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

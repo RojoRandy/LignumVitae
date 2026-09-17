@@ -14,7 +14,7 @@ export interface QuotationLineInput {
   candleColor?: string;
   ribbonColor?: string;
   withFragrance?: boolean;
-  fragranceName?: string;
+  fragranceSupplyId?: number;
   personalizationText?: string;
   setupMinutesOverride?: number;
   unitPriceOverride?: number;

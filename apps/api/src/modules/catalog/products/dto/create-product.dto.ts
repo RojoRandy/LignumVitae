@@ -126,6 +126,11 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductSupplyItemDto)
   additionalSupplies?: ProductSupplyItemDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {}

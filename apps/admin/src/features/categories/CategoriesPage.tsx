@@ -20,7 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { FormError, PageToolbar } from '@/components/ui/page';
 
 export default function CategoriesPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -29,8 +29,8 @@ export default function CategoriesPage() {
   const [colorHex, setColorHex] = useState('#7A5C3E');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['categories', { page, search }],
-    queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { page, search, limit: 20 }),
+    queryKey: ['categories', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['categories'] });
@@ -51,6 +51,15 @@ export default function CategoriesPage() {
     onSuccess: () => {
       invalidate();
       toast.success('Categoria dada de baja');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/categories/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Categoría reactivada');
     },
     onError: (error) => toast.error((error as Error).message),
   });
@@ -110,6 +119,7 @@ export default function CategoriesPage() {
         ),
     },
     { header: 'Orden', accessorKey: 'sortOrder' },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
@@ -118,9 +128,13 @@ export default function CategoriesPage() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
             Editar
           </Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
-            Dar de baja
-          </Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
+              Dar de baja
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -130,6 +144,7 @@ export default function CategoriesPage() {
     <div className="flex flex-col gap-4">
       <PageToolbar
         search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         actions={
           <Button onClick={openCreate}>
             <Plus className="size-4" /> Nueva categoria

@@ -21,7 +21,7 @@ import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 const ROLE_LABEL: Record<string, string> = { employee: 'Empleada', admin: 'Admin', super_user: 'Administradora' };
 
 export default function UsersPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -29,8 +29,8 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<UserDto | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', { page, search }],
-    queryFn: () => httpGet<Paginated<UserDto>>('/auth/users', { page, search, limit: 20 }),
+    queryKey: ['users', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<UserDto>>('/auth/users', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -51,6 +51,15 @@ export default function UsersPage() {
     onSuccess: () => {
       invalidate();
       toast.success('Usuario dado de baja');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/auth/users/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Usuario reactivado');
     },
     onError: (error) => toast.error((error as Error).message),
   });
@@ -98,13 +107,18 @@ export default function UsersPage() {
       ),
     },
     { header: 'Rol', cell: ({ row }) => <Badge variant="accent">{ROLE_LABEL[row.original.role]}</Badge> },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -122,7 +136,10 @@ export default function UsersPage() {
         }
       />
 
-      <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }} />
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+      />
 
       <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin usuarios" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
 

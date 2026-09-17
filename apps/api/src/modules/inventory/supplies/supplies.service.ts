@@ -51,6 +51,7 @@ export class SuppliesService {
       defaultBaseQtyPerPack: dto.defaultBaseQtyPerPack,
       yieldPerBaseUnit: dto.yieldPerBaseUnit ?? 1,
       notes: dto.notes,
+      isFragrance: dto.isFragrance ?? false,
     });
   }
 

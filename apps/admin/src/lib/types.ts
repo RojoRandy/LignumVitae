@@ -36,7 +36,6 @@ export interface SupplyTypeDto {
   slug: string;
   name: string;
   sortOrder: number;
-  isSystem: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -48,7 +47,6 @@ export interface UnitOfMeasureDto {
   name: string;
   abbr: string;
   sortOrder: number;
-  isSystem: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +73,7 @@ export interface SupplyDto {
   yieldPerBaseUnit: string;
   notes: string | null;
   isActive: boolean;
+  isFragrance: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -287,7 +286,8 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   candleColor: string | null;
   ribbonColor: string | null;
   withFragrance: boolean;
-  fragranceName: string | null;
+  fragranceSupplyId: number | null;
+  fragranceSupply?: { id: number; name: string } | null;
   personalizationText: string | null;
   setupMinutesOverride: number | null;
   product?: { id: number; name: string };
@@ -543,7 +543,7 @@ export interface SettingsDto {
   meltBatchGrams: number;
   defaultWastePct: string;
   waxSupplyId: number | null;
-  fragranceSupplyId: number | null;
+  waxSupplyTypeId: number | null;
   fragranceLoadPct: string;
   fragranceSurcharge: string;
   overheadRateMode: 'DERIVED' | 'FIXED';

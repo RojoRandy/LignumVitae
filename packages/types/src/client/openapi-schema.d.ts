@@ -1018,6 +1018,10 @@ export interface components {
             defaultWastePct?: number;
             waxSupplyId?: number;
             fragranceSupplyId?: number;
+            /** @description Que tipo de insumo es la cera (por id, no por slug) */
+            waxSupplyTypeId?: number;
+            /** @description Que tipo de insumo es el aroma (por id, no por slug) */
+            fragranceSupplyTypeId?: number;
             fragranceLoadPct?: number;
             fragranceSurcharge?: number;
             /** @enum {string} */

@@ -21,7 +21,7 @@ export class CreateQuotationItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() candleColor?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() ribbonColor?: string;
   @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() withFragrance?: boolean;
-  @ApiPropertyOptional() @IsOptional() @IsString() fragranceName?: string;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() fragranceSupplyId?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() personalizationText?: string;
   @ApiPropertyOptional({ description: '0 = el cliente reutiliza el diseno, no se cobra' })
   @IsOptional()

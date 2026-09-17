@@ -6,8 +6,6 @@ const Responses = {
     new ErrorResponseDto('SUPPLY_TYPE_NOT_FOUND', 'No se encontro el tipo de insumo', data),
   UNIT_OF_MEASURE_NOT_FOUND: (data?: unknown) =>
     new ErrorResponseDto('UNIT_OF_MEASURE_NOT_FOUND', 'No se encontro la unidad de medida', data),
-  SYSTEM_ROW_PROTECTED: (data?: unknown) =>
-    new ErrorResponseDto('SYSTEM_ROW_PROTECTED', 'No se puede dar de baja ni cambiar el slug de un registro de sistema', data),
   PERIOD_CLOSED: (data?: unknown) =>
     new ErrorResponseDto(
       'PERIOD_CLOSED',
@@ -43,7 +41,6 @@ const Responses = {
 const Exceptions = {
   SUPPLY_TYPE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.SUPPLY_TYPE_NOT_FOUND(data)),
   UNIT_OF_MEASURE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.UNIT_OF_MEASURE_NOT_FOUND(data)),
-  SYSTEM_ROW_PROTECTED: (data?: unknown) => new BadRequestException(Responses.SYSTEM_ROW_PROTECTED(data)),
   PERIOD_CLOSED: (data?: unknown) => new BadRequestException(Responses.PERIOD_CLOSED(data)),
   PURCHASE_ITEM_NEEDS_DESCRIPTION: (data?: unknown) => new BadRequestException(Responses.PURCHASE_ITEM_NEEDS_DESCRIPTION(data)),
   SUPPLY_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.SUPPLY_NOT_FOUND(data)),

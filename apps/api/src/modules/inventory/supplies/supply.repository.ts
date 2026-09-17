@@ -58,10 +58,10 @@ export class SupplyRepository {
    */
   findLowStock() {
     return this.prisma.$queryRaw<
-      Array<{ id: number; name: string; stock_qty: Prisma.Decimal; min_stock_qty: Prisma.Decimal; unit: Pick<UnitOfMeasure, 'id' | 'slug' | 'name' | 'abbr' | 'sortOrder' | 'isSystem' | 'isActive'> }>
+      Array<{ id: number; name: string; stock_qty: Prisma.Decimal; min_stock_qty: Prisma.Decimal; unit: Pick<UnitOfMeasure, 'id' | 'slug' | 'name' | 'abbr' | 'sortOrder' | 'isActive'> }>
     >`SELECT s.id, s.name, s.stock_qty, s.min_stock_qty,
         json_build_object('id', u.id, 'slug', u.slug, 'name', u.name, 'abbr', u.abbr,
-          'sortOrder', u.sort_order, 'isSystem', u.is_system, 'isActive', u.is_active) AS unit
+          'sortOrder', u.sort_order, 'isActive', u.is_active) AS unit
       FROM inventory.supplies s
       JOIN inventory.units_of_measure u ON u.id = s.unit_id
       WHERE s.is_active = true AND s.stock_qty <= s.min_stock_qty

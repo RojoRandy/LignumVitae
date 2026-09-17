@@ -9,16 +9,16 @@ import { useFieldErrors } from '@/hooks/use-field-errors';
 import { httpDelete, httpPatch, httpPost, httpGet } from '@/lib/http';
 import type { UnitOfMeasureDto, Paginated } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
-import { Badge } from '@/components/ui/badge';
 import { FormError, PageToolbar } from '@/components/ui/page';
 
 export default function UnitsPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -26,8 +26,8 @@ export default function UnitsPage() {
   const [editing, setEditing] = useState<UnitOfMeasureDto | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['units-of-measure', { page, search }],
-    queryFn: () => httpGet<Paginated<UnitOfMeasureDto>>('/units-of-measure', { page, search, limit: 20 }),
+    queryKey: ['units-of-measure', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<UnitOfMeasureDto>>('/units-of-measure', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['units-of-measure'] });
@@ -52,6 +52,15 @@ export default function UnitsPage() {
     onError: (error) => toast.error((error as Error).message),
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/units-of-measure/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Unidad de medida reactivada');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
   const openCreate = () => {
     setEditing(null);
     clear();
@@ -70,7 +79,7 @@ export default function UnitsPage() {
     saveMutation.mutate({
       name: form.get('name'),
       abbr: form.get('abbr'),
-      slug: editing?.isSystem ? editing.slug : form.get('slug'),
+      slug: form.get('slug'),
       sortOrder: form.get('sortOrder') ? Number(form.get('sortOrder')) : undefined,
     });
   };
@@ -85,15 +94,17 @@ export default function UnitsPage() {
     { header: 'Slug', accessorKey: 'slug' },
     { header: 'Abreviatura', accessorKey: 'abbr' },
     { header: 'Orden', accessorKey: 'sortOrder' },
-    { header: 'Sistema', cell: ({ row }) => row.original.isSystem ? <Badge variant="accent">Sistema</Badge> : null },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
-          {!row.original.isSystem && (
+          {row.original.isActive ? (
             <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
           )}
         </div>
       ),
@@ -104,6 +115,7 @@ export default function UnitsPage() {
     <div className="flex flex-col gap-4">
       <PageToolbar
         search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         actions={
           <Button onClick={openCreate}>
             <Plus className="size-4" aria-hidden="true" /> Nueva unidad de medida
@@ -123,7 +135,7 @@ export default function UnitsPage() {
               <Input id="name" name="name" defaultValue={editing?.name} required />
             </Field>
             <Field label="Slug" htmlFor="slug" required error={fieldErrors.slug} hint="Usa mayúsculas y guiones bajos, por ejemplo: UNIDAD_MEDIDA.">
-              <Input id="slug" name="slug" defaultValue={editing?.slug} disabled={editing?.isSystem} required />
+              <Input id="slug" name="slug" defaultValue={editing?.slug} required />
             </Field>
             <Field label="Abreviatura" htmlFor="abbr" required error={fieldErrors.abbr}>
               <Input id="abbr" name="abbr" defaultValue={editing?.abbr} required />

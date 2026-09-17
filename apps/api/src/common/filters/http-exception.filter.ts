@@ -2,6 +2,7 @@
 // errores, y las de terceros: ValidationPipe, ThrottlerGuard, AuthGuard de
 // passport) al mismo shape { code, description, timestamp, data, path }.
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { ErrorResponseDto } from '../dto/response.dto';
 import { CommonErrors } from '../errors/common.errors';
@@ -22,6 +23,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   private resolve(exception: unknown, request: Request): { status: number; body: ErrorResponseDto } {
+    // Un P2002/P2025 sin traducir se colaba como 500 generico -- se veia en
+    // cualquier alta/edicion con un nombre o slug duplicado (p. ej. dar de
+    // alta una tarjeta con un nombre que ya existe en el seed). Se atrapan
+    // aqui, en el unico punto por el que pasan TODAS las excepciones, en vez
+    // de en cada servicio por separado.
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2002') {
+        const fields = (exception.meta?.target as string[] | undefined) ?? [];
+        return { status: HttpStatus.CONFLICT, body: CommonErrors.Responses.DUPLICATE_VALUE({ fields }) };
+      }
+      if (exception.code === 'P2025') {
+        return { status: HttpStatus.NOT_FOUND, body: CommonErrors.Responses.RECORD_NOT_FOUND() };
+      }
+    }
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const payload = exception.getResponse();

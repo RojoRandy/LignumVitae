@@ -409,12 +409,12 @@ model SupplyType {
   slug      String   @unique
   name      String   @unique
   sortOrder Int      @default(0) @map("sort_order")
-  isSystem  Boolean  @default(false) @map("is_system")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  supplies Supply[]
+  supplies            Supply[]
+  settingsAsWax       Settings[] @relation("SettingsWaxType")
 
   @@map("supply_types")
   @@schema("inventory")
@@ -426,7 +426,6 @@ model UnitOfMeasure {
   name      String   @unique
   abbr      String
   sortOrder Int      @default(0) @map("sort_order")
-  isSystem  Boolean  @default(false) @map("is_system")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -446,6 +445,7 @@ model Supply {
   name   String  @unique
   sku    String? @unique
   typeId Int     @map("type_id")
+  isFragrance Boolean @default(false) @map("is_fragrance")
   /// Unidad BASE: en la que se expresa el consumo y las existencias.
   unitId Int     @map("unit_id")
 
@@ -483,6 +483,7 @@ model Supply {
   purchaseItems     PurchaseItem[]
   movements         StockMovement[]
   candlesUsingAsWax Candle[]                  @relation("CandleWax")
+  quotationItemsUsingAsFragrance QuotationItem[] @relation("QuotationItemFragrance")
 
   type SupplyType    @relation(fields: [typeId], references: [id])
   unit UnitOfMeasure @relation(fields: [unitId], references: [id])
@@ -922,7 +923,7 @@ model QuotationItem {
   candleColor          String? @map("candle_color")
   ribbonColor          String? @map("ribbon_color")
   withFragrance        Boolean @default(false) @map("with_fragrance")
-  fragranceName        String? @map("fragrance_name")
+  fragranceSupplyId    Int?    @map("fragrance_supply_id")
   personalizationText  String? @map("personalization_text")
   /// Para cuando el cliente reutiliza el arte del ano pasado: no se cobra diseno.
   setupMinutesOverride Int?    @map("setup_minutes_override")
@@ -954,9 +955,11 @@ model QuotationItem {
 
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   product   Product   @relation(fields: [productId], references: [id])
+  fragranceSupply Supply? @relation("QuotationItemFragrance", fields: [fragranceSupplyId], references: [id], onDelete: Restrict)
 
   @@index([quotationId])
   @@index([productId])
+  @@index([fragranceSupplyId])
   @@map("quotation_items")
   @@schema("sales")
 }
@@ -1150,13 +1153,17 @@ model Settings {
   defaultWastePct Decimal @default(0.03) @map("default_waste_pct") @db.Decimal(5, 4)
 
   // --- Cera y aroma
-  waxSupplyId        Int?    @map("wax_supply_id")
-  fragranceSupplyId  Int?    @map("fragrance_supply_id")
+  waxSupplyId           Int?    @map("wax_supply_id")
+  /// QUE tipo de insumo es la cera y cual el aroma. El codigo dependia del
+  /// TEXTO del slug ('WAX', 'FRAGRANCE'), asi que renombrar un tipo rompia
+  /// el costeo de cera y el dropdown de aroma en silencio. Apuntando por id,
+  /// el nombre y el slug de esos tipos se pueden cambiar libremente.
+  waxSupplyTypeId       Int?    @map("wax_supply_type_id")
   /// Carga de esencia sobre el peso de la vela. 0.08 = 8%.
-  fragranceLoadPct   Decimal @default(0.08) @map("fragrance_load_pct") @db.Decimal(5, 4)
+  fragranceLoadPct      Decimal @default(0.08) @map("fragrance_load_pct") @db.Decimal(5, 4)
   /// Lo que se COBRA por aromatizar. El costo se calcula aparte: el reporte
   /// de cobertura de aroma dice si este $1.00 alcanza o no.
-  fragranceSurcharge Decimal @default(1.00) @map("fragrance_surcharge") @db.Decimal(12, 2)
+  fragranceSurcharge    Decimal @default(1.00) @map("fragrance_surcharge") @db.Decimal(12, 2)
 
   // --- Gastos indirectos
   overheadRateMode         OverheadRateMode @default(DERIVED) @map("overhead_rate_mode")
@@ -1201,6 +1208,8 @@ model Settings {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  waxSupplyType       SupplyType? @relation("SettingsWaxType", fields: [waxSupplyTypeId], references: [id], onDelete: SetNull)
 
   @@map("settings")
   @@schema("config")

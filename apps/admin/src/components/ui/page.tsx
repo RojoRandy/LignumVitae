@@ -8,13 +8,15 @@
  * un solo origen de verdad es la unica forma de que la consistencia se
  * sostenga sin que alguien tenga que acordarse de copiar bien.
  */
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { errorMessage } from '@/lib/http';
 import { Button } from './button';
 import { Input } from './input';
+import { Label } from './label';
+import { Switch } from './switch';
 import { EmptyState } from './empty-state';
 import { Spinner } from './spinner';
 
@@ -59,13 +61,15 @@ export interface PageToolbarProps {
   search?: { value: string; onChange: (value: string) => void; placeholder?: string };
   /** Selects de filtro. Se apilan en movil. */
   filters?: ReactNode;
+  showInactive?: { value: boolean; onChange: (v: boolean) => void };
   /** Acciones SECUNDARIAS (exportar, importar...). La primaria va en PageHeader. */
   actions?: ReactNode;
   className?: string;
 }
 
-export const PageToolbar = ({ search, filters, actions, className }: PageToolbarProps) => {
-  if (!search && !filters && !actions) return null;
+export const PageToolbar = ({ search, filters, showInactive, actions, className }: PageToolbarProps) => {
+  const showInactiveId = useId();
+  if (!search && !filters && !showInactive && !actions) return null;
   return (
     <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-center', className)}>
       {search && (
@@ -81,7 +85,17 @@ export const PageToolbar = ({ search, filters, actions, className }: PageToolbar
           />
         </div>
       )}
-      {filters && <div className="flex flex-col gap-3 sm:flex-row sm:items-center">{filters}</div>}
+      {(filters || showInactive) && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {filters}
+          {showInactive && (
+            <div className="flex items-center gap-2">
+              <Switch id={showInactiveId} checked={showInactive.value} onCheckedChange={showInactive.onChange} />
+              <Label htmlFor={showInactiveId}>Mostrar dados de baja</Label>
+            </div>
+          )}
+        </div>
+      )}
       {actions && <div className="flex flex-wrap items-center gap-2 sm:ml-auto">{actions}</div>}
     </div>
   );

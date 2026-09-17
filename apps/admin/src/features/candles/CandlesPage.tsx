@@ -22,7 +22,7 @@ import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domai
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 
 export default function CandlesPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   // includeWax: es el unico select del portal donde la cera SI es la respuesta.
@@ -33,8 +33,8 @@ export default function CandlesPage() {
   const [supplyRows, setSupplyRows] = useState<SupplyTemplateRow[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['candles', { page, search }],
-    queryFn: () => httpGet<Paginated<CandleDto>>('/candles', { page, search, limit: 20 }),
+    queryKey: ['candles', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<CandleDto>>('/candles', { page, search, onlyActive, limit: 20 }),
   });
 
   const { data: categories } = useQuery({
@@ -60,6 +60,15 @@ export default function CandlesPage() {
     onSuccess: () => {
       invalidate();
       toast.success('Vela dada de baja');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/candles/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Vela reactivada');
     },
     onError: (error) => toast.error((error as Error).message),
   });
@@ -124,6 +133,7 @@ export default function CandlesPage() {
       header: 'Insumos propios',
       cell: ({ row }) => <Badge variant="accent">{row.original.supplyTemplate?.length ?? 0}</Badge>,
     },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
@@ -132,9 +142,13 @@ export default function CandlesPage() {
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
             Editar
           </Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
-            Dar de baja
-          </Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
+              Dar de baja
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -144,6 +158,7 @@ export default function CandlesPage() {
     <div className="flex flex-col gap-4">
       <PageToolbar
         search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         actions={
           <Button onClick={openCreate}>
             <Plus className="size-4" /> Nueva vela

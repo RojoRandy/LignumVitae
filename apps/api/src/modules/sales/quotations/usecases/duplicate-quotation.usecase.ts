@@ -31,7 +31,7 @@ export class DuplicateQuotationUseCase implements UseCase<DuplicateQuotationArgs
       candleColor: item.candleColor ?? undefined,
       ribbonColor: item.ribbonColor ?? undefined,
       withFragrance: item.withFragrance,
-      fragranceName: item.fragranceName ?? undefined,
+      fragranceSupplyId: item.fragranceSupplyId ?? undefined,
       personalizationText: item.personalizationText ?? undefined,
       setupMinutesOverride: item.setupMinutesOverride ?? undefined,
       // Solo se conserva el override si de verdad hubo un ajuste manual.

@@ -194,7 +194,7 @@ export default function QuotationDetailPage() {
                   <div>
                     <p className="text-body-sm font-medium text-text">{item.product?.name}</p>
                     <p className="text-caption text-text-muted">
-                      {[item.candleColor, item.ribbonColor, item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
+                      {[item.candleColor, item.ribbonColor, item.withFragrance ? `Aroma${item.fragranceSupply?.name ? `: ${item.fragranceSupply.name}` : ''}` : null, item.personalizationText]
                         .filter(Boolean)
                         .join(' · ') || '—'}
                     </p>

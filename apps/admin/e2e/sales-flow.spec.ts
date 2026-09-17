@@ -17,6 +17,30 @@ const apiLogin = async (request: APIRequestContext): Promise<string> => {
   return body.data.accessToken as string;
 };
 
+// La base ya no trae catalogo precargado (ver Plans/.../plan.md, bloque C):
+// cada prueba que necesita un producto lo siembra por API, igual que ya
+// hacia con el cliente.
+const seedCatalogProduct = async (request: APIRequestContext, token: string) => {
+  const auth = { Authorization: `Bearer ${token}` };
+  const categoryRes = await request.post(`${API_URL}/categories`, {
+    headers: auth,
+    data: { name: `E2E Cat ${Date.now()}`, colorHex: '#8A9A5B' },
+  });
+  const category = (await categoryRes.json()).data;
+
+  const candleRes = await request.post(`${API_URL}/candles`, {
+    headers: auth,
+    data: { name: `E2E Candle ${Date.now()}`, categoryId: category.id, grams: 100 },
+  });
+  const candle = (await candleRes.json()).data;
+
+  const productRes = await request.post(`${API_URL}/products`, {
+    headers: auth,
+    data: { name: `E2E Product ${Date.now()}`, categoryId: category.id, kind: 'SIMPLE', candleId: candle.id },
+  });
+  return (await productRes.json()).data;
+};
+
 const seedSentQuotation = async (request: APIRequestContext, token: string) => {
   const auth = { Authorization: `Bearer ${token}` };
   const customerRes = await request.post(`${API_URL}/customers`, {
@@ -25,8 +49,7 @@ const seedSentQuotation = async (request: APIRequestContext, token: string) => {
   });
   const customer = (await customerRes.json()).data;
 
-  const productsRes = await request.get(`${API_URL}/products`, { headers: auth, params: { limit: 1 } });
-  const product = (await productsRes.json()).data.items[0];
+  const product = await seedCatalogProduct(request, token);
 
   const quotationRes = await request.post(`${API_URL}/quotations`, {
     headers: auth,
@@ -45,6 +68,7 @@ test('crea una cotizacion, agrega un renglon y ve el total calculado', async ({ 
     headers: { Authorization: `Bearer ${token}` },
     data: { fullName: `E2E Form ${Date.now()}`, phone: '5559876543' },
   });
+  await seedCatalogProduct(request, token);
 
   await loginAsAdmin(page);
   await page.goto('/cotizaciones/nueva');

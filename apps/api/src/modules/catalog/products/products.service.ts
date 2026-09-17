@@ -259,9 +259,13 @@ export class ProductsService {
       );
     }
 
+    // Cual es el tipo "cera" lo dice Configuracion por ID, no el texto del
+    // slug: asi el tipo se puede renombrar o borrar sin romper esto en
+    // silencio. Si nadie lo ha configurado, no hay nada que rechazar.
+    const { waxSupplyTypeId } = await this.settingsService.get();
     for (const s of dto.additionalSupplies ?? []) {
       const supply = await this.supplyRepository.findById(s.supplyId);
-      if (supply?.type.slug === 'WAX') {
+      if (waxSupplyTypeId !== null && supply?.typeId === waxSupplyTypeId) {
         throw InventoryErrors.Exceptions.SUPPLY_IS_WAX({ supplyId: s.supplyId });
       }
       items.push({ supplyId: s.supplyId, quantity: s.quantity, unitId: s.unitId, note: s.note, source: 'MANUAL' });

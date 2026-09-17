@@ -39,16 +39,12 @@ export class UnitsOfMeasureService {
   }
 
   async update(id: number, dto: UpdateUnitOfMeasureDto) {
-    const item = await this.findById(id);
-    if (item.isSystem && dto.slug !== undefined && dto.slug !== item.slug) {
-      throw InventoryErrors.Exceptions.SYSTEM_ROW_PROTECTED({ id });
-    }
+    await this.findById(id);
     return this.repository.update(id, dto);
   }
 
   async deactivate(id: number) {
-    const item = await this.findById(id);
-    if (item.isSystem) throw InventoryErrors.Exceptions.SYSTEM_ROW_PROTECTED({ id });
+    await this.findById(id);
     const dependents = await this.repository.countDependents(id);
     if (dependents > 0) throw CatalogErrors.Exceptions.HAS_DEPENDENTS({ suppliesUsingThisUnit: dependents });
     return this.repository.deactivate(id);

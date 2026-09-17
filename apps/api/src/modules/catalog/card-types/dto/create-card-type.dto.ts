@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 export class CardSupplyTemplateItemDto {
   @ApiProperty() @Type(() => Number) @IsInt() supplyId: number;
@@ -39,6 +39,11 @@ export class CreateCardTypeDto {
   @ValidateNested({ each: true })
   @Type(() => CardSupplyTemplateItemDto)
   supplyTemplate?: CardSupplyTemplateItemDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateCardTypeDto extends PartialType(CreateCardTypeDto) {}

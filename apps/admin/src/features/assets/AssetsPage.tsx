@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useFieldErrors } from '@/hooks/use-field-errors';
-import { httpDelete, httpPost, httpGet } from '@/lib/http';
+import { httpDelete, httpPatch, httpPost, httpGet } from '@/lib/http';
 import type { AssetDto, Paginated } from '@/lib/types';
 import { formatDate, formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ const KIND_OPTIONS = [
 ];
 
 export default function AssetsPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -36,8 +36,8 @@ export default function AssetsPage() {
   const [acquiredAt, setAcquiredAt] = useState<Date>(new Date());
 
   const { data, isLoading } = useQuery({
-    queryKey: ['assets', { page, search }],
-    queryFn: () => httpGet<Paginated<AssetDto>>('/assets', { page, search, limit: 20 }),
+    queryKey: ['assets', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<AssetDto>>('/assets', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['assets'] });
@@ -57,6 +57,15 @@ export default function AssetsPage() {
     onSuccess: () => {
       invalidate();
       toast.success('Activo retirado');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/assets/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Activo reactivado');
     },
     onError: (error) => toast.error((error as Error).message),
   });
@@ -88,12 +97,17 @@ export default function AssetsPage() {
     { header: 'Costo total', cell: ({ row }) => formatMoney(row.original.totalCost) },
     { header: 'Vida util', cell: ({ row }) => `${row.original.usefulLifeMonths} meses` },
     { header: 'Amortizacion mensual', cell: ({ row }) => formatMoney(Number(row.original.totalCost) / row.original.usefulLifeMonths) },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end">
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Retirar</Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Retirar</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -103,6 +117,7 @@ export default function AssetsPage() {
     <div className="flex flex-col gap-4">
       <PageToolbar
         search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         actions={
           <Button onClick={() => { clear(); setDialogOpen(true); }}>
             <Plus className="size-4" /> Nuevo activo
