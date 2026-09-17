@@ -49,7 +49,7 @@ export class CandlesService {
             create: dto.supplyTemplate.map((t) => ({
               supply: { connect: { id: t.supplyId } },
               quantity: t.quantity,
-              unit: t.unit,
+              unit: { connect: { id: t.unitId } },
               note: t.note,
             })),
           }
@@ -69,7 +69,7 @@ export class CandlesService {
     if (supplyTemplate) {
       await this.candleRepository.replaceSupplyTemplate(
         id,
-        supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unit: t.unit, note: t.note })),
+        supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unitId: t.unitId, note: t.note })),
       );
     }
     return this.findById(id);

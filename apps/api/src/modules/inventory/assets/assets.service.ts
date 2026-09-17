@@ -49,7 +49,9 @@ export class AssetsService {
 
   async update(id: number, dto: UpdateAssetDto) {
     await this.findById(id);
-    return this.assetRepository.update(id, dto as Prisma.AssetUpdateInput);
+    const data: Prisma.AssetUpdateInput = { ...dto };
+    if (dto.isActive === true) data.retiredAt = null;
+    return this.assetRepository.update(id, data);
   }
 
   async deactivate(id: number) {

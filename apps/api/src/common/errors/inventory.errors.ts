@@ -2,6 +2,22 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { ErrorResponseDto } from '../dto/response.dto';
 
 const Responses = {
+  SUPPLY_TYPE_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('SUPPLY_TYPE_NOT_FOUND', 'No se encontro el tipo de insumo', data),
+  UNIT_OF_MEASURE_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('UNIT_OF_MEASURE_NOT_FOUND', 'No se encontro la unidad de medida', data),
+  PERIOD_CLOSED: (data?: unknown) =>
+    new ErrorResponseDto(
+      'PERIOD_CLOSED',
+      'El mes de esta compra ya esta cerrado: reabrelo en Cierre mensual si necesitas corregirla',
+      data,
+    ),
+  PURCHASE_ITEM_NEEDS_DESCRIPTION: (data?: unknown) =>
+    new ErrorResponseDto(
+      'PURCHASE_ITEM_NEEDS_DESCRIPTION',
+      'El renglon no trae descripcion y no hay de donde derivarla: falta el insumo, el nombre del activo o la categoria de gasto',
+      data,
+    ),
   SUPPLY_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('SUPPLY_NOT_FOUND', 'No se encontro el insumo', data),
   SUPPLY_IS_WAX: (data?: unknown) =>
     new ErrorResponseDto(
@@ -23,6 +39,10 @@ const Responses = {
 };
 
 const Exceptions = {
+  SUPPLY_TYPE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.SUPPLY_TYPE_NOT_FOUND(data)),
+  UNIT_OF_MEASURE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.UNIT_OF_MEASURE_NOT_FOUND(data)),
+  PERIOD_CLOSED: (data?: unknown) => new BadRequestException(Responses.PERIOD_CLOSED(data)),
+  PURCHASE_ITEM_NEEDS_DESCRIPTION: (data?: unknown) => new BadRequestException(Responses.PURCHASE_ITEM_NEEDS_DESCRIPTION(data)),
   SUPPLY_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.SUPPLY_NOT_FOUND(data)),
   SUPPLY_IS_WAX: (data?: unknown) => new BadRequestException(Responses.SUPPLY_IS_WAX(data)),
   PURCHASE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.PURCHASE_NOT_FOUND(data)),

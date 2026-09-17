@@ -14,13 +14,14 @@ export interface QuotationLineCostingContext {
   laborRatePerMinute: number;
   overheadRatePerMinute: number;
   defaultWaxUnitCost: number;
-  fragrance: { unitCost: number; loadPct: number } | null;
+  fragranceLoadPct: number;
 }
 
 export interface QuotationLineCostingInput {
   quantity: number;
   setupMinutesOverride?: number | null;
   withFragrance: boolean;
+  fragranceUnitCost: number | null;
 }
 
 @Injectable()
@@ -44,7 +45,9 @@ export class QuotationLineCostingService {
     return this.calculator.compute(context, ctx.settings, ctx.laborRatePerMinute, ctx.overheadRatePerMinute, ctx.defaultWaxUnitCost, {
       prorationQuantity: input.quantity,
       setupMinutesTotal: input.setupMinutesOverride ?? undefined,
-      fragrance: input.withFragrance ? ctx.fragrance : null,
+      fragrance: input.withFragrance && input.fragranceUnitCost !== null
+        ? { unitCost: input.fragranceUnitCost, loadPct: ctx.fragranceLoadPct }
+        : null,
     });
   }
 }

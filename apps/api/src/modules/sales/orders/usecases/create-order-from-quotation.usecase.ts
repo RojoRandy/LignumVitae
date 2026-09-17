@@ -110,7 +110,7 @@ export class CreateOrderFromQuotationUseCase implements UseCase<CreateOrderFromQ
             candleColor: item.candleColor,
             ribbonColor: item.ribbonColor,
             withFragrance: item.withFragrance,
-            fragranceName: item.fragranceName,
+            fragranceName: item.fragranceSupply?.name ?? null,
             personalizationText: item.personalizationText,
             waxGramsPerUnit: item.waxGramsPerUnit,
             laborMinutesPerUnit: item.laborMinutesPerUnit,

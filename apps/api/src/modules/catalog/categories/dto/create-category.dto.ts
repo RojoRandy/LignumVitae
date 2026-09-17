@@ -35,6 +35,11 @@ export class CreateCategoryDto {
   @Type(() => Boolean)
   @IsBoolean()
   isVisibleOnLanding?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateCategoryDto extends PartialType(CreateCategoryDto) {}

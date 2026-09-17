@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { SupplyType, UnitOfMeasure } from '@prisma/client';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateSupplyDto {
   @ApiProperty({ example: 'Celofan transparente' })
@@ -14,13 +13,15 @@ export class CreateSupplyDto {
   @IsString()
   sku?: string;
 
-  @ApiProperty({ enum: SupplyType })
-  @IsEnum(SupplyType)
-  type: SupplyType;
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  typeId: number;
 
-  @ApiProperty({ enum: UnitOfMeasure })
-  @IsEnum(UnitOfMeasure)
-  unit: UnitOfMeasure;
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  unitId: number;
 
   @ApiProperty({ description: 'Costo por unidad base ($/g, $/pieza, etc.)' })
   @Type(() => Number)
@@ -34,11 +35,6 @@ export class CreateSupplyDto {
   @IsNumber()
   @Min(0)
   minStockQty?: number;
-
-  @ApiPropertyOptional({ example: 'bulto de 20 kg' })
-  @IsOptional()
-  @IsString()
-  defaultPackLabel?: string;
 
   @ApiPropertyOptional({ description: 'Cuantas unidades base trae ese "bulto"' })
   @IsOptional()
@@ -58,6 +54,16 @@ export class CreateSupplyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isFragrance?: boolean;
 }
 
 export class UpdateSupplyDto extends PartialType(CreateSupplyDto) {}

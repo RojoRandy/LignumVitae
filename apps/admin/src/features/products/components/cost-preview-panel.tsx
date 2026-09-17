@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { Link } from 'react-router';
 import { Card } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +34,17 @@ export const CostPreviewPanel = ({ input }: { input: PreviewCostInput }) => {
         <>
           <div className="flex flex-col gap-1.5">
             <MoneyRow label="Cera" value={formatMoney(data.breakdown.unitWaxCost)} muted />
+            {data.breakdown.unitWaxCost === 0 && data.breakdown.waxGramsPerUnit > 0 && (
+              // Un "$0.00" mudo con gramos de cera de por medio no es un costo:
+              // es que nadie ha dicho DE QUE insumo sale el precio del gramo.
+              // Sin este aviso el producto se guarda con el costo incompleto y
+              // el precio sale mas bajo de lo que cuesta producirlo.
+              <p className="rounded-input bg-warning-bg p-2 text-caption text-warning-fg">
+                Esta vela lleva {data.breakdown.waxGramsPerUnit} g de cera pero su costo es $0: falta elegir el insumo de
+                cera en <Link to="/configuracion" className="underline">Configuracion</Link>, o darle una cera propia a la
+                vela.
+              </p>
+            )}
             <MoneyRow label="Insumos" value={formatMoney(data.breakdown.unitSupplyCost)} muted />
             <MoneyRow label="Mano de obra" value={formatMoney(data.breakdown.unitLaborCost)} muted />
             <MoneyRow label="Gastos indirectos" value={formatMoney(data.breakdown.unitOverheadCost)} muted />

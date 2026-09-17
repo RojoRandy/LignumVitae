@@ -21,8 +21,7 @@
     "db:seed": "pnpm --filter @lignumvitae/api seed",
     "db:reset": "pnpm --filter @lignumvitae/api migrate:reset",
     "db:studio": "pnpm --filter @lignumvitae/api studio",
-    "gen:api": "pnpm --filter @lignumvitae/types gen",
-    "import:catalog": "pnpm --filter @lignumvitae/api import:catalog"
+    "gen:api": "pnpm --filter @lignumvitae/types gen"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

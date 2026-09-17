@@ -31,15 +31,37 @@ export interface CandleCategoryDto {
   updatedAt: string;
 }
 
-export type UnitOfMeasure = 'GRAM' | 'KILOGRAM' | 'MILLILITER' | 'LITER' | 'CENTIMETER' | 'METER' | 'PIECE' | 'SHEET';
+export interface SupplyTypeDto {
+  id: number;
+  slug: string;
+  name: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UnitOfMeasureDto {
+  id: number;
+  slug: string;
+  name: string;
+  abbr: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type SupplySource = 'CANDLE_TEMPLATE' | 'PACKAGING_TEMPLATE' | 'CARD_TEMPLATE' | 'MANUAL';
 
 export interface SupplyDto {
   id: number;
   name: string;
   sku: string | null;
-  type: string;
-  unit: UnitOfMeasure;
+  typeId: number;
+  unitId: number;
+  type: Omit<SupplyTypeDto, 'createdAt' | 'updatedAt'>;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   currentUnitCost: string;
   suggestedUnitCost: string | null;
   suggestedCostSampleSize: number;
@@ -51,6 +73,7 @@ export interface SupplyDto {
   yieldPerBaseUnit: string;
   notes: string | null;
   isActive: boolean;
+  isFragrance: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,7 +82,8 @@ export interface SupplyTemplateItemDto {
   id: number;
   supplyId: number;
   quantity: string;
-  unit: UnitOfMeasure;
+  unitId: number;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   note: string | null;
   supply: SupplyDto;
 }
@@ -123,7 +147,8 @@ export interface ProductSupplyDto {
   productId: number;
   supplyId: number;
   quantity: string;
-  unit: UnitOfMeasure;
+  unitId: number;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
   source: SupplySource;
   note: string | null;
   supply: SupplyDto;
@@ -227,7 +252,6 @@ export interface CustomerDto {
   id: number;
   fullName: string;
   phone: string;
-  whatsapp: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
@@ -262,7 +286,8 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   candleColor: string | null;
   ribbonColor: string | null;
   withFragrance: boolean;
-  fragranceName: string | null;
+  fragranceSupplyId: number | null;
+  fragranceSupply?: { id: number; name: string } | null;
   personalizationText: string | null;
   setupMinutesOverride: number | null;
   product?: { id: number; name: string };
@@ -518,7 +543,7 @@ export interface SettingsDto {
   meltBatchGrams: number;
   defaultWastePct: string;
   waxSupplyId: number | null;
-  fragranceSupplyId: number | null;
+  waxSupplyTypeId: number | null;
   fragranceLoadPct: string;
   fragranceSurcharge: string;
   overheadRateMode: 'DERIVED' | 'FIXED';
@@ -563,5 +588,5 @@ export interface LowStockSupplyRow {
   name: string;
   stock_qty: string;
   min_stock_qty: string;
-  unit: UnitOfMeasure;
+  unit: Omit<UnitOfMeasureDto, 'createdAt' | 'updatedAt'>;
 }

@@ -8,8 +8,8 @@ export class CandleRepository {
 
   private readonly include = {
     category: true,
-    supplyTemplate: { include: { supply: true } },
-    waxSupply: true,
+    supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } },
+    waxSupply: { include: { type: true, unit: true } },
   } satisfies Prisma.CandleInclude;
 
   findMany(args: Prisma.CandleFindManyArgs) {
@@ -24,7 +24,7 @@ export class CandleRepository {
     return this.prisma.candle.findUnique({ where: { id }, include: this.include });
   }
 
-  replaceSupplyTemplate(id: number, items: { supplyId: number; quantity: number; unit: Prisma.CandleSupplyTemplateCreateManyInput['unit']; note?: string }[]) {
+  replaceSupplyTemplate(id: number, items: { supplyId: number; quantity: number; unitId: number; note?: string }[]) {
     return this.prisma.$transaction([
       this.prisma.candleSupplyTemplate.deleteMany({ where: { candleId: id } }),
       this.prisma.candleSupplyTemplate.createMany({ data: items.map((i) => ({ ...i, candleId: id })) }),

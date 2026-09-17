@@ -5,7 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { httpDelete, httpGet } from '@/lib/http';
+import { httpDelete, httpPatch, httpGet } from '@/lib/http';
 import type { Paginated, ProductDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,14 @@ import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 
 export default function ProductsPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', { page, search }],
-    queryFn: () => httpGet<Paginated<ProductDto>>('/products', { page, search, limit: 20 }),
+    queryKey: ['products', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<ProductDto>>('/products', { page, search, onlyActive, limit: 20 }),
   });
 
   const removeMutation = useMutation({
@@ -29,6 +29,15 @@ export default function ProductsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Producto dado de baja');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/products/${id}`, { isActive: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Producto reactivado');
     },
     onError: (error) => toast.error((error as Error).message),
   });
@@ -70,6 +79,7 @@ export default function ProductsPage() {
       header: 'Estado',
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1.5">
+          <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge>
           {row.original.needsReview && (
             <Badge variant="warning">
               <AlertTriangle className="size-3" /> Revisar
@@ -91,9 +101,13 @@ export default function ProductsPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate(`/productos/${row.original.id}/editar`)}>
             Editar
           </Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
-            Dar de baja
-          </Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
+              Dar de baja
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -111,7 +125,10 @@ export default function ProductsPage() {
         }
       />
 
-      <PageToolbar search={{ value: search, onChange: setSearch, placeholder: 'Buscar productos...' }} />
+      <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar productos...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+      />
 
       <DataTable
         columns={columns}

@@ -1,6 +1,6 @@
 // Editor de lista de insumos, reutilizado por velas (mecha, colorante),
 // empaques (celofan, liston...) y tarjetas (etiqueta, tarjeta impresa). Cada
-// renglon es {supplyId, quantity, unit}; el unit se autocompleta con el del
+// renglon es {supplyId, quantity, unitId}; el unitId se autocompleta con el del
 // insumo elegido para no obligar a recapturarlo.
 import { Plus, Trash2 } from 'lucide-react';
 import { Select } from '@/components/ui/select';
@@ -9,18 +9,13 @@ import { RowField } from '@/components/ui/row-field';
 import { Button } from '@/components/ui/button';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { formatMoney } from '@/lib/format';
-import type { UnitOfMeasure } from '@/lib/types';
 
 export interface SupplyTemplateRow {
   supplyId: number | null;
   quantity: number | null;
-  unit: UnitOfMeasure;
+  unitId: number | null;
   note?: string;
 }
-
-const UNIT_ABBR: Record<UnitOfMeasure, string> = {
-  GRAM: 'g', KILOGRAM: 'kg', MILLILITER: 'ml', LITER: 'l', CENTIMETER: 'cm', METER: 'm', PIECE: 'pz', SHEET: 'pliegos',
-};
 
 export const SupplyTemplateEditor = ({
   rows,
@@ -39,7 +34,7 @@ export const SupplyTemplateEditor = ({
 
   const remove = (index: number) => onChange(rows.filter((_, i) => i !== index));
 
-  const add = () => onChange([...rows, { supplyId: null, quantity: 1, unit: 'PIECE' }]);
+  const add = () => onChange([...rows, { supplyId: null, quantity: 1, unitId: null }]);
 
   const totalCost = rows.reduce((acc, r) => {
     const supply = supplies.find((s) => s.id === r.supplyId);
@@ -61,7 +56,7 @@ export const SupplyTemplateEditor = ({
                 value={row.supplyId ? String(row.supplyId) : undefined}
                 onChange={(value) => {
                   const supply = supplies.find((s) => s.id === Number(value));
-                  update(index, { supplyId: Number(value), unit: supply?.unit ?? row.unit });
+                  update(index, { supplyId: Number(value), unitId: supply?.unitId ?? row.unitId });
                 }}
                 placeholder="Elegir insumo..."
               />
@@ -76,7 +71,7 @@ export const SupplyTemplateEditor = ({
                 id={`supply-template-quantity-${index}`}
                 step={0.0001}
                 min={0.0001}
-                unit={UNIT_ABBR[row.unit]}
+                unit={supplies.find((s) => s.id === row.supplyId)?.unit.abbr}
                 required
                 value={row.quantity}
                 onChange={(value) => update(index, { quantity: value })}

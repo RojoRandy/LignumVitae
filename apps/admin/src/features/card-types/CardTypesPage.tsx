@@ -20,7 +20,7 @@ import { FormError, PageToolbar } from '@/components/ui/page';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
 
 export default function CardTypesPage() {
-  const { page, search, setSearch, setPage } = useTableParams();
+  const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
@@ -29,8 +29,8 @@ export default function CardTypesPage() {
   const [supplyRows, setSupplyRows] = useState<SupplyTemplateRow[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['card-types', { page, search }],
-    queryFn: () => httpGet<Paginated<CardTypeDto>>('/card-types', { page, search, limit: 20 }),
+    queryKey: ['card-types', { page, search, onlyActive }],
+    queryFn: () => httpGet<Paginated<CardTypeDto>>('/card-types', { page, search, onlyActive, limit: 20 }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['card-types'] });
@@ -55,6 +55,15 @@ export default function CardTypesPage() {
     onError: (error) => toast.error((error as Error).message),
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (id: number) => httpPatch(`/card-types/${id}`, { isActive: true }),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Tarjeta reactivada');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
   const openCreate = () => {
     setEditing(null);
     setSupplyRows([]);
@@ -64,7 +73,7 @@ export default function CardTypesPage() {
 
   const openEdit = (item: CardTypeDto) => {
     setEditing(item);
-    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unit: t.unit, note: t.note ?? undefined })));
+    setSupplyRows((item.supplyTemplate ?? []).map((t) => ({ supplyId: t.supplyId, quantity: Number(t.quantity), unitId: t.unitId, note: t.note ?? undefined })));
     clear();
     setDialogOpen(true);
   };
@@ -80,7 +89,7 @@ export default function CardTypesPage() {
       heightCm: form.get('heightCm') ? Number(form.get('heightCm')) : undefined,
       printedSides: Number(form.get('printedSides') || 1),
       setupMinutes: Number(form.get('setupMinutes') || 0),
-      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unit: r.unit, note: r.note })),
+      supplyTemplate: validRows.map((r) => ({ supplyId: r.supplyId, quantity: r.quantity, unitId: r.unitId, note: r.note })),
     });
   };
 
@@ -95,13 +104,18 @@ export default function CardTypesPage() {
     { header: 'Caras impresas', accessorKey: 'printedSides' },
     { header: 'Min. diseno (por pedido)', accessorKey: 'setupMinutes' },
     { header: 'Insumos', cell: ({ row }) => <Badge variant="accent">{row.original.supplyTemplate?.length ?? 0}</Badge> },
+    { header: 'Estado', cell: ({ row }) => <Badge variant={row.original.isActive ? 'success' : 'neutral'}>{row.original.isActive ? 'Activo' : 'Baja'}</Badge> },
     {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
-          <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          {row.original.isActive ? (
+            <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => reactivateMutation.mutate(row.original.id)}>Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -111,6 +125,7 @@ export default function CardTypesPage() {
     <div className="flex flex-col gap-4">
       <PageToolbar
         search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         actions={
           <Button onClick={openCreate}>
             <Plus className="size-4" /> Nueva tarjeta

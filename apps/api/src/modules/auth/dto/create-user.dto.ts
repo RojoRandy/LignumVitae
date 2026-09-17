@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { UserRoles } from '@prisma/client';
 
 export class CreateUserDto {
@@ -21,6 +21,11 @@ export class CreateUserDto {
   @ApiPropertyOptional({ enum: UserRoles, default: UserRoles.employee })
   @IsEnum(UserRoles)
   role: UserRoles = UserRoles.employee;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

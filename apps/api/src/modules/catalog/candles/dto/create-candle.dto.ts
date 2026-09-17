@@ -1,12 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
-import { UnitOfMeasure } from '@prisma/client';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 export class CandleSupplyTemplateItemDto {
   @ApiProperty() @Type(() => Number) @IsInt() supplyId: number;
   @ApiProperty() @Type(() => Number) @IsNumber() @Min(0.0001) quantity: number;
-  @ApiProperty({ enum: UnitOfMeasure }) @IsEnum(UnitOfMeasure) unit: UnitOfMeasure;
+  @ApiProperty() @Type(() => Number) @IsInt() unitId: number;
   @ApiPropertyOptional() @IsOptional() @IsString() note?: string;
 }
 
@@ -64,6 +63,11 @@ export class CreateCandleDto {
   @ValidateNested({ each: true })
   @Type(() => CandleSupplyTemplateItemDto)
   supplyTemplate?: CandleSupplyTemplateItemDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateCandleDto extends PartialType(CreateCandleDto) {}

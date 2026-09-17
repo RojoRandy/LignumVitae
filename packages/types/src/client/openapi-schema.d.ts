@@ -372,6 +372,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/overhead-periods/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deshace un cierre hecho por error. Solo admin/super_user (ya viene del @Auth de la clase). */
+        post: operations["OverheadController_reopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/supplies": {
         parameters: {
             query?: never;
@@ -481,7 +498,8 @@ export interface paths {
         delete: operations["PurchasesController_deactivate"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Editar = cancelar la vieja y crear la corregida; toma el mismo cuerpo que el alta. */
+        patch: operations["PurchasesController_update"];
         trace?: never;
     };
     "/api/assets": {
@@ -564,6 +582,374 @@ export interface paths {
         patch: operations["ExpensesController_update"];
         trace?: never;
     };
+    "/api/supply-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupplyTypesController_findAll"];
+        put?: never;
+        post: operations["SupplyTypesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/supply-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SupplyTypesController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["SupplyTypesController_deactivate"];
+        options?: never;
+        head?: never;
+        patch: operations["SupplyTypesController_update"];
+        trace?: never;
+    };
+    "/api/units-of-measure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UnitsOfMeasureController_findAll"];
+        put?: never;
+        post: operations["UnitsOfMeasureController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/units-of-measure/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UnitsOfMeasureController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["UnitsOfMeasureController_deactivate"];
+        options?: never;
+        head?: never;
+        patch: operations["UnitsOfMeasureController_update"];
+        trace?: never;
+    };
+    "/api/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomersController_findAll"];
+        put?: never;
+        post: operations["CustomersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomersController_findById"];
+        put?: never;
+        post?: never;
+        delete: operations["CustomersController_deactivate"];
+        options?: never;
+        head?: never;
+        patch: operations["CustomersController_update"];
+        trace?: never;
+    };
+    "/api/quotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QuotationsController_findAll"];
+        put?: never;
+        post: operations["QuotationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QuotationsController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["QuotationsController_update"];
+        trace?: never;
+    };
+    "/api/quotations/preview-totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuotationsController_previewTotals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuotationsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuotationsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuotationsController_duplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QuotationsController_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_findById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/from-quotation/{quotationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_acceptFromQuotation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OrdersController_updateStatus"];
+        trace?: never;
+    };
+    "/api/orders/{orderId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsController_findByOrder"];
+        put?: never;
+        post: operations["PaymentsController_register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payments/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PaymentsController_cancel"];
+        trace?: never;
+    };
+    "/api/public/quotations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicQuotationsController_findByToken"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/quotations/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PublicQuotationsController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/quotations/{token}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PublicQuotationsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard/sales-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardController_getSalesStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -632,6 +1018,10 @@ export interface components {
             defaultWastePct?: number;
             waxSupplyId?: number;
             fragranceSupplyId?: number;
+            /** @description Que tipo de insumo es la cera (por id, no por slug) */
+            waxSupplyTypeId?: number;
+            /** @description Que tipo de insumo es el aroma (por id, no por slug) */
+            fragranceSupplyTypeId?: number;
             fragranceLoadPct?: number;
             fragranceSurcharge?: number;
             /** @enum {string} */
@@ -689,8 +1079,7 @@ export interface components {
         CandleSupplyTemplateItemDto: {
             supplyId: number;
             quantity: number;
-            /** @enum {string} */
-            unit: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            unitId: number;
             note?: string;
         };
         CreateCandleDto: {
@@ -754,8 +1143,7 @@ export interface components {
         PackagingSupplyTemplateItemDto: {
             supplyId: number;
             quantity: number;
-            /** @enum {string} */
-            unit: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            unitId: number;
             note?: string;
         };
         CreatePackagingTypeDto: {
@@ -793,8 +1181,7 @@ export interface components {
         CardSupplyTemplateItemDto: {
             supplyId: number;
             quantity: number;
-            /** @enum {string} */
-            unit: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            unitId: number;
             note?: string;
         };
         CreateCardTypeDto: {
@@ -835,8 +1222,7 @@ export interface components {
         ProductSupplyItemDto: {
             supplyId: number;
             quantity: number;
-            /** @enum {string} */
-            unit: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            unitId: number;
             note?: string;
         };
         PreviewProductCostDto: {
@@ -942,19 +1328,19 @@ export interface components {
             year: number;
             month: number;
         };
+        ReopenPeriodDto: {
+            year: number;
+            month: number;
+        };
         CreateSupplyDto: {
             /** @example Celofan transparente */
             name: string;
             sku?: string;
-            /** @enum {string} */
-            type: "WAX" | "FRAGRANCE" | "WICK" | "DYE" | "ALUMINUM_BASE" | "CELLOPHANE" | "RIBBON" | "LABEL" | "PRINTING" | "SEAL" | "BELL" | "SILICONE" | "BOX" | "TULLE" | "ACETATE" | "PAPER" | "OTHER";
-            /** @enum {string} */
-            unit: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            typeId: number;
+            unitId: number;
             /** @description Costo por unidad base ($/g, $/pieza, etc.) */
             currentUnitCost: number;
             minStockQty?: number;
-            /** @example bulto de 20 kg */
-            defaultPackLabel?: string;
             /** @description Cuantas unidades base trae ese "bulto" */
             defaultBaseQtyPerPack?: number;
             /** @description Ayuda de captura: de una unidad base salen N piezas usables */
@@ -965,15 +1351,11 @@ export interface components {
             /** @example Celofan transparente */
             name?: string;
             sku?: string;
-            /** @enum {string} */
-            type?: "WAX" | "FRAGRANCE" | "WICK" | "DYE" | "ALUMINUM_BASE" | "CELLOPHANE" | "RIBBON" | "LABEL" | "PRINTING" | "SEAL" | "BELL" | "SILICONE" | "BOX" | "TULLE" | "ACETATE" | "PAPER" | "OTHER";
-            /** @enum {string} */
-            unit?: "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "CENTIMETER" | "METER" | "PIECE" | "SHEET";
+            typeId?: number;
+            unitId?: number;
             /** @description Costo por unidad base ($/g, $/pieza, etc.) */
             currentUnitCost?: number;
             minStockQty?: number;
-            /** @example bulto de 20 kg */
-            defaultPackLabel?: string;
             /** @description Cuantas unidades base trae ese "bulto" */
             defaultBaseQtyPerPack?: number;
             /** @description Ayuda de captura: de una unidad base salen N piezas usables */
@@ -984,7 +1366,7 @@ export interface components {
             /** @enum {string} */
             kind: "SUPPLY" | "ASSET" | "EXPENSE";
             /** @example 20 kilos de cera */
-            description: string;
+            description?: string;
             /** @description Requerido si kind=SUPPLY */
             supplyId?: number;
             /** @description Si kind=ASSET y ya existe el activo (se le suma esta compra) */
@@ -1083,6 +1465,141 @@ export interface components {
             incurredAt?: string;
             /** @description Mes al que se imputa (YYYY-MM-01). Default: el mes de incurredAt */
             periodMonth?: string;
+        };
+        CreateSupplyTypeDto: {
+            /** @example Cera */
+            name: string;
+            /** @example WAX */
+            slug: string;
+            /** @default 0 */
+            sortOrder: number;
+        };
+        UpdateSupplyTypeDto: {
+            /** @example Cera */
+            name?: string;
+            /** @example WAX */
+            slug?: string;
+            /** @default 0 */
+            sortOrder: number;
+        };
+        CreateUnitOfMeasureDto: {
+            /** @example Gramo */
+            name: string;
+            /** @example GRAM */
+            slug: string;
+            /** @example g */
+            abbr: string;
+            /** @default 0 */
+            sortOrder: number;
+        };
+        UpdateUnitOfMeasureDto: {
+            /** @example Gramo */
+            name?: string;
+            /** @example GRAM */
+            slug?: string;
+            /** @example g */
+            abbr?: string;
+            /** @default 0 */
+            sortOrder: number;
+        };
+        CreateCustomerDto: {
+            fullName: string;
+            /** @example 3312345678 */
+            phone: string;
+            /** Format: email */
+            email?: string;
+            address?: string;
+            notes?: string;
+        };
+        UpdateCustomerDto: {
+            fullName?: string;
+            /** @example 3312345678 */
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            address?: string;
+            notes?: string;
+        };
+        CreateQuotationItemDto: {
+            productId: number;
+            quantity: number;
+            candleColor?: string;
+            ribbonColor?: string;
+            /** @default false */
+            withFragrance: boolean;
+            fragranceName?: string;
+            personalizationText?: string;
+            /** @description 0 = el cliente reutiliza el diseno, no se cobra */
+            setupMinutesOverride?: number;
+            /** @description Precio manual de este renglon; se valida contra el piso de margen */
+            unitPriceOverride?: number;
+        };
+        PreviewQuotationTotalsDto: {
+            items: components["schemas"]["CreateQuotationItemDto"][];
+            /** @default false */
+            discountEnabled: boolean;
+            /**
+             * @default PERCENTAGE
+             * @enum {string}
+             */
+            discountType: "PERCENTAGE" | "FIXED";
+            /** @default 0 */
+            discountValue: number;
+            /** @default 0 */
+            shippingCost: number;
+        };
+        CreateQuotationDto: {
+            customerId: number;
+            eventDate?: string;
+            notes?: string;
+            terms?: string;
+            /** @default false */
+            discountEnabled: boolean;
+            /**
+             * @default PERCENTAGE
+             * @enum {string}
+             */
+            discountType: "PERCENTAGE" | "FIXED";
+            /** @default 0 */
+            discountValue: number;
+            /** @default 0 */
+            shippingCost: number;
+            items: components["schemas"]["CreateQuotationItemDto"][];
+        };
+        UpdateQuotationDto: {
+            customerId?: number;
+            eventDate?: string;
+            notes?: string;
+            terms?: string;
+            /** @default false */
+            discountEnabled: boolean;
+            /**
+             * @default PERCENTAGE
+             * @enum {string}
+             */
+            discountType: "PERCENTAGE" | "FIXED";
+            /** @default 0 */
+            discountValue: number;
+            /** @default 0 */
+            shippingCost: number;
+            items?: components["schemas"]["CreateQuotationItemDto"][];
+        };
+        UpdateOrderStatusDto: {
+            /** @enum {string} */
+            status: "PENDING_DEPOSIT" | "CONFIRMED" | "IN_PRODUCTION" | "READY" | "DELIVERED" | "CANCELLED";
+        };
+        RegisterPaymentDto: {
+            amount: number;
+            /**
+             * @default TRANSFER
+             * @enum {string}
+             */
+            method: "CASH" | "TRANSFER" | "CARD" | "OTHER";
+            /** @description Marca si este pago es el anticipo que confirma el pedido */
+            isDeposit?: boolean;
+            reference?: string;
+            paidAt: string;
+            notes?: string;
         };
     };
     responses: never;
@@ -1981,6 +2498,27 @@ export interface operations {
             };
         };
     };
+    OverheadController_reopen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReopenPeriodDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     SuppliesController_findAll: {
         parameters: {
             query?: {
@@ -1989,7 +2527,7 @@ export interface operations {
                 search?: string;
                 /** @description Si es false, incluye tambien los registros dados de baja */
                 onlyActive?: boolean;
-                type?: "WAX" | "FRAGRANCE" | "WICK" | "DYE" | "ALUMINUM_BASE" | "CELLOPHANE" | "RIBBON" | "LABEL" | "PRINTING" | "SEAL" | "BELL" | "SILICONE" | "BOX" | "TULLE" | "ACETATE" | "PAPER" | "OTHER";
+                type?: string;
             };
             header?: never;
             path?: never;
@@ -2022,7 +2560,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2077,7 +2617,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2096,7 +2638,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2119,7 +2663,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2138,7 +2684,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2221,6 +2769,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    PurchasesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2457,6 +3030,753 @@ export interface operations {
                 "application/json": components["schemas"]["UpdateExpenseDto"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupplyTypesController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupplyTypesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupplyTypeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupplyTypesController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupplyTypesController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SupplyTypesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupplyTypeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UnitsOfMeasureController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UnitsOfMeasureController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUnitOfMeasureDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UnitsOfMeasureController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UnitsOfMeasureController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UnitsOfMeasureController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUnitOfMeasureDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomersController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomersController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomersController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuotationsController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+                status?: "DRAFT" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+                customerId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuotationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuotationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuotationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_previewTotals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewQuotationTotalsDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_duplicate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QuotationsController_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+                status?: "PENDING_DEPOSIT" | "CONFIRMED" | "IN_PRODUCTION" | "READY" | "DELIVERED" | "CANCELLED";
+                customerId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrdersController_findById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    OrdersController_acceptFromQuotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                quotationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    OrdersController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrderStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    PaymentsController_findByOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    PaymentsController_register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPaymentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    PaymentsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    PublicQuotationsController_findByToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicQuotationsController_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicQuotationsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DashboardController_getSalesStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

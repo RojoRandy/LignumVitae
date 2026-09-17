@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
-import type { CandleCategoryDto, CandleDto, CardTypeDto, Paginated, PackagingTypeDto, ProductDto } from '@/lib/types';
+import type { CandleCategoryDto, CandleDto, CardTypeDto, Paginated, PackagingTypeDto, ProductDto, SupplyTemplateItemDto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
@@ -21,11 +21,13 @@ import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { FormError, PageHeader } from '@/components/ui/page';
 import { CostPreviewPanel } from './components/cost-preview-panel';
 import { PriceOverrideCard } from './components/price-override-card';
 import { DuplicateWithPackaging } from './components/duplicate-with-packaging';
 import type { PreviewCostInput } from './use-product-cost-preview';
+import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
 
 export default function ProductWizardPage() {
   const { id } = useParams();
@@ -48,6 +50,7 @@ export default function ProductWizardPage() {
   const [allowsFragrance, setAllowsFragrance] = useState(true);
   const [isVisibleOnLanding, setIsVisibleOnLanding] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [additionalSupplies, setAdditionalSupplies] = useState<SupplyTemplateRow[]>([]);
 
   const { data: existing } = useQuery({
     queryKey: ['products', id],
@@ -71,6 +74,11 @@ export default function ProductWizardPage() {
     setAllowsFragrance(existing.allowsFragrance);
     setIsVisibleOnLanding(existing.isVisibleOnLanding);
     setIsFeatured(existing.isFeatured);
+    setAdditionalSupplies(
+      (existing.supplies ?? [])
+        .filter((sup) => sup.source === 'MANUAL')
+        .map((sup) => ({ supplyId: sup.supplyId, quantity: Number(sup.quantity), unitId: sup.unitId })),
+    );
   }, [existing]);
 
   const { data: categories } = useQuery({
@@ -99,6 +107,56 @@ export default function ProductWizardPage() {
   const cardOptions = (cardTypes?.items ?? []).map((c) => ({ value: String(c.id), label: c.name }));
   const categoryOptions = (categories?.items ?? []).map((c) => ({ value: String(c.id), label: c.name }));
 
+  const validAdditionalSupplies = useMemo(
+    () =>
+      additionalSupplies
+        .filter((row) => row.supplyId && row.unitId)
+        .map((row) => ({ supplyId: row.supplyId as number, quantity: row.quantity ?? 0, unitId: row.unitId as number })),
+    [additionalSupplies],
+  );
+
+  /*
+   * Los insumos heredados NO se piden aparte: las tres listas que el asistente
+   * ya tiene en memoria (velas, empaques, tarjetas) vienen con su
+   * supplyTemplate incluido, asi que esto se deriva durante el render. El
+   * servidor calcula exactamente lo mismo al guardar; aqui solo se ENSENA,
+   * que es lo que faltaba: se heredaban en silencio y el usuario volvia a
+   * capturar a mano el celofan que ya venia del empaque.
+   */
+  const inheritedSupplies = useMemo(() => {
+    const rows: { supplyId: number; name: string; quantity: number; abbr: string; origin: string }[] = [];
+    const pushTemplate = (template: SupplyTemplateItemDto[] | undefined, origin: string, times = 1) =>
+      (template ?? []).forEach((t) =>
+        rows.push({
+          supplyId: t.supplyId,
+          name: t.supply.name,
+          quantity: Number(t.quantity) * times,
+          abbr: t.unit.abbr,
+          origin,
+        }),
+      );
+
+    if (kind === 'BOUQUET') {
+      components.forEach((c) => {
+        const candle = candles?.items.find((x) => x.id === c.candleId);
+        pushTemplate(candle?.supplyTemplate, 'Vela', c.quantity ?? 1);
+      });
+    } else {
+      pushTemplate(candles?.items.find((c) => String(c.id) === candleId)?.supplyTemplate, 'Vela');
+    }
+    pushTemplate(packagingTypes?.items.find((p) => String(p.id) === packagingTypeId)?.supplyTemplate, 'Empaque');
+    pushTemplate(cardTypes?.items.find((c) => String(c.id) === cardTypeId)?.supplyTemplate, 'Tarjeta');
+
+    // Un mismo insumo repetido entre las velas del ramo se suma en un solo
+    // renglon, igual que hace el servidor.
+    const merged = new Map<number, (typeof rows)[number]>();
+    rows.forEach((row) => {
+      const previous = merged.get(row.supplyId);
+      merged.set(row.supplyId, previous ? { ...previous, quantity: previous.quantity + row.quantity } : row);
+    });
+    return [...merged.values()];
+  }, [kind, components, candles, candleId, packagingTypes, packagingTypeId, cardTypes, cardTypeId]);
+
   const previewInput: PreviewCostInput = useMemo(
     () => ({
       kind,
@@ -109,8 +167,9 @@ export default function ProductWizardPage() {
       extraPackMinutes,
       assemblyMinutes,
       components: components.filter((c) => c.candleId).map((c) => ({ candleId: c.candleId as number, quantity: c.quantity ?? 1 })),
+      additionalSupplies: validAdditionalSupplies,
     }),
-    [kind, candleId, packagingTypeId, cardTypeId, extraSetupMinutes, extraPackMinutes, assemblyMinutes, components],
+    [kind, candleId, packagingTypeId, cardTypeId, extraSetupMinutes, extraPackMinutes, assemblyMinutes, components, validAdditionalSupplies],
   );
 
   const saveMutation = useMutation({
@@ -170,6 +229,7 @@ export default function ProductWizardPage() {
       isVisibleOnLanding,
       isFeatured,
       components: kind === 'BOUQUET' ? components.filter((c) => c.candleId).map((c) => ({ candleId: c.candleId, quantity: c.quantity ?? 1 })) : undefined,
+      additionalSupplies: validAdditionalSupplies,
     });
   };
 
@@ -287,31 +347,66 @@ export default function ProductWizardPage() {
             </div>
           </Card>
 
-          {isEditing && existing && <PriceOverrideCard product={existing} />}
+          <Card className="flex flex-col gap-4 p-4">
+            <h3 className="text-body font-semibold text-text">Insumos</h3>
 
-          <Card className="flex flex-col gap-3 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Permite aroma</p>
-                <p className="text-caption text-text-muted">Se cobra y se elige en cada cotizacion</p>
+            {inheritedSupplies.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-body-sm font-medium text-text">Vienen incluidos</p>
+                <ul className="flex flex-col gap-1">
+                  {inheritedSupplies.map((row) => (
+                    <li key={row.supplyId} className="flex items-center justify-between gap-2 text-body-sm text-text-muted">
+                      <span>{row.name}</span>
+                      <span className="flex items-center gap-2">
+                        <span>{row.quantity} {row.abbr}</span>
+                        <Badge variant="neutral">{row.origin}</Badge>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-caption text-text-faint">
+                  Se cambian cambiando la vela, el empaque o la tarjeta.
+                </p>
               </div>
-              <Switch checked={allowsFragrance} onCheckedChange={setAllowsFragrance} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Visible en la landing</p>
-                <p className="text-caption text-text-muted">Sin precios, solo catalogo</p>
+            )}
+
+            <SupplyTemplateEditor
+              rows={additionalSupplies}
+              onChange={setAdditionalSupplies}
+              label="Insumos adicionales"
+            />
+            {additionalSupplies.some((row) => row.supplyId && inheritedSupplies.some((i) => i.supplyId === row.supplyId)) && (
+              <p className="text-caption text-text-muted">
+                Un insumo adicional que ya viene incluido reemplaza a la cantidad heredada, no se suma.
+              </p>
+            )}
+
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Permite aroma</p>
+                  <p className="text-caption text-text-muted">Se cobra y se elige en cada cotizacion</p>
+                </div>
+                <Switch checked={allowsFragrance} onCheckedChange={setAllowsFragrance} />
               </div>
-              <Switch checked={isVisibleOnLanding} onCheckedChange={setIsVisibleOnLanding} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-sm font-medium text-text">Producto destacado</p>
-                <p className="text-caption text-text-muted">Aparece en "Destacados" del dashboard y primero en la landing</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Visible en la landing</p>
+                  <p className="text-caption text-text-muted">Sin precios, solo catalogo</p>
+                </div>
+                <Switch checked={isVisibleOnLanding} onCheckedChange={setIsVisibleOnLanding} />
               </div>
-              <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Producto destacado</p>
+                  <p className="text-caption text-text-muted">Aparece en "Destacados" del dashboard y primero en la landing</p>
+                </div>
+                <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
+              </div>
             </div>
           </Card>
+
+          {isEditing && existing && <PriceOverrideCard product={existing} />}
 
           <FormError>{formError}</FormError>
 

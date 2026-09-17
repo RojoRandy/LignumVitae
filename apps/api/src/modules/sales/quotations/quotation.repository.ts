@@ -4,7 +4,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 
 export const quotationInclude = {
   customer: true,
-  items: { include: { product: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } },
+  items: { include: { product: { select: { id: true, name: true } }, fragranceSupply: { select: { id: true, name: true } } }, orderBy: { sortOrder: 'asc' } },
   order: { select: { id: true, folio: true } },
 } satisfies Prisma.QuotationInclude;
 

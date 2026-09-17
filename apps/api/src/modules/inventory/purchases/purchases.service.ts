@@ -49,6 +49,26 @@ export class PurchasesService {
   }
 
   async create(dto: CreatePurchaseDto) {
+    const affectedSupplyIds = new Set<number>();
+    const purchase = await this.purchaseRepository.runInTransaction((tx) => this.createWithin(tx, dto, affectedSupplyIds));
+
+    // El costo sugerido se recalcula DESPUES de la transaccion (no bloquea
+    // el registro de la compra si algo tarda) y nunca se aplica solo.
+    await Promise.all([...affectedSupplyIds].map((id) => this.suppliesService.recalculateSuggestedCost(id)));
+
+    return this.findById(purchase.id);
+  }
+
+  /**
+   * El cuerpo de create(), sin transaccion propia, para que editar una compra
+   * pueda cancelar la vieja y crear la corregida en UNA sola transaccion: si
+   * la segunda mitad falla, la cancelacion tampoco queda escrita.
+   */
+  private async createWithin(
+    tx: Prisma.TransactionClient,
+    dto: CreatePurchaseDto,
+    affectedSupplyIds: Set<number>,
+  ) {
     const settings = await this.settingsService.get();
     const purchasedAt = new Date(dto.purchasedAt);
     const year = purchasedAt.getUTCFullYear();
@@ -65,10 +85,7 @@ export class PurchasesService {
 
     const folio = await this.folioService.next('purchase', settings.purchaseFolioPrefix, year);
 
-    const affectedSupplyIds = new Set<number>();
-
-    const purchase = await this.purchaseRepository.runInTransaction(async (tx) => {
-      const created = await tx.purchase.create({
+    const created = await tx.purchase.create({
         data: {
           folio,
           purchasedAt,
@@ -84,6 +101,26 @@ export class PurchasesService {
 
       for (let i = 0; i < dto.items.length; i++) {
         const item = dto.items[i];
+        let description = item.description || '';
+        if (!description) {
+          if (item.kind === PurchaseLineKind.SUPPLY && item.supplyId) {
+            const supply = await tx.supply.findUniqueOrThrow({ where: { id: item.supplyId } });
+            description = supply.name;
+          } else if (item.kind === PurchaseLineKind.ASSET) {
+            description = item.assetName || '';
+          } else if (item.kind === PurchaseLineKind.EXPENSE && item.expenseCategoryId) {
+            const category = await tx.expenseCategory.findUniqueOrThrow({ where: { id: item.expenseCategoryId } });
+            description = category.name;
+          }
+          // Antes description era obligatoria y nada podia quedar sin nombre.
+          // Ahora que se deriva, un renglon al que le falta ADEMAS su origen
+          // (el insumo, el nombre del activo, la categoria) crearia un activo
+          // llamado "" en vez de fallar. Se corta aqui, en el unico punto por
+          // el que pasan los tres tipos de renglon.
+          if (!description) {
+            throw InventoryErrors.Exceptions.PURCHASE_ITEM_NEEDS_DESCRIPTION({ index: i, kind: item.kind });
+          }
+        }
         const lineTotal = lineTotals[i];
         const allocatedShipping = allocations[i] ?? 0;
         const baseQuantity = item.packsQty * item.baseQtyPerPack;
@@ -94,7 +131,7 @@ export class PurchasesService {
         if (item.kind === PurchaseLineKind.ASSET && !assetId) {
           const asset = await tx.asset.create({
             data: {
-              name: item.assetName ?? item.description,
+              name: item.assetName ?? description,
               kind: item.assetKind ?? 'MOLD',
               acquiredAt: purchasedAt,
               quantity: Math.round(item.packsQty),
@@ -106,9 +143,13 @@ export class PurchasesService {
           assetId = asset.id;
         } else if (item.kind === PurchaseLineKind.ASSET && assetId) {
           // Se suma a un activo existente (p. ej. comprar 3 moldes mas del mismo tipo).
+          // isActive vuelve a true a proposito: al EDITAR una compra, la
+          // cancelacion previa deja el activo en baja si era su unico
+          // renglon, y sin esto la compra corregida le devolveria las piezas
+          // a un activo que quedo invisible en el portal.
           await tx.asset.update({
             where: { id: assetId },
-            data: { quantity: { increment: Math.round(item.packsQty) }, totalCost: { increment: lineTotal } },
+            data: { quantity: { increment: Math.round(item.packsQty) }, totalCost: { increment: lineTotal }, isActive: true },
           });
         }
 
@@ -116,7 +157,7 @@ export class PurchasesService {
           data: {
             purchaseId: created.id,
             kind: item.kind,
-            description: item.description,
+            description,
             supplyId: item.kind === PurchaseLineKind.SUPPLY ? item.supplyId : null,
             assetId: item.kind === PurchaseLineKind.ASSET ? assetId : null,
             expenseCategoryId: item.kind === PurchaseLineKind.EXPENSE ? item.expenseCategoryId : null,
@@ -153,7 +194,7 @@ export class PurchasesService {
             data: {
               categoryId: item.expenseCategoryId,
               source: 'PURCHASE',
-              description: item.description,
+              description,
               amount: lineTotal,
               periodMonth,
               incurredAt: purchasedAt,
@@ -164,27 +205,115 @@ export class PurchasesService {
         }
       }
 
-      return created;
-    });
-
-    // El costo sugerido se recalcula DESPUES de la transaccion (no bloquea
-    // el registro de la compra si algo tarda) y nunca se aplica solo.
-    await Promise.all([...affectedSupplyIds].map((id) => this.suppliesService.recalculateSuggestedCost(id)));
-
-    return this.findById(purchase.id);
+    return created;
   }
 
+  /**
+   * Cancelar revierte TODO lo que la compra creo, no solo el stock: hasta
+   * ahora el activo comprado, el gasto del mes y el costo sugerido se
+   * quedaban vivos despues de cancelar.
+   */
   async deactivate(id: number) {
     const purchase = await this.findById(id);
+    // Cancelar dos veces NO revierte dos veces: sin esto, un doble click
+    // decrementa el activo dos veces y lo deja en negativo.
+    if (!purchase.isActive) return purchase;
+
+    const affectedSupplyIds = new Set<number>();
     await this.purchaseRepository.runInTransaction(async (tx) => {
-      await tx.purchase.update({ where: { id }, data: { isActive: false } });
-      // Revertir los movimientos de stock que esta compra genero.
-      const movements = await tx.stockMovement.findMany({ where: { refType: 'purchase_item', refId: { in: purchase.items.map((i) => i.id) } } });
-      for (const movement of movements) {
-        await tx.stockMovement.update({ where: { id: movement.id }, data: { isActive: false } });
-        await this.supplyRepository.recalculateStock(movement.supplyId, tx);
-      }
+      await this.assertPeriodOpen(tx, purchase.purchasedAt);
+      await this.revertWithin(tx, purchase, affectedSupplyIds);
     });
+
+    await Promise.all([...affectedSupplyIds].map((sid) => this.suppliesService.recalculateSuggestedCost(sid)));
     return this.findById(id);
+  }
+
+  /**
+   * Editar una compra = cancelar la vieja y crear la corregida, en una sola
+   * transaccion. No es un diff de renglones: recalcular el prorrateo de flete
+   * y los movimientos de stock renglon por renglon contra lo que ya estaba
+   * escrito es mucho mas facil de descuadrar que volver a empezar.
+   *
+   * La compra corregida toma folio nuevo. La cancelada se queda visible, con
+   * el suyo, como rastro de la correccion.
+   */
+  async update(id: number, dto: CreatePurchaseDto) {
+    const purchase = await this.findById(id);
+    if (!purchase.isActive) throw InventoryErrors.Exceptions.PURCHASE_NOT_FOUND({ id });
+
+    const affectedSupplyIds = new Set<number>();
+    const created = await this.purchaseRepository.runInTransaction(async (tx) => {
+      // Los DOS meses: el de la compra original y el de la corregida, por si
+      // la edicion mueve la fecha a un mes que ya esta cerrado.
+      await this.assertPeriodOpen(tx, purchase.purchasedAt);
+      await this.assertPeriodOpen(tx, new Date(dto.purchasedAt));
+      await this.revertWithin(tx, purchase, affectedSupplyIds);
+      return this.createWithin(tx, dto, affectedSupplyIds);
+    });
+
+    await Promise.all([...affectedSupplyIds].map((sid) => this.suppliesService.recalculateSuggestedCost(sid)));
+    return this.findById(created.id);
+  }
+
+  /** Deshace las cuatro escrituras de una compra: stock, gasto y activo. */
+  private async revertWithin(
+    tx: Prisma.TransactionClient,
+    purchase: Awaited<ReturnType<PurchasesService['findById']>>,
+    affectedSupplyIds: Set<number>,
+  ) {
+    const itemIds = purchase.items.map((i) => i.id);
+    await tx.purchase.update({ where: { id: purchase.id }, data: { isActive: false } });
+
+    // 1. Stock: los movimientos se dan de baja y stockQty se RECALCULA desde
+    //    los movimientos vivos, nunca por delta.
+    const movements = await tx.stockMovement.findMany({ where: { refType: 'purchase_item', refId: { in: itemIds } } });
+    for (const movement of movements) {
+      await tx.stockMovement.update({ where: { id: movement.id }, data: { isActive: false } });
+      await this.supplyRepository.recalculateStock(movement.supplyId, tx);
+      affectedSupplyIds.add(movement.supplyId);
+    }
+
+    // 2. Gasto del periodo: baja logica, para que el historico siga auditable.
+    await tx.expense.updateMany({
+      where: { refType: 'purchase_item', refId: { in: itemIds } },
+      data: { isActive: false },
+    });
+
+    // 3. Activos: se decrementa EXACTAMENTE lo que sumo este renglon. Una sola
+    //    rama cubre los dos casos, sin columna nueva: un activo creado por esta
+    //    compra se queda en 0 y se da de baja (ya no le quedan renglones
+    //    vivos); uno al que solo se le sumaron piezas vuelve a su numero y
+    //    sigue vivo.
+    for (const item of purchase.items) {
+      if (item.kind !== PurchaseLineKind.ASSET || !item.assetId) continue;
+      await tx.asset.update({
+        where: { id: item.assetId },
+        data: {
+          quantity: { decrement: Math.round(Number(item.packsQty)) },
+          totalCost: { decrement: item.lineTotal },
+        },
+      });
+      const stillUsed = await tx.purchaseItem.count({
+        where: { assetId: item.assetId, purchase: { isActive: true } },
+      });
+      if (stillUsed === 0) {
+        await tx.asset.update({ where: { id: item.assetId }, data: { isActive: false } });
+      }
+    }
+  }
+
+  /**
+   * Un mes cerrado congela su bolsa de gastos y la tasa por minuto con la que
+   * ya se costearon pedidos de ese mes. Tocar una compra suya dejaria el
+   * cierre mintiendo, asi que no se deja.
+   */
+  private async assertPeriodOpen(tx: Prisma.TransactionClient, date: Date) {
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const period = await tx.overheadPeriod.findUnique({ where: { year_month: { year, month } } });
+    if (period?.closedAt) {
+      throw InventoryErrors.Exceptions.PERIOD_CLOSED({ year, month });
+    }
   }
 }

@@ -6,6 +6,7 @@
 // que Swagger documente el mismo objeto que se lanza en runtime.
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   InternalServerErrorException,
   NotFoundException,
@@ -32,6 +33,10 @@ const Responses = {
     new ErrorResponseDto('EMPTY_TOKEN', 'Falta el token de autenticacion', data),
   INSUFFICIENT_ROLE: (data?: unknown) =>
     new ErrorResponseDto('INSUFFICIENT_ROLE', 'No tienes permisos para realizar esta accion', data),
+  DUPLICATE_VALUE: (data?: unknown) =>
+    new ErrorResponseDto('DUPLICATE_VALUE', 'Ya existe un registro con ese mismo valor', data),
+  RECORD_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('RECORD_NOT_FOUND', 'El registro que se intento modificar ya no existe', data),
 };
 
 const Exceptions = {
@@ -44,6 +49,8 @@ const Exceptions = {
   INVALID_TOKEN: (data?: unknown) => new UnauthorizedException(Responses.INVALID_TOKEN(data)),
   EMPTY_TOKEN: (data?: unknown) => new UnauthorizedException(Responses.EMPTY_TOKEN(data)),
   INSUFFICIENT_ROLE: (data?: unknown) => new ForbiddenException(Responses.INSUFFICIENT_ROLE(data)),
+  DUPLICATE_VALUE: (data?: unknown) => new ConflictException(Responses.DUPLICATE_VALUE(data)),
+  RECORD_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.RECORD_NOT_FOUND(data)),
 };
 
 export const CommonErrors = { Responses, Exceptions };

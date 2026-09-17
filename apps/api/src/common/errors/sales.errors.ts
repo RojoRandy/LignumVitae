@@ -21,6 +21,8 @@ const Responses = {
     ),
   BELOW_MIN_MARGIN: (data?: unknown) =>
     new ErrorResponseDto('BELOW_MIN_MARGIN', 'El precio fijado deja menos margen del minimo permitido', data),
+  INVALID_FRAGRANCE_SUPPLY: (data?: unknown) =>
+    new ErrorResponseDto('INVALID_FRAGRANCE_SUPPLY', 'El aroma elegido no existe, esta dado de baja o ya no esta marcado como aroma', data),
   QUOTATION_EMPTY: (data?: unknown) =>
     new ErrorResponseDto('QUOTATION_EMPTY', 'La cotizacion necesita al menos un renglon', data),
   QUOTATION_NOT_EDITABLE: (data?: unknown) =>
@@ -42,6 +44,7 @@ const Exceptions = {
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTE_REQUEST_NOT_FOUND(data)),
   LEAD_TIME_TOO_SHORT: (data?: unknown) => new BadRequestException(Responses.LEAD_TIME_TOO_SHORT(data)),
   BELOW_MIN_MARGIN: (data?: unknown) => new BadRequestException(Responses.BELOW_MIN_MARGIN(data)),
+  INVALID_FRAGRANCE_SUPPLY: (data?: unknown) => new BadRequestException(Responses.INVALID_FRAGRANCE_SUPPLY(data)),
   QUOTATION_EMPTY: (data?: unknown) => new BadRequestException(Responses.QUOTATION_EMPTY(data)),
   QUOTATION_NOT_EDITABLE: (data?: unknown) => new BadRequestException(Responses.QUOTATION_NOT_EDITABLE(data)),
   QUOTATION_NOT_ACCEPTABLE: (data?: unknown) => new BadRequestException(Responses.QUOTATION_NOT_ACCEPTABLE(data)),

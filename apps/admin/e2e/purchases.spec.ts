@@ -14,12 +14,12 @@ test.beforeEach(async ({ page }) => {
 
 test('renglon de insumo: los 3 numericos tienen etiqueta visible', async ({ page }) => {
   await page.getByRole('button', { name: '+ Insumo' }).click();
-  await expect(page.getByLabel('Paquetes', { exact: false })).toBeVisible();
+  await expect(page.getByLabel('Cantidad', { exact: false })).toBeVisible();
   // getByRole('textbox', ...) en vez de getByLabel: el mismo texto tambien
   // es el aria-label del boton de informacion junto al campo (ver
   // RowField.tooltip), asi que getByLabel resuelve a 2 elementos.
-  await expect(page.getByRole('textbox', { name: /Contenido \/ paquete/ })).toBeVisible();
-  await expect(page.getByLabel('Precio / paquete', { exact: false })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: /Contenido por unidad/ })).toBeVisible();
+  await expect(page.getByLabel('Precio unitario', { exact: false })).toBeVisible();
 });
 
 test('renglon de molde: descripcion arriba a lo ancho, 3 numericos abajo, y se puede elegir Herramienta', async ({ page }) => {

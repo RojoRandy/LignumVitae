@@ -12,6 +12,53 @@ loadEnv({ path: path.resolve(process.cwd(), '../../.env') });
 
 const prisma = new PrismaClient();
 
+async function seedUnitsAndSupplyTypes() {
+  const supplyTypes = [
+    { slug: 'WAX', name: 'Cera', sortOrder: 10 },
+    { slug: 'FRAGRANCE', name: 'Aroma', sortOrder: 20 },
+    { slug: 'WICK', name: 'Mecha', sortOrder: 30 },
+    { slug: 'DYE', name: 'Colorante', sortOrder: 40 },
+    { slug: 'ALUMINUM_BASE', name: 'Base de aluminio', sortOrder: 50 },
+    { slug: 'CELLOPHANE', name: 'Celofan', sortOrder: 60 },
+    { slug: 'RIBBON', name: 'Liston', sortOrder: 70 },
+    { slug: 'LABEL', name: 'Etiqueta', sortOrder: 80 },
+    { slug: 'PRINTING', name: 'Impresion', sortOrder: 90 },
+    { slug: 'SEAL', name: 'Sello', sortOrder: 100 },
+    { slug: 'BELL', name: 'Cascabel', sortOrder: 110 },
+    { slug: 'SILICONE', name: 'Silicon', sortOrder: 120 },
+    { slug: 'BOX', name: 'Caja', sortOrder: 130 },
+    { slug: 'TULLE', name: 'Tul', sortOrder: 140 },
+    { slug: 'ACETATE', name: 'Acetato', sortOrder: 150 },
+    { slug: 'PAPER', name: 'Papel', sortOrder: 160 },
+    { slug: 'OTHER', name: 'Otro', sortOrder: 170 },
+  ];
+
+  for (const type of supplyTypes) {
+    const existing = await prisma.supplyType.findUnique({ where: { slug: type.slug } });
+    if (existing) continue;
+    await prisma.supplyType.create({ data: type });
+  }
+  console.log(`Tipos de insumo sembrados (${supplyTypes.length}).`);
+
+  const units = [
+    { slug: 'GRAM', name: 'Gramo', abbr: 'g', sortOrder: 10 },
+    { slug: 'KILOGRAM', name: 'Kilogramo', abbr: 'kg', sortOrder: 20 },
+    { slug: 'MILLILITER', name: 'Mililitro', abbr: 'ml', sortOrder: 30 },
+    { slug: 'LITER', name: 'Litro', abbr: 'l', sortOrder: 40 },
+    { slug: 'CENTIMETER', name: 'Centimetro', abbr: 'cm', sortOrder: 50 },
+    { slug: 'METER', name: 'Metro', abbr: 'm', sortOrder: 60 },
+    { slug: 'PIECE', name: 'Pieza', abbr: 'pz', sortOrder: 70 },
+    { slug: 'SHEET', name: 'Pliego', abbr: 'pliegos', sortOrder: 80 },
+  ];
+
+  for (const unit of units) {
+    const existing = await prisma.unitOfMeasure.findUnique({ where: { slug: unit.slug } });
+    if (existing) continue;
+    await prisma.unitOfMeasure.create({ data: unit });
+  }
+  console.log(`Unidades de medida sembradas (${units.length}).`);
+}
+
 async function seedSettings() {
   const existing = await prisma.settings.findUnique({ where: { id: 1 } });
   if (existing) {
@@ -19,6 +66,7 @@ async function seedSettings() {
     return;
   }
 
+  const waxType = await prisma.supplyType.findUniqueOrThrow({ where: { slug: 'WAX' } });
   await prisma.settings.create({
     data: {
       id: 1,
@@ -34,6 +82,7 @@ async function seedSettings() {
         'Los pedidos se deben ordenar con un minimo de 7 dias de anticipacion. Se confirma el pedido con el 40% de anticipo. Contamos con pago por transferencia y en efectivo. El envio tiene un costo adicional. Una vez confirmado el pedido, no hay cambios ni cancelaciones.',
       orderPolicyText:
         'Precios sujetos a cambios sin previo aviso hasta que el pedido sea confirmado con el anticipo correspondiente.',
+      waxSupplyTypeId: waxType.id,
     },
   });
   console.log('Settings sembrado.');
@@ -61,208 +110,6 @@ async function seedAdmin() {
   console.log(`Usuario administrador "${username}" sembrado.`);
 }
 
-/**
- * Insumos base con el costo unitario DEDUCIDO del Cotizador LV.xlsx
- * (docs/Cotizador LV.xlsx). Sin historico de compras cargado (decision del
- * proyecto: "empezar en limpio"), currentUnitCost arranca con estos valores
- * y suggestedUnitCost se queda vacio hasta la primera compra real.
- */
-async function seedSupplies() {
-  const supplies: Array<{
-    name: string;
-    type: 'WAX' | 'FRAGRANCE' | 'WICK' | 'DYE' | 'ALUMINUM_BASE' | 'CELLOPHANE' | 'RIBBON' | 'LABEL' | 'PRINTING' | 'SEAL' | 'BELL' | 'SILICONE' | 'BOX' | 'TULLE' | 'ACETATE' | 'PAPER' | 'OTHER';
-    unit: 'GRAM' | 'PIECE' | 'MILLILITER';
-    currentUnitCost: number;
-    defaultPackLabel?: string;
-    defaultBaseQtyPerPack?: number;
-  }> = [
-    // Cera: $1978 / 20kg = $0.0989/g, del renglon de compra real de enero.
-    { name: 'Parafina', type: 'WAX', unit: 'GRAM', currentUnitCost: 0.0989, defaultPackLabel: 'bulto de 20 kg', defaultBaseQtyPerPack: 20000 },
-    { name: 'Mecha', type: 'WICK', unit: 'PIECE', currentUnitCost: 0.4 },
-    { name: 'Base de aluminio', type: 'ALUMINUM_BASE', unit: 'PIECE', currentUnitCost: 0.5 },
-    { name: 'Colorante / aditivo', type: 'DYE', unit: 'PIECE', currentUnitCost: 0.5 },
-    { name: 'Celofan', type: 'CELLOPHANE', unit: 'PIECE', currentUnitCost: 0.45 },
-    { name: 'Liston', type: 'RIBBON', unit: 'PIECE', currentUnitCost: 0.3 },
-    { name: 'Etiqueta 5x5 impresa a una cara', type: 'LABEL', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Tarjeta 9x12', type: 'LABEL', unit: 'PIECE', currentUnitCost: 0.66 },
-    { name: 'Impresion', type: 'PRINTING', unit: 'PIECE', currentUnitCost: 0.2 },
-    { name: 'Sello', type: 'SEAL', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Cascabel', type: 'BELL', unit: 'PIECE', currentUnitCost: 0.2 },
-    { name: 'Silicon', type: 'SILICONE', unit: 'PIECE', currentUnitCost: 0.1 },
-    { name: 'Caja personalizada', type: 'BOX', unit: 'PIECE', currentUnitCost: 0.66 },
-    { name: 'Tul', type: 'TULLE', unit: 'PIECE', currentUnitCost: 1.5 },
-    { name: 'Caja de acetato', type: 'ACETATE', unit: 'PIECE', currentUnitCost: 2.0 },
-    { name: 'Papel coreano', type: 'PAPER', unit: 'SHEET' as never, currentUnitCost: 0.625 },
-    { name: 'Aroma (esencia)', type: 'FRAGRANCE', unit: 'MILLILITER', currentUnitCost: 0.5 },
-  ];
-
-  for (const supply of supplies) {
-    const existing = await prisma.supply.findUnique({ where: { name: supply.name } });
-    if (existing) continue;
-    await prisma.supply.create({ data: supply as never });
-  }
-  console.log(`Insumos base sembrados (${supplies.length}).`);
-}
-
-async function seedCategories() {
-  const categories = [
-    { name: 'Animalitos', slug: 'animalitos', colorHex: '#8A9A5B', sortOrder: 1 },
-    { name: 'Flores', slug: 'flores', colorHex: '#C97B84', sortOrder: 2 },
-    { name: 'Corazones', slug: 'corazones', colorHex: '#B5566B', sortOrder: 3 },
-    { name: 'Religiosos', slug: 'religiosos', colorHex: '#7A6A53', sortOrder: 4 },
-    { name: 'Navidad', slug: 'navidad', colorHex: '#4A7871', sortOrder: 5 },
-    { name: 'Ramos', slug: 'ramos', colorHex: '#3D6660', sortOrder: 6 },
-  ];
-
-  for (const category of categories) {
-    const existing = await prisma.candleCategory.findUnique({ where: { slug: category.slug } });
-    if (existing) continue;
-    await prisma.candleCategory.create({ data: category });
-  }
-  console.log(`Categorias sembradas (${categories.length}).`);
-}
-
-async function seedPackagingTypes() {
-  const wax = await prisma.supply.findUnique({ where: { name: 'Parafina' } });
-  const cellophane = await prisma.supply.findUnique({ where: { name: 'Celofan' } });
-  const ribbon = await prisma.supply.findUnique({ where: { name: 'Liston' } });
-  const label = await prisma.supply.findUnique({ where: { name: 'Etiqueta 5x5 impresa a una cara' } });
-  const printing = await prisma.supply.findUnique({ where: { name: 'Impresion' } });
-  const box = await prisma.supply.findUnique({ where: { name: 'Caja personalizada' } });
-  const tulle = await prisma.supply.findUnique({ where: { name: 'Tul' } });
-  const acetate = await prisma.supply.findUnique({ where: { name: 'Caja de acetato' } });
-  const paper = await prisma.supply.findUnique({ where: { name: 'Papel coreano' } });
-  if (!cellophane || !ribbon || !label || !printing || !box || !tulle || !acetate || !paper) return;
-
-  const types = [
-    { name: 'Sola', slug: 'sola', packMinutes: 0, setupMinutes: 0, supplyTemplate: [] as { supplyId: number; quantity: number; unit: 'PIECE' }[] },
-    {
-      name: 'Celofan con Liston',
-      slug: 'celofan-con-liston',
-      packMinutes: 2,
-      setupMinutes: 15,
-      supplyTemplate: [
-        { supplyId: cellophane.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
-      ],
-    },
-    {
-      name: 'Caja Personalizada',
-      slug: 'caja-personalizada',
-      packMinutes: 3,
-      setupMinutes: 30,
-      supplyTemplate: [
-        { supplyId: box.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
-      ],
-    },
-    {
-      name: 'Tul',
-      slug: 'tul',
-      packMinutes: 3,
-      setupMinutes: 15,
-      supplyTemplate: [
-        { supplyId: tulle.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
-      ],
-    },
-    {
-      name: 'Caja de Acetato',
-      slug: 'caja-de-acetato',
-      packMinutes: 3,
-      setupMinutes: 15,
-      supplyTemplate: [{ supplyId: acetate.id, quantity: 1, unit: 'PIECE' as const }],
-    },
-    {
-      // La hoja "Catalogo Ramos" del Excel: una vela envuelta en papel
-      // coreano en vez de celofan. Empaquetado 5 min, sin tiempo de diseno.
-      name: 'Ramo (papel coreano)',
-      slug: 'ramo',
-      packMinutes: 5,
-      setupMinutes: 0,
-      supplyTemplate: [
-        { supplyId: paper.id, quantity: 1, unit: 'SHEET' as never },
-        { supplyId: ribbon.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: label.id, quantity: 1, unit: 'PIECE' as const },
-        { supplyId: printing.id, quantity: 1, unit: 'PIECE' as const },
-      ],
-    },
-  ];
-
-  for (const type of types) {
-    const existing = await prisma.packagingType.findUnique({ where: { slug: type.slug } });
-    if (existing) continue;
-    await prisma.packagingType.create({
-      data: {
-        name: type.name,
-        slug: type.slug,
-        packMinutes: type.packMinutes,
-        setupMinutes: type.setupMinutes,
-        supplyTemplate: type.supplyTemplate.length ? { create: type.supplyTemplate } : undefined,
-      },
-    });
-  }
-  console.log(`Tipos de empaque sembrados (${types.length}).`);
-  void wax;
-}
-
-async function seedCardTypes() {
-  const label = await prisma.supply.findUnique({ where: { name: 'Etiqueta 5x5 impresa a una cara' } });
-  const card912 = await prisma.supply.findUnique({ where: { name: 'Tarjeta 9x12' } });
-  if (!label || !card912) return;
-
-  const types = [
-    {
-      name: 'Etiqueta 5x5 una cara',
-      slug: 'etiqueta-5x5-una-cara',
-      widthCm: 5,
-      heightCm: 5,
-      printedSides: 1,
-      setupMinutes: 15,
-      supplyTemplate: [{ supplyId: label.id, quantity: 1, unit: 'PIECE' as const }],
-    },
-    {
-      name: 'Etiqueta 5x5 dos caras',
-      slug: 'etiqueta-5x5-dos-caras',
-      widthCm: 5,
-      heightCm: 5,
-      printedSides: 2,
-      setupMinutes: 15,
-      supplyTemplate: [{ supplyId: label.id, quantity: 1, unit: 'PIECE' as const }],
-    },
-    {
-      name: 'Tarjeta 9x12',
-      slug: 'tarjeta-9x12',
-      widthCm: 9,
-      heightCm: 12,
-      printedSides: 1,
-      setupMinutes: 30,
-      supplyTemplate: [{ supplyId: card912.id, quantity: 1, unit: 'PIECE' as const }],
-    },
-  ];
-
-  for (const type of types) {
-    const existing = await prisma.cardType.findUnique({ where: { slug: type.slug } });
-    if (existing) continue;
-    await prisma.cardType.create({
-      data: {
-        name: type.name,
-        slug: type.slug,
-        widthCm: type.widthCm,
-        heightCm: type.heightCm,
-        printedSides: type.printedSides,
-        setupMinutes: type.setupMinutes,
-        supplyTemplate: { create: type.supplyTemplate },
-      },
-    });
-  }
-  console.log(`Tipos de tarjeta sembrados (${types.length}).`);
-}
-
 async function seedExpenseCategories() {
   const categories = [
     { name: 'Gas', kind: 'OVERHEAD' as const },
@@ -282,12 +129,9 @@ async function seedExpenseCategories() {
 }
 
 async function main() {
+  await seedUnitsAndSupplyTypes();
   await seedSettings();
   await seedAdmin();
-  await seedSupplies();
-  await seedCategories();
-  await seedPackagingTypes();
-  await seedCardTypes();
   await seedExpenseCategories();
 }
 

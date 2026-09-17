@@ -18,6 +18,8 @@ const CandlesPage = lazy(() => import('@/features/candles/CandlesPage'));
 const CategoriesPage = lazy(() => import('@/features/categories/CategoriesPage'));
 const PackagingTypesPage = lazy(() => import('@/features/packaging-types/PackagingTypesPage'));
 const CardTypesPage = lazy(() => import('@/features/card-types/CardTypesPage'));
+const SupplyTypesPage = lazy(() => import('@/features/supply-types/SupplyTypesPage'));
+const UnitsPage = lazy(() => import('@/features/units/UnitsPage'));
 const SuppliesPage = lazy(() => import('@/features/supplies/SuppliesPage'));
 const PurchasesPage = lazy(() => import('@/features/purchases/PurchasesPage'));
 const AssetsPage = lazy(() => import('@/features/assets/AssetsPage'));
@@ -63,6 +65,8 @@ export default function App() {
                 { label: 'Categorias', to: '/catalogo/categorias' },
                 { label: 'Empaques', to: '/catalogo/empaques' },
                 { label: 'Tarjetas', to: '/catalogo/tarjetas' },
+                { label: 'Tipos de insumo', to: '/catalogo/tipos-insumo' },
+                { label: 'Unidades de medida', to: '/catalogo/unidades' },
               ]}
             />
           }
@@ -72,6 +76,8 @@ export default function App() {
           <Route path="categorias" element={<CategoriesPage />} />
           <Route path="empaques" element={<PackagingTypesPage />} />
           <Route path="tarjetas" element={<CardTypesPage />} />
+          <Route path="tipos-insumo" element={<SupplyTypesPage />} />
+          <Route path="unidades" element={<UnitsPage />} />
         </Route>
 
         <Route

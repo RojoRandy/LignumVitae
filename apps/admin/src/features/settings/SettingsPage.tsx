@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Field } from '@/components/ui/field';
+import { Select } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
+import { useSupplyTypeOptions } from '@/hooks/use-supply-type-options';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader, PageState } from '@/components/ui/page';
 
@@ -17,6 +20,10 @@ export default function SettingsPage() {
   const { data, isLoading } = useSettings();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Partial<SettingsDto>>({});
+  // includeWax: aqui se elige JUSTAMENTE la cera, que es lo unico que el
+  // hook excluye por defecto (nunca va en el BOM de un producto).
+  const { options: supplyOptions } = useSupplyOptions({ includeWax: true });
+  const { options: supplyTypeOptions } = useSupplyTypeOptions();
 
   useEffect(() => {
     if (data) setForm(data);
@@ -137,6 +144,36 @@ export default function SettingsPage() {
 
         <TabsContent value="costeo">
           <Card className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+            <Field
+              label="Tipo de insumo: cera"
+              htmlFor="waxSupplyTypeId"
+              tooltip="Cual tipo de Catalogo > Tipos de insumo cuenta como cera: ese tipo se excluye de los insumos de un producto (se cobra por gramos, no como insumo) y no se puede agregar como adicional. Cambia si renombras o reorganizas tus tipos de insumo."
+            >
+              <Select
+                id="waxSupplyTypeId"
+                options={supplyTypeOptions}
+                value={form.waxSupplyTypeId ? String(form.waxSupplyTypeId) : ''}
+                onChange={(v) => set('waxSupplyTypeId', (v ? Number(v) : null) as never)}
+                placeholder="Sin definir"
+                clearable
+                searchable
+              />
+            </Field>
+            <Field
+              label="Insumo de cera por defecto"
+              htmlFor="waxSupplyId"
+              tooltip="De que insumo sale el precio por gramo de cera de toda vela que no tenga la suya propia. Sin esto, el costo de cera de TODOS los productos se calcula con $0 y el precio sale mas bajo de lo que cuesta producir."
+            >
+              <Select
+                id="waxSupplyId"
+                options={supplyOptions}
+                value={form.waxSupplyId ? String(form.waxSupplyId) : ''}
+                onChange={(v) => set('waxSupplyId', (v ? Number(v) : null) as never)}
+                placeholder="Sin definir"
+                clearable
+                searchable
+              />
+            </Field>
             <Field
               label="Capacidad de la olla (g)"
               htmlFor="meltBatchGrams"

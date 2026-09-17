@@ -35,7 +35,8 @@ export class UpdateSettingsDto {
 
   // --- Cera y aroma
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() waxSupplyId?: number;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() fragranceSupplyId?: number;
+  @ApiPropertyOptional({ description: 'Que tipo de insumo es la cera (por id, no por slug)' })
+  @IsOptional() @Type(() => Number) @IsInt() waxSupplyTypeId?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(1) fragranceLoadPct?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) fragranceSurcharge?: number;
 

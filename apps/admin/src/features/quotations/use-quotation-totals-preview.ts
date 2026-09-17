@@ -3,6 +3,7 @@
 // vez que cambian los renglones o los ajustes. El guardado real vuelve a
 // correr exactamente el mismo calculo en el servidor -- esto es solo
 // vista previa, la fuente de la verdad siempre es POST/PATCH /quotations.
+import { useEffect, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { httpPost } from '@/lib/http';
 import type { AdjustmentTypeValue, PreviewQuotationTotalsResult } from '@/lib/types';
@@ -13,7 +14,7 @@ export interface QuotationLineInput {
   candleColor?: string;
   ribbonColor?: string;
   withFragrance?: boolean;
-  fragranceName?: string;
+  fragranceSupplyId?: number;
   personalizationText?: string;
   setupMinutesOverride?: number;
   unitPriceOverride?: number;
@@ -29,10 +30,26 @@ export interface PreviewQuotationTotalsInput {
 
 const isReady = (input: PreviewQuotationTotalsInput) => input.items.length > 0 && input.items.every((i) => i.productId && i.quantity > 0);
 
-export const useQuotationTotalsPreview = (input: PreviewQuotationTotalsInput) =>
-  useQuery({
-    queryKey: ['quotations', 'preview-totals', input],
-    queryFn: () => httpPost<PreviewQuotationTotalsResult>('/quotations/preview-totals', input),
-    enabled: isReady(input),
+/*
+ * Un recosteo completo por TECLA era lo que hacia esto antes: cada digito de
+ * un precio manual salia como un POST. Se espera a que el usuario deje de
+ * teclear. Es un efecto de tiempo, no estado derivable en el render.
+ */
+const useDebounced = <T,>(value: T, ms: number) => {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return debounced;
+};
+
+export const useQuotationTotalsPreview = (input: PreviewQuotationTotalsInput) => {
+  const debouncedInput = useDebounced(input, 300);
+  return useQuery({
+    queryKey: ['quotations', 'preview-totals', debouncedInput],
+    queryFn: () => httpPost<PreviewQuotationTotalsResult>('/quotations/preview-totals', debouncedInput),
+    enabled: isReady(debouncedInput),
     placeholderData: keepPreviousData,
   });
+};

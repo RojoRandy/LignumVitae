@@ -6,7 +6,6 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -20,10 +19,10 @@ export class CreatePurchaseItemDto {
   @IsEnum(PurchaseLineKind)
   kind: PurchaseLineKind;
 
-  @ApiProperty({ example: '20 kilos de cera' })
+  @ApiPropertyOptional({ example: '20 kilos de cera' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  description: string;
+  description?: string;
 
   @ApiPropertyOptional({ description: 'Requerido si kind=SUPPLY' })
   @IsOptional()

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
-const withTemplate = { supplyTemplate: { include: { supply: true } } } satisfies Prisma.PackagingTypeInclude;
+const withTemplate = { supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } satisfies Prisma.PackagingTypeInclude;
 
 @Injectable()
 export class PackagingTypeRepository {
