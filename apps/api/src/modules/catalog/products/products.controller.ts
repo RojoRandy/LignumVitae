@@ -27,6 +27,12 @@ export class ProductsController {
     return this.previewProductCostingUseCase.execute(dto);
   }
 
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Post('apply-suggested-prices')
+  applySuggestedPrices() {
+    return this.productsService.applySuggestedPrices();
+  }
+
   @Get()
   findAll(@Query() query: FindProductsQueryDto) {
     return this.productsService.findAll(query);

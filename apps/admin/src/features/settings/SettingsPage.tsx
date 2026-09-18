@@ -33,6 +33,7 @@ export default function SettingsPage() {
     mutationFn: (body: Record<string, unknown>) => httpPatch('/settings', body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Configuracion guardada');
     },
     onError: (error) => toast.error((error as Error).message),
