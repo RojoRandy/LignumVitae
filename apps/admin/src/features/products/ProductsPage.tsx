@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { httpDelete, httpPatch, httpGet } from '@/lib/http';
+import { httpDelete, httpPatch, httpGet, httpPost } from '@/lib/http';
 import { staticUrl } from '@/lib/api';
 import type { Paginated, ProductDto, CandleCategoryDto, CandleDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
@@ -74,11 +74,9 @@ export default function ProductsPage() {
 
   const applyPriceMutation = useMutation({
     mutationFn: ({ id, field }: { id: number; field: 'retail' | 'wholesale' }) => {
-      const product = data?.items.find((p) => p.id === id);
-      if (!product) throw new Error('Producto no encontrado');
       return httpPatch(`/products/${id}/price-override`, field === 'retail'
-        ? { retailPriceOverride: Number(product.retailListPrice) }
-        : { wholesalePriceOverride: Number(product.wholesaleListPrice) });
+        ? { retailPriceOverride: null }
+        : { wholesalePriceOverride: null });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -86,6 +84,22 @@ export default function ProductsPage() {
     },
     onError: (error) => toast.error((error as Error).message),
   });
+
+  const applyAllMutation = useMutation({
+    mutationFn: () => httpPost<{ applied: number }>('/products/apply-suggested-prices', {}),
+    onSuccess: ({ applied }) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success(applied > 0
+        ? `${applied} producto(s) actualizados al precio sugerido`
+        : 'No hay precios manuales desfasados');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
+  const handleApplyAll = async () => {
+    const ok = await confirm({ title: '¿Aplicar el precio sugerido a todos los productos con precio manual desfasado?' });
+    if (ok) applyAllMutation.mutate();
+  };
 
   const handleRemove = async (product: ProductDto) => {
     const ok = await confirm({ title: `¿Dar de baja "${product.name}"?` });
@@ -214,9 +228,14 @@ export default function ProductsPage() {
         title="Productos"
         description="La vela + su empaque + su tarjeta. Es lo que se cotiza."
         actions={
-          <Button onClick={() => navigate('/productos/nuevo')}>
-            <Plus className="size-4" /> Nuevo producto
-          </Button>
+          <>
+            <Button variant="secondary" loading={applyAllMutation.isPending} onClick={handleApplyAll}>
+              <TrendingUp className="size-4" /> Aplicar precios sugeridos
+            </Button>
+            <Button onClick={() => navigate('/productos/nuevo')}>
+              <Plus className="size-4" /> Nuevo producto
+            </Button>
+          </>
         }
       />
 

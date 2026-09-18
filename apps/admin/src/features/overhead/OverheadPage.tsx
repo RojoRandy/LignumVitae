@@ -43,6 +43,7 @@ export default function OverheadPage() {
     mutationFn: () => httpPost('/overhead-periods/close', { year, month }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['overhead-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(`${MONTHS[month - 1]} ${year} cerrado`);
     },
     onError: (error) => toast.error((error as Error).message),
@@ -52,6 +53,7 @@ export default function OverheadPage() {
     mutationFn: (period: OverheadPeriodDto) => httpPost('/overhead-periods/reopen', { year: period.year, month: period.month }),
     onSuccess: (_data, period) => {
       queryClient.invalidateQueries({ queryKey: ['overhead-periods'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(`${MONTHS[period.month - 1]} ${period.year} reabierto`);
     },
     onError: (error) => toast.error((error as Error).message),

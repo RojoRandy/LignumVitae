@@ -54,6 +54,7 @@ export default function SuppliesPage() {
       editing ? httpPatch(`/supplies/${editing.id}`, body) : httpPost('/supplies', body),
     onSuccess: () => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(editing ? 'Insumo actualizado' : 'Insumo creado');
       setDialogOpen(false);
     },
@@ -74,6 +75,7 @@ export default function SuppliesPage() {
     onSuccess: () => {
       invalidate();
       queryClient.invalidateQueries({ queryKey: ['supplies', 'cost-drift'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Costo sugerido aplicado');
     },
     onError: (error) => toast.error((error as Error).message),

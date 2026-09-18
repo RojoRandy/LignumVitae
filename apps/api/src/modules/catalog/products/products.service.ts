@@ -210,6 +210,28 @@ export class ProductsService {
     });
   }
 
+  async applySuggestedPrices() {
+    const products = await this.productRepository.findMany({ where: { isActive: true } });
+    let applied = 0;
+
+    for (const product of products) {
+      const data: Prisma.ProductUpdateInput = {};
+      // Poner null es volver al sugerido: todo el sistema lee override ?? listPrice.
+      if (product.retailPriceOverride !== null && !product.retailPriceOverride.equals(product.retailListPrice)) {
+        data.retailPriceOverride = null;
+      }
+      if (product.wholesalePriceOverride !== null && !product.wholesalePriceOverride.equals(product.wholesaleListPrice)) {
+        data.wholesalePriceOverride = null;
+      }
+      if (Object.keys(data).length === 0) continue;
+
+      await this.productRepository.update(product.id, data);
+      applied++;
+    }
+
+    return { applied };
+  }
+
   async deactivate(id: number) {
     await this.findById(id);
     return this.productRepository.deactivate(id);
