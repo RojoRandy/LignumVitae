@@ -54,6 +54,7 @@ export interface ProductCostingContext {
   cardType?: CostableCardType | null;
   components?: CostableComponent[];
   manualSupplies: CostableManualSupply[];
+  excludedSupplyIds?: number[];
   extraSetupMinutes: number;
   extraPackMinutes: number;
   assemblyMinutes: number;
@@ -107,11 +108,12 @@ export class ProductCostingCalculator {
 
     const waxUnitCost = context.candle.waxSupply?.currentUnitCost.toNumber() ?? defaultWaxUnitCost;
 
+    const excludedSupplyIds = new Set(context.excludedSupplyIds ?? []);
     const templateSupplies = [
       ...context.candle.supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitCost: t.supply.currentUnitCost.toNumber() })),
       ...(context.packagingType?.supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitCost: t.supply.currentUnitCost.toNumber() })) ?? []),
       ...(context.cardType?.supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitCost: t.supply.currentUnitCost.toNumber() })) ?? []),
-    ];
+    ].filter((s) => !excludedSupplyIds.has(s.supplyId));
     const manualSupplies = context.manualSupplies.map((s) => ({ supplyId: 0, quantity: s.quantity.toNumber(), unitCost: s.unitCost.toNumber() }));
     const resolvedSupplies = [...templateSupplies, ...manualSupplies];
 

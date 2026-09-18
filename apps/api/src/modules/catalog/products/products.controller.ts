@@ -1,4 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { CatalogErrors } from '../../../common/errors/catalog.errors';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
 import { ProductsService } from './products.service';
@@ -65,9 +68,23 @@ export class ProductsController {
   }
 
   @Auth(UserRoles.admin, UserRoles.super_user)
+  @Delete(':id/permanent')
+  deletePermanently(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.deletePermanently(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
   @Post(':id/images')
-  addImage(@Param('id', ParseIntPipe) id: number, @Body() body: { url: string; isPrimary?: boolean }) {
-    return this.productsService.addImage(id, body.url, body.isPrimary);
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
+  addImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('isPrimary') isPrimary?: string,
+  ) {
+    if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      throw CatalogErrors.Exceptions.INVALID_IMAGE_TYPE();
+    }
+    return this.productsService.addImage(id, file, isPrimary === 'true');
   }
 
   @Auth(UserRoles.admin, UserRoles.super_user)

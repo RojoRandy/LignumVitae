@@ -1,3 +1,4 @@
+import { StorageModule } from '../storage/storage.module';
 import { Module, forwardRef } from '@nestjs/common';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
@@ -20,6 +21,7 @@ import { SuppliesModule } from '../../inventory/supplies/supplies.module';
   // quedaban obsoletos en silencio). forwardRef() en los dos lados de cada
   // par de imports es la forma soportada por Nest de resolver el ciclo.
   imports: [
+    StorageModule,
     CandlesModule,
     PackagingTypesModule,
     CardTypesModule,

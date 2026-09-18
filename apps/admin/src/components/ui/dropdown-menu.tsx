@@ -1,6 +1,7 @@
 import { DropdownMenu as RadixDropdownMenu } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { usePortalContainer } from './portal-container';
 
 export const DropdownMenu = RadixDropdownMenu.Root;
 export const DropdownMenuTrigger = RadixDropdownMenu.Trigger;
@@ -14,11 +15,14 @@ const menuContentClass =
   'data-[state=open]:animate-[popover-show_160ms_var(--ease-out)] ' +
   'data-[state=closed]:animate-[popover-hide_120ms_var(--ease-in-out)]';
 
-export const DropdownMenuContent = ({ className, sideOffset = 8, ...props }: React.ComponentProps<typeof RadixDropdownMenu.Content>) => (
-  <RadixDropdownMenu.Portal>
-    <RadixDropdownMenu.Content sideOffset={sideOffset} className={cn(menuContentClass, className)} {...props} />
-  </RadixDropdownMenu.Portal>
-);
+export const DropdownMenuContent = ({ className, sideOffset = 8, ...props }: React.ComponentProps<typeof RadixDropdownMenu.Content>) => {
+  const portalContainer = usePortalContainer();
+  return (
+    <RadixDropdownMenu.Portal container={portalContainer}>
+      <RadixDropdownMenu.Content sideOffset={sideOffset} className={cn(menuContentClass, className)} {...props} />
+    </RadixDropdownMenu.Portal>
+  );
+};
 
 export const DropdownMenuItem = ({ className, ...props }: React.ComponentProps<typeof RadixDropdownMenu.Item>) => (
   <RadixDropdownMenu.Item
@@ -86,8 +90,11 @@ export const DropdownMenuSubTrigger = ({ className, children, ...props }: React.
   </RadixDropdownMenu.SubTrigger>
 );
 
-export const DropdownMenuSubContent = ({ className, ...props }: React.ComponentProps<typeof RadixDropdownMenu.SubContent>) => (
-  <RadixDropdownMenu.Portal>
-    <RadixDropdownMenu.SubContent className={cn(menuContentClass, className)} {...props} />
-  </RadixDropdownMenu.Portal>
-);
+export const DropdownMenuSubContent = ({ className, ...props }: React.ComponentProps<typeof RadixDropdownMenu.SubContent>) => {
+  const portalContainer = usePortalContainer();
+  return (
+    <RadixDropdownMenu.Portal container={portalContainer}>
+      <RadixDropdownMenu.SubContent className={cn(menuContentClass, className)} {...props} />
+    </RadixDropdownMenu.Portal>
+  );
+};

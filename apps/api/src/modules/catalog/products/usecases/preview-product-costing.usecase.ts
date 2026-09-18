@@ -73,6 +73,7 @@ export class PreviewProductCostingUseCase implements UseCase<PreviewProductCostD
       : [];
 
     const context: ProductCostingContext = {
+      excludedSupplyIds: dto.excludedSupplyIds ?? [],
       kind: dto.kind,
       candle,
       packagingType,

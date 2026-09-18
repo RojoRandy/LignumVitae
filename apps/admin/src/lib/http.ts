@@ -5,6 +5,7 @@
 // sobre el tipado exacto de la URL; el tipo de la RESPUESTA si se declara
 // en cada llamada via el generico <T>.
 import { ApiError, type ApiErrorBody } from '@lignumvitae/types';
+import type { ProductImageDto } from '@/lib/types';
 import { API_ORIGIN, tokenStore } from './api';
 
 const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
@@ -59,10 +60,11 @@ export const errorMessage = (error: unknown): string =>
 
 export const errorCode = (error: unknown): string | undefined => (error instanceof ApiError ? error.code : undefined);
 
-export const uploadImage = async (file: File): Promise<{ url: string }> => {
+export const uploadProductImage = async (productId: number, file: File, isPrimary = false): Promise<ProductImageDto> => {
   const form = new FormData();
   form.append('file', file);
-  return request<{ url: string }>('/uploads', { method: 'POST', body: form });
+  form.append('isPrimary', String(isPrimary));
+  return request<ProductImageDto>(`/products/${productId}/images`, { method: 'POST', body: form });
 };
 
 export const downloadPdf = async (path: string, filename: string) => {

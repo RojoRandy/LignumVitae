@@ -227,6 +227,7 @@ export interface ProductDto {
   costingBasis: ProductCostingBasisJson | null;
   costingComputedAt: string | null;
   needsReview: boolean;
+  excludedSupplyIds: number[];
   reviewNote: string | null;
   isVisibleOnLanding: boolean;
   isFeatured: boolean;

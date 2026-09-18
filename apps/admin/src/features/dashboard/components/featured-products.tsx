@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { Sparkles, ImageOff } from 'lucide-react';
 import { httpGet } from '@/lib/http';
+import { staticUrl } from '@/lib/api';
 import type { Paginated, ProductDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +53,7 @@ export const FeaturedProducts = () => {
                 >
                   <div className="flex aspect-square items-center justify-center bg-surface-sunken">
                     {image ? (
-                      <img src={image.url} alt={product.name} className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <img src={staticUrl(image.url)} alt={product.name} className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
                       <ImageOff className="size-6 text-text-faint" />
                     )}

@@ -16,6 +16,7 @@ import { slugify } from '../../../common/utils/slug';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
 import { RecalculateProductCostingUseCase } from './usecases/recalculate-product-costing.usecase';
 import { SettingsService } from '../../settings/settings.service';
+import { StorageService } from '../storage/storage.service';
 import { SupplyRepository } from '../../inventory/supplies/supply.repository';
 
 @Injectable()
@@ -28,13 +29,15 @@ export class ProductsService {
     private readonly recalculateProductCostingUseCase: RecalculateProductCostingUseCase,
     private readonly settingsService: SettingsService,
     private readonly supplyRepository: SupplyRepository,
+    private readonly storageService: StorageService,
   ) {}
 
-  async findAll(query: PaginationQueryDto & { categoryId?: number; kind?: ProductKind; needsReview?: boolean }) {
-    const { page = 1, limit = 20, search, onlyActive = true, categoryId, kind, needsReview } = query;
+  async findAll(query: PaginationQueryDto & { categoryId?: number; candleId?: number; kind?: ProductKind; needsReview?: boolean }) {
+    const { page = 1, limit = 20, search, onlyActive = true, categoryId, candleId, kind, needsReview } = query;
     const where: Prisma.ProductWhereInput = {
       ...(onlyActive ? { isActive: true } : {}),
       ...(categoryId ? { categoryId } : {}),
+      ...(candleId !== undefined ? { OR: [{ candleId }, { components: { some: { candleId } } }] } : {}),
       ...(kind ? { kind } : {}),
       ...(needsReview !== undefined ? { needsReview } : {}),
       ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
@@ -85,6 +88,7 @@ export class ProductsService {
       packagingType: dto.packagingTypeId ? { connect: { id: dto.packagingTypeId } } : undefined,
       cardType: dto.cardTypeId ? { connect: { id: dto.cardTypeId } } : undefined,
       description: dto.description,
+      excludedSupplyIds: dto.excludedSupplyIds,
       extraSetupMinutes: dto.extraSetupMinutes ?? 0,
       extraPackMinutes: dto.extraPackMinutes ?? 0,
       assemblyMinutes: dto.assemblyMinutes ?? 0,
@@ -117,6 +121,7 @@ export class ProductsService {
     if (dto.candleId !== undefined) data.candle = dto.candleId ? { connect: { id: dto.candleId } } : { disconnect: true };
     if (dto.packagingTypeId !== undefined) data.packagingType = dto.packagingTypeId ? { connect: { id: dto.packagingTypeId } } : { disconnect: true };
     if (dto.cardTypeId !== undefined) data.cardType = dto.cardTypeId ? { connect: { id: dto.cardTypeId } } : { disconnect: true };
+    if (dto.excludedSupplyIds !== undefined) data.excludedSupplyIds = dto.excludedSupplyIds;
     if (dto.description !== undefined) data.description = dto.description;
     if (dto.extraSetupMinutes !== undefined) data.extraSetupMinutes = dto.extraSetupMinutes;
     if (dto.extraPackMinutes !== undefined) data.extraPackMinutes = dto.extraPackMinutes;
@@ -135,6 +140,7 @@ export class ProductsService {
     }
 
     const shouldRecalculateSupplies =
+      dto.excludedSupplyIds !== undefined ||
       dto.additionalSupplies !== undefined ||
       dto.candleId !== undefined ||
       dto.packagingTypeId !== undefined ||
@@ -209,18 +215,39 @@ export class ProductsService {
     return this.productRepository.deactivate(id);
   }
 
-  async addImage(id: number, url: string, isPrimary = false) {
-    await this.findById(id);
+  async deletePermanently(id: number) {
+    const product = await this.findById(id);
+    if (product.isActive) throw CatalogErrors.Exceptions.PRODUCT_MUST_BE_INACTIVE();
+
+    const { quotationItemsCount, orderItemsCount } = await this.productRepository.countDependents(id);
+    if (quotationItemsCount + orderItemsCount > 0) {
+      throw CatalogErrors.Exceptions.HAS_DEPENDENTS({ quotationItemsCount, orderItemsCount });
+    }
+
+    for (const image of product.images) {
+      await this.storageService.remove(image.url);
+    }
+    return this.productRepository.deletePermanently(id);
+  }
+
+  async addImage(id: number, file: Pick<Express.Multer.File, 'buffer' | 'mimetype'>, isPrimary = false) {
+    const product = await this.findById(id);
+    if (product.images.length >= 10) {
+      throw CatalogErrors.Exceptions.PRODUCT_IMAGE_LIMIT_REACHED({ id });
+    }
+    const url = await this.storageService.save(file.buffer, file.mimetype);
     return this.productRepository.addImage(id, { url, isPrimary });
   }
 
   async removeImage(imageId: number) {
+    const image = await this.productRepository.findImage(imageId);
+    if (image) await this.storageService.remove(image.url);
     return this.productRepository.removeImage(imageId);
   }
 
   /** Copia las plantillas de la vela, el empaque y la tarjeta a ProductSupply, mas los adicionales manuales del DTO. */
   private async applySuppliesFromTemplatesAndManual(productId: number, dto: CreateProductDto | UpdateProductDto) {
-    const items: { supplyId: number; quantity: number; unitId: number; note?: string; source: SupplySource }[] = [];
+    let items: { supplyId: number; quantity: number; unitId: number; note?: string; source: SupplySource }[] = [];
 
     const product = await this.productRepository.findById(productId);
     if (dto.kind === ProductKind.BOUQUET) {
@@ -258,6 +285,9 @@ export class ProductsService {
         items.push({ supplyId: t.supplyId, quantity: t.quantity.toNumber(), unitId: t.unitId, note: t.note ?? undefined, source: 'CARD_TEMPLATE' }),
       );
     }
+
+    const excludedSupplyIds = new Set(product?.excludedSupplyIds ?? []);
+    items = items.filter((item) => item.source === 'MANUAL' || !excludedSupplyIds.has(item.supplyId));
 
     // Cual es el tipo "cera" lo dice Configuracion por ID, no el texto del
     // slug: asi el tipo se puede renombrar o borrar sin romper esto en
