@@ -51,15 +51,17 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({ description: 'Empaque del producto (Sola, Listón, Cajita, Tul...)' })
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @Type(() => Number)
   @IsInt()
-  packagingTypeId?: number;
+  packagingTypeId?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @Type(() => Number)
   @IsInt()
-  cardTypeId?: number;
+  cardTypeId?: number | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -126,6 +128,13 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductSupplyItemDto)
   additionalSupplies?: ProductSupplyItemDto[];
+
+  @ApiPropertyOptional({ type: [Number] })
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  excludedSupplyIds?: number[];
 
   @ApiPropertyOptional()
   @IsOptional()

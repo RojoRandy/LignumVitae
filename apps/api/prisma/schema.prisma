@@ -282,6 +282,9 @@ model Product {
   packagingTypeId Int? @map("packaging_type_id")
   cardTypeId      Int? @map("card_type_id")
 
+  /// Insumos heredados de las plantillas que el admin quito a mano; nunca incluye MANUAL.
+  excludedSupplyIds Int[] @default([]) @map("excluded_supply_ids")
+
   description       String?
   /// Minutos extra sobre lo que aportan empaque y tarjeta (o, en un ramo, el
   /// armado). Escape hatch para los casos raros de personalizacion especial.

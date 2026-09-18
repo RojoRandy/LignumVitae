@@ -50,6 +50,7 @@ export class RecalculateProductCostingUseCase implements UseCase<number, Product
       : 0;
 
     const context: ProductCostingContext = {
+      excludedSupplyIds: product.excludedSupplyIds,
       productId: product.id,
       kind: product.kind,
       candle: product.candle,

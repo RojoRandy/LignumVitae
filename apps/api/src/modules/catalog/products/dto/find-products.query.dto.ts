@@ -11,6 +11,12 @@ export class FindProductsQueryDto extends PaginationQueryDto {
   @IsInt()
   categoryId?: number;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  candleId?: number;
+
   @ApiPropertyOptional({ enum: ProductKind })
   @IsOptional()
   @IsEnum(ProductKind)

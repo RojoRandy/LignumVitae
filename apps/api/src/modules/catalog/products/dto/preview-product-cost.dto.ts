@@ -61,4 +61,11 @@ export class PreviewProductCostDto {
   @ValidateNested({ each: true })
   @Type(() => ProductSupplyItemDto)
   additionalSupplies?: ProductSupplyItemDto[];
+
+  @ApiPropertyOptional({ type: [Number] })
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  excludedSupplyIds?: number[];
 }

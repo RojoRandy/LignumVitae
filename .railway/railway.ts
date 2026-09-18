@@ -5,14 +5,17 @@ export default defineRailway(() => {
 
   const postgresDatabase = postgres("postgres", { region: "us-west2" });
   const postgresVolume = volume("postgres-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "us-west2", sizeMB: 5000 });
-  const apiUploads = volume("api-uploads", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "us-west2", sizeMB: 5000 });
   const _lignumvitaeapi = service("@lignumvitae/api", {
     source: LignumVitae,
     build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/types build && pnpm --filter @lignumvitae/api exec prisma generate && pnpm --filter @lignumvitae/api build && test -f apps/api/dist/main.js",
     start: "pnpm --filter @lignumvitae/api exec prisma migrate deploy && pnpm --filter @lignumvitae/api start:prod",
     replicas: { "us-west2": 1 },
     networking: { privateNetworkEndpoint: "lignumvitaeapi" },
-    volumeMounts: { "/app/apps/api/uploads": apiUploads },
+    // Sin volumen: las imagenes de producto ya se suben a S3
+    // (STORAGE_DRIVER=s3), no a disco local. El volumen "api-uploads" que
+    // existia aqui se elimino a proposito -- vuelve a aparecer si corres
+    // `railway config pull` sobre un proyecto donde aun no se haya borrado
+    // del lado de Railway.
     env: { CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), JWT_EXPIRATION: preserve(), JWT_SECRET: preserve(), NODE_ENV: preserve(), PUBLIC_SITE_URL: preserve(), STORAGE_DRIVER: preserve(), UPLOADS_DIR: preserve() },
   });
   const _lignumvitaeadmin = service("@lignumvitae/admin", {
@@ -25,6 +28,6 @@ export default defineRailway(() => {
   });
 
   return project("Lignum Vitae", {
-    resources: [_lignumvitaeapi, _lignumvitaeadmin, postgresDatabase, postgresVolume, apiUploads],
+    resources: [_lignumvitaeapi, _lignumvitaeadmin, postgresDatabase, postgresVolume],
   });
 });

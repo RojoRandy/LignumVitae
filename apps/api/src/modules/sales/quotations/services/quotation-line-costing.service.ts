@@ -30,6 +30,7 @@ export class QuotationLineCostingService {
 
   costLine(product: ProductWithRelations, input: QuotationLineCostingInput, ctx: QuotationLineCostingContext): ProductCostingResult {
     const context: ProductCostingContext = {
+      excludedSupplyIds: product.excludedSupplyIds,
       productId: product.id,
       kind: product.kind,
       candle: product.candle,

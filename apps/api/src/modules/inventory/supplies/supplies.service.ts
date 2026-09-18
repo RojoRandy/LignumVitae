@@ -56,13 +56,18 @@ export class SuppliesService {
   }
 
   async update(id: number, dto: UpdateSupplyDto) {
-    await this.findById(id);
+    const existing = await this.findById(id);
+    const costChanged = dto.currentUnitCost !== undefined && dto.currentUnitCost !== existing.currentUnitCost.toNumber();
     const { typeId, unitId, ...rest } = dto;
-    return this.supplyRepository.update(id, {
+    const updated = await this.supplyRepository.update(id, {
       ...rest,
       ...(typeId !== undefined ? { type: { connect: { id: typeId } } } : {}),
       ...(unitId !== undefined ? { unit: { connect: { id: unitId } } } : {}),
     });
+    if (costChanged) {
+      await this.recalculateAllProductsUseCase.execute();
+    }
+    return updated;
   }
 
   async deactivate(id: number) {

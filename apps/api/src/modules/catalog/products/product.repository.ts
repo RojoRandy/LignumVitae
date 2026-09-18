@@ -58,6 +58,18 @@ export class ProductRepository {
     return this.prisma.product.update({ where: { id }, data: { isActive: false } });
   }
 
+  async countDependents(id: number) {
+    const [quotationItemsCount, orderItemsCount] = await Promise.all([
+      this.prisma.quotationItem.count({ where: { productId: id } }),
+      this.prisma.orderItem.count({ where: { productId: id } }),
+    ]);
+    return { quotationItemsCount, orderItemsCount };
+  }
+
+  deletePermanently(id: number) {
+    return this.prisma.product.delete({ where: { id } });
+  }
+
   replaceSupplies(id: number, items: { supplyId: number; quantity: number; unitId: number; note?: string; source: Prisma.ProductSupplyCreateManyInput['source'] }[]) {
     return this.prisma.$transaction([
       this.prisma.productSupply.deleteMany({ where: { productId: id } }),
@@ -82,6 +94,10 @@ export class ProductRepository {
 
   addImage(productId: number, data: { url: string; alt?: string; isPrimary?: boolean; sortOrder?: number }) {
     return this.prisma.productImage.create({ data: { ...data, productId } });
+  }
+
+  findImage(imageId: number) {
+    return this.prisma.productImage.findUnique({ where: { id: imageId } });
   }
 
   removeImage(imageId: number) {

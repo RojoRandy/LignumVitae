@@ -9,6 +9,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { httpGet, httpPatch, httpPost } from '@/lib/http';
+import { formatMoney } from '@/lib/format';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import type { CandleCategoryDto, CandleDto, CardTypeDto, Paginated, PackagingTypeDto, ProductDto, SupplyTemplateItemDto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -25,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { FormError, PageHeader } from '@/components/ui/page';
 import { CostPreviewPanel } from './components/cost-preview-panel';
 import { PriceOverrideCard } from './components/price-override-card';
+import { ProductImagesCard } from './components/product-images-card';
 import { DuplicateWithPackaging } from './components/duplicate-with-packaging';
 import type { PreviewCostInput } from './use-product-cost-preview';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
@@ -50,6 +53,8 @@ export default function ProductWizardPage() {
   const [allowsFragrance, setAllowsFragrance] = useState(true);
   const [isVisibleOnLanding, setIsVisibleOnLanding] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const { supplies } = useSupplyOptions();
+  const [excludedSupplyIds, setExcludedSupplyIds] = useState<number[]>([]);
   const [additionalSupplies, setAdditionalSupplies] = useState<SupplyTemplateRow[]>([]);
 
   const { data: existing } = useQuery({
@@ -74,6 +79,7 @@ export default function ProductWizardPage() {
     setAllowsFragrance(existing.allowsFragrance);
     setIsVisibleOnLanding(existing.isVisibleOnLanding);
     setIsFeatured(existing.isFeatured);
+    setExcludedSupplyIds(existing.excludedSupplyIds ?? []);
     setAdditionalSupplies(
       (existing.supplies ?? [])
         .filter((sup) => sup.source === 'MANUAL')
@@ -124,11 +130,12 @@ export default function ProductWizardPage() {
    * capturar a mano el celofan que ya venia del empaque.
    */
   const inheritedSupplies = useMemo(() => {
-    const rows: { supplyId: number; name: string; quantity: number; abbr: string; origin: string }[] = [];
+    const rows: { supplyId: number; name: string; quantity: number; abbr: string; origin: string; excluded: boolean }[] = [];
     const pushTemplate = (template: SupplyTemplateItemDto[] | undefined, origin: string, times = 1) =>
       (template ?? []).forEach((t) =>
         rows.push({
           supplyId: t.supplyId,
+          excluded: excludedSupplyIds.includes(t.supplyId),
           name: t.supply.name,
           quantity: Number(t.quantity) * times,
           abbr: t.unit.abbr,
@@ -147,15 +154,15 @@ export default function ProductWizardPage() {
     pushTemplate(packagingTypes?.items.find((p) => String(p.id) === packagingTypeId)?.supplyTemplate, 'Empaque');
     pushTemplate(cardTypes?.items.find((c) => String(c.id) === cardTypeId)?.supplyTemplate, 'Tarjeta');
 
-    // Un mismo insumo repetido entre las velas del ramo se suma en un solo
-    // renglon, igual que hace el servidor.
+    // Un mismo insumo repetido entre fuentes se suma en un solo renglon.
+    // Todas sus apariciones comparten excluded porque se calcula por supplyId.
     const merged = new Map<number, (typeof rows)[number]>();
     rows.forEach((row) => {
       const previous = merged.get(row.supplyId);
       merged.set(row.supplyId, previous ? { ...previous, quantity: previous.quantity + row.quantity } : row);
     });
     return [...merged.values()];
-  }, [kind, components, candles, candleId, packagingTypes, packagingTypeId, cardTypes, cardTypeId]);
+  }, [kind, components, candles, candleId, packagingTypes, packagingTypeId, cardTypes, cardTypeId, excludedSupplyIds]);
 
   const previewInput: PreviewCostInput = useMemo(
     () => ({
@@ -168,8 +175,9 @@ export default function ProductWizardPage() {
       assemblyMinutes,
       components: components.filter((c) => c.candleId).map((c) => ({ candleId: c.candleId as number, quantity: c.quantity ?? 1 })),
       additionalSupplies: validAdditionalSupplies,
+      excludedSupplyIds,
     }),
-    [kind, candleId, packagingTypeId, cardTypeId, extraSetupMinutes, extraPackMinutes, assemblyMinutes, components, validAdditionalSupplies],
+    [kind, candleId, packagingTypeId, cardTypeId, extraSetupMinutes, extraPackMinutes, assemblyMinutes, components, validAdditionalSupplies, excludedSupplyIds],
   );
 
   const saveMutation = useMutation({
@@ -219,8 +227,8 @@ export default function ProductWizardPage() {
       categoryId: Number(categoryId),
       kind,
       candleId: kind === 'SIMPLE' ? Number(candleId) : undefined,
-      packagingTypeId: packagingTypeId ? Number(packagingTypeId) : undefined,
-      cardTypeId: cardTypeId ? Number(cardTypeId) : undefined,
+      packagingTypeId: packagingTypeId ? Number(packagingTypeId) : isEditing ? null : undefined,
+      cardTypeId: cardTypeId ? Number(cardTypeId) : isEditing ? null : undefined,
       description: description || undefined,
       extraSetupMinutes,
       extraPackMinutes,
@@ -230,6 +238,7 @@ export default function ProductWizardPage() {
       isFeatured,
       components: kind === 'BOUQUET' ? components.filter((c) => c.candleId).map((c) => ({ candleId: c.candleId, quantity: c.quantity ?? 1 })) : undefined,
       additionalSupplies: validAdditionalSupplies,
+      excludedSupplyIds,
     });
   };
 
@@ -323,10 +332,10 @@ export default function ProductWizardPage() {
             <h3 className="text-body font-semibold text-text">Empaque y tarjeta</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Empaque" hint="Pre-llena los insumos desde su plantilla">
-                <Select options={packagingOptions} value={packagingTypeId} onChange={setPackagingTypeId} placeholder="Sin empaque (sola)" />
+                <Select options={packagingOptions} value={packagingTypeId} onChange={setPackagingTypeId} placeholder="Sin empaque (sola)" clearable />
               </Field>
               <Field label="Tarjeta">
-                <Select options={cardOptions} value={cardTypeId} onChange={setCardTypeId} placeholder="Sin tarjeta" />
+                <Select options={cardOptions} value={cardTypeId} onChange={setCardTypeId} placeholder="Sin tarjeta" clearable />
               </Field>
               <Field
                 label="Minutos extra de diseno"
@@ -354,15 +363,39 @@ export default function ProductWizardPage() {
               <div className="flex flex-col gap-2">
                 <p className="text-body-sm font-medium text-text">Vienen incluidos</p>
                 <ul className="flex flex-col gap-1">
-                  {inheritedSupplies.map((row) => (
-                    <li key={row.supplyId} className="flex items-center justify-between gap-2 text-body-sm text-text-muted">
-                      <span>{row.name}</span>
-                      <span className="flex items-center gap-2">
-                        <span>{row.quantity} {row.abbr}</span>
-                        <Badge variant="neutral">{row.origin}</Badge>
-                      </span>
-                    </li>
-                  ))}
+                  {inheritedSupplies.map((row) => {
+                    const supply = supplies.find((s) => s.id === row.supplyId);
+                    return (
+                      <li key={row.supplyId} className="flex flex-wrap items-center justify-between gap-2 text-body-sm">
+                        <span className={row.excluded ? 'min-w-0 text-text-faint line-through' : 'min-w-0 text-text-muted'}>
+                          {row.name} · {row.quantity} {row.abbr} · {supply ? formatMoney(row.quantity * Number(supply.currentUnitCost)) : '—'}
+                        </span>
+                        <span className="ml-auto flex flex-wrap items-center gap-2">
+                          <Badge variant="neutral">{row.origin}</Badge>
+                          {row.excluded ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExcludedSupplyIds((prev) => prev.filter((id) => id !== row.supplyId))}
+                            >
+                              Volver a incluir
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Quitar insumo heredado"
+                              onClick={() => setExcludedSupplyIds((prev) => prev.includes(row.supplyId) ? prev : [...prev, row.supplyId])}
+                            >
+                              <Trash2 className="size-4 text-danger-fg" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <p className="text-caption text-text-faint">
                   Se cambian cambiando la vela, el empaque o la tarjeta.
@@ -407,6 +440,7 @@ export default function ProductWizardPage() {
           </Card>
 
           {isEditing && existing && <PriceOverrideCard product={existing} />}
+          {isEditing && existing && <ProductImagesCard product={existing} />}
 
           <FormError>{formError}</FormError>
 

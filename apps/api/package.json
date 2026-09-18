@@ -18,6 +18,7 @@
     "studio": "prisma studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
     "@lignumvitae/types": "workspace:*",
     "@nestjs/common": "^11.0.10",
     "@nestjs/config": "^4.0.0",

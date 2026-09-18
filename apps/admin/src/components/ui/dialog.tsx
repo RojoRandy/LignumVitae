@@ -1,6 +1,8 @@
+import { useCallback, useState } from 'react';
 import { Dialog as RadixDialog } from 'radix-ui';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { PortalContainerContext } from './portal-container';
 
 export const Dialog = RadixDialog.Root;
 export const DialogTrigger = RadixDialog.Trigger;
@@ -9,9 +11,16 @@ export const DialogClose = RadixDialog.Close;
 export const DialogContent = ({
   className,
   children,
+  ref,
   size = 'md',
   ...props
 }: React.ComponentProps<typeof RadixDialog.Content> & { size?: 'sm' | 'md' | 'lg' | 'xl' }) => {
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const contentRef = useCallback((node: HTMLDivElement | null) => {
+    setPortalContainer(node);
+    if (typeof ref === 'function') return ref(node);
+    if (ref) ref.current = node;
+  }, [ref]);
   const widths = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl', xl: 'sm:max-w-4xl' };
   return (
     <RadixDialog.Portal>
@@ -34,6 +43,7 @@ export const DialogContent = ({
       */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <RadixDialog.Content
+          ref={contentRef}
           className={cn(
             // relative es obligatorio: el boton de cerrar es absolute y,
             // como Content ya no es "fixed" (el centrado lo hace el
@@ -59,7 +69,9 @@ export const DialogContent = ({
           )}
           {...props}
         >
-          {children}
+          <PortalContainerContext.Provider value={portalContainer}>
+            {children}
+          </PortalContainerContext.Provider>
           <RadixDialog.Close className="absolute right-4 top-4 rounded-input p-1.5 text-text-muted transition-colors hover:bg-surface-sunken hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
             <X className="size-4" />
           </RadixDialog.Close>

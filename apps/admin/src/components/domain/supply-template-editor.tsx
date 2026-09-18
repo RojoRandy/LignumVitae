@@ -36,10 +36,11 @@ export const SupplyTemplateEditor = ({
 
   const add = () => onChange([...rows, { supplyId: null, quantity: 1, unitId: null }]);
 
-  const totalCost = rows.reduce((acc, r) => {
+  const rowCosts = rows.map((r) => {
     const supply = supplies.find((s) => s.id === r.supplyId);
-    return acc + (supply ? Number(supply.currentUnitCost) * (r.quantity ?? 0) : 0);
-  }, 0);
+    return supply ? Number(supply.currentUnitCost) * (r.quantity ?? 0) : 0;
+  });
+  const totalCost = rowCosts.reduce((acc, cost) => acc + cost, 0);
 
   return (
     <div className="flex flex-col gap-2">
@@ -50,7 +51,7 @@ export const SupplyTemplateEditor = ({
       <div className="flex flex-col gap-2">
         {rows.map((row, index) => (
           <div key={index} className="flex items-end gap-2">
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Select
                 options={options}
                 value={row.supplyId ? String(row.supplyId) : undefined}
@@ -64,9 +65,10 @@ export const SupplyTemplateEditor = ({
             <RowField
               label="Cantidad"
               htmlFor={`supply-template-quantity-${index}`}
-              className="w-28"
+              className="w-28 shrink-0"
               tooltip="Cuanto de este insumo lleva UNA pieza, en la unidad base del insumo (se autocompleta al elegirlo arriba)."
             >
+              <span className="text-caption text-text-muted">{formatMoney(rowCosts[index])}</span>
               <NumberInput
                 id={`supply-template-quantity-${index}`}
                 step={0.0001}
