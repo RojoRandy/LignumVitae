@@ -26,11 +26,34 @@ interface Category {
   products: Product[];
 }
 
+interface LandingImage {
+  url: string;
+  alt: string;
+  slug: string;
+}
+
+interface Testimonial {
+  id: number;
+  customerName: string;
+  imageUrl: string;
+  alt: string;
+}
+
 const [settings, categories] = await Promise.all([
   getJson<PublicSettings>('/public/settings'),
   getJson<Category[]>('/public/catalog'),
 ]);
 const featured = categories.flatMap((category) => category.products).filter((product) => product.isFeatured).slice(0, 8);
+
+// Secciones decorativas: si fallan, la home sigue funcionando (con su
+// respaldo estatico o simplemente sin la seccion), no tumban la pagina.
+const landingImages = await getJson<{ hero: LandingImage[]; gallery: LandingImage[] }>('/public/landing-images')
+  .catch(() => ({ hero: [], gallery: [] }));
+const testimonials = await getJson<Testimonial[]>('/public/testimonials').catch(() => []);
+
+const heroSlides = landingImages.hero.length > 0
+  ? landingImages.hero.map((image) => ({ src: imageUrl(image.url), alt: image.alt }))
+  : [{ src: '/galeria/1.jpeg', alt: 'Velas de recuerdo con listón y tarjeta personalizada' }];
 const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
 const whatsappUrl = whatsappDigits
   ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
@@ -51,7 +74,28 @@ const steps = [
 
 <Layout title={`${settings.brandName} · Velas personalizadas`} description={`Velas de recuerdo hechas a mano para tus momentos especiales. Entregas solo en ${settings.city}.`}>
   <section class="site-container grid items-center gap-8 py-16 md:grid-cols-2 lg:gap-16 lg:py-24" aria-labelledby="hero-title">
-    <img src="/galeria/1.jpeg" alt="Velas de recuerdo con listón y tarjeta personalizada" decoding="async" fetchpriority="high" class="aspect-[4/5] w-full rounded-card bg-canvas-deep object-cover md:order-2" />
+    <div class="md:order-2" data-carousel>
+      <div class="relative">
+        <div id="hero-carousel" data-carousel-track class="flex snap-x snap-mandatory overflow-x-auto rounded-card bg-canvas-deep" tabindex="0" role="region" aria-roledescription="carrusel" aria-label="Velas destacadas">
+          {heroSlides.map((slide, index) => <div class="w-full shrink-0 snap-center" role="group" aria-roledescription="diapositiva" aria-label={`${index + 1} de ${heroSlides.length}`}>
+            <img src={slide.src} alt={slide.alt} decoding="async" loading={index === 0 ? 'eager' : 'lazy'} fetchpriority={index === 0 ? 'high' : 'auto'} class="gallery-image aspect-[4/5] w-full rounded-card object-cover" />
+          </div>)}
+        </div>
+        {heroSlides.length > 1 && <>
+          <button type="button" data-carousel-prev aria-label="Imagen anterior" aria-controls="hero-carousel" class="button absolute top-1/2 left-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+          </button>
+          <button type="button" data-carousel-next aria-label="Imagen siguiente" aria-controls="hero-carousel" class="button absolute top-1/2 right-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
+          </button>
+        </>}
+      </div>
+      {heroSlides.length > 1 && <div class="mt-4 flex flex-wrap justify-center" aria-label="Seleccionar imagen">
+        {heroSlides.map((_, index) => <button type="button" data-carousel-dot aria-label={`Ver imagen ${index + 1}`} aria-controls="hero-carousel" aria-current={index === 0 ? 'true' : 'false'} class="gallery-dot flex h-11 w-11 items-center justify-center rounded-full">
+          <span class="h-2 w-2 rounded-full bg-border-strong" aria-hidden="true" />
+        </button>)}
+      </div>}
+    </div>
     <div class="min-w-0">
       <p class="text-micro text-text-muted">{settings.brandName} · Mi pequeño paraíso</p>
       <h1 id="hero-title" class="mt-4 text-display-xl text-brand">Velas personalizadas para tus momentos especiales</h1>
@@ -74,7 +118,7 @@ const steps = [
       {categories.map((category) => {
         const cover = category.coverImageUrl || category.products[0]?.image?.url;
         return <a href={`/catalogo#${encodeURIComponent(category.slug)}`} class="min-w-0 rounded-card bg-surface shadow-card">
-          <img src={cover ? imageUrl(cover) : '/logo.svg'} alt={category.name} loading="lazy" decoding="async" class:list={['aspect-square w-full rounded-t-card bg-canvas-deep', cover ? 'object-cover' : 'object-contain p-8']} />
+          <img src={cover ? imageUrl(cover) : '/logo.svg'} alt={category.name} loading="lazy" decoding="async" class:list={['aspect-square w-full rounded-t-card bg-canvas-deep', cover ? 'object-cover' : 'object-contain p-6']} />
           <div class="p-4">
             <h3 class="text-heading text-brand [overflow-wrap:anywhere]">{category.name}</h3>
             {category.description && <p class="mt-2 truncate text-body-sm text-text-muted" title={category.description}>{category.description}</p>}
@@ -115,15 +159,26 @@ const steps = [
     <p class="mt-6 max-w-prose text-body-lg text-text">En {settings.brandName} creamos velas de recuerdo hechas a mano, con detalles personalizados para acompañar tus celebraciones. Desde {settings.city}, queremos que cada pieza sea una forma de compartir cariño y recordar un momento especial.</p>
   </section>
 
-  <section class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="galeria-title">
+  {landingImages.gallery.length > 0 && <section class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="galeria-title">
     <div class="site-container">
       <h2 id="galeria-title" class="text-heading-lg text-text">Detalles que se vuelven recuerdos</h2>
       <p class="mt-4 text-body-lg">Una mirada a nuestras velas y sus detalles personalizados.</p>
       <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
-        {Array.from({ length: 10 }, (_, index) => <img src={`/galeria/${index + 1}.jpeg`} alt={`Velas de recuerdo personalizadas, muestra ${index + 1} del taller`} loading="lazy" decoding="async" class="aspect-[4/5] w-full rounded-card object-cover" />)}
+        {landingImages.gallery.map((image) => <img src={imageUrl(image.url)} alt={image.alt} loading="lazy" decoding="async" class="aspect-[4/5] w-full rounded-card object-cover" />)}
       </div>
     </div>
-  </section>
+  </section>}
+
+  {testimonials.length > 0 && <section class="site-container py-16 lg:py-24" aria-labelledby="testimoniales-title">
+    <h2 id="testimoniales-title" class="text-heading-lg text-brand">Lo que nos comparten</h2>
+    <p class="mt-4 text-body-lg text-text-muted">Mensajes reales de clientas que ya recibieron su pedido.</p>
+    <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {testimonials.map((testimonial) => <figure class="overflow-hidden rounded-card bg-surface shadow-card">
+        <img src={imageUrl(testimonial.imageUrl)} alt={testimonial.alt} loading="lazy" decoding="async" class="w-full" />
+        <figcaption class="p-4 text-body-sm font-medium text-text">{testimonial.customerName}</figcaption>
+      </figure>)}
+    </div>
+  </section>}
 
   <section id="contacto" class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="contacto-title">
     <div class="site-container grid gap-8 md:grid-cols-2 lg:gap-16">
@@ -147,3 +202,10 @@ const steps = [
     </div>
   </section>
 </Layout>
+
+<script>
+  import { initCarousel } from '../lib/carousel';
+
+  const carouselRoot = document.querySelector('[data-carousel]');
+  if (carouselRoot) initCarousel(carouselRoot);
+</script>

@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Inbox,
   Settings,
+  Quote,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -63,6 +64,7 @@ export const NAV: NavGroup[] = [
     group: 'Administracion',
     items: [
       { label: 'Finanzas', to: '/finanzas', icon: Wallet },
+      { label: 'Testimoniales', to: '/testimoniales', icon: Quote, adminOnly: true },
       { label: 'Usuarios', to: '/usuarios', icon: Users, adminOnly: true },
       { label: 'Configuracion', to: '/configuracion', icon: Settings, adminOnly: true },
     ],

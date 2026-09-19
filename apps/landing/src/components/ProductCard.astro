@@ -6,23 +6,32 @@ export interface Product {
   slug: string;
   isFeatured: boolean;
   image: { url: string; alt: string | null } | null;
+  candles?: { name: string; slug: string }[];
 }
 
 interface Props {
   product: Product;
+  /** Slug de la categoria que envuelve esta tarjeta, para el filtro del catalogo. */
+  categorySlug?: string;
 }
 
-const { product } = Astro.props;
+const { product, categorySlug } = Astro.props;
+const candleSlugs = (product.candles ?? []).map((c) => c.slug).join(',');
 ---
 
-<a href={`/producto/${encodeURIComponent(product.slug)}`} class="product-card block min-w-0 rounded-card bg-surface shadow-card">
+<a
+  href={`/producto/${encodeURIComponent(product.slug)}`}
+  class="product-card block min-w-0 rounded-card bg-surface shadow-card"
+  data-category={categorySlug}
+  data-candles={candleSlugs}
+>
   <div class="relative overflow-hidden rounded-t-card bg-canvas-deep">
     <img
       src={product.image ? imageUrl(product.image.url) : '/logo.svg'}
       alt={product.image?.alt || product.name}
       loading="lazy"
       decoding="async"
-      class:list={['product-image aspect-[4/5] w-full', product.image ? 'object-cover' : 'object-contain p-8']}
+      class:list={['product-image aspect-[4/5] w-full', product.image ? 'object-cover' : 'object-contain p-6']}
     />
     {product.isFeatured && <span class="absolute top-4 left-4 rounded-full bg-action-soft px-2 py-1 text-micro text-brand">Destacado</span>}
   </div>

@@ -40,4 +40,12 @@ export class QuoteRequestRepository {
       select: { id: true, name: true, allowsFragrance: true },
     });
   }
+
+  /** Aromas que la landing puede ofrecer: los mismos que ve el admin al cotizar. */
+  findQuotableFragrances(ids: number[]) {
+    return this.prisma.supply.findMany({
+      where: { id: { in: ids }, isFragrance: true, isActive: true },
+      select: { id: true, name: true },
+    });
+  }
 }

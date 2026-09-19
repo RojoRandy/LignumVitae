@@ -110,7 +110,19 @@
 }
 
 @layer base {
-  html { scroll-padding-top: 6rem; }
+  html {
+    scroll-padding-top: 6rem;
+    /* scrollbar-gutter reserva el espacio siempre: sin esto, una pagina que
+       pasa de no tener scroll vertical a tenerlo (o viceversa, al filtrar el
+       catalogo) desplaza todo el layout 15px de golpe. */
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 9999px; border: 2px solid var(--color-canvas); background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); background-clip: padding-box; }
   body {
     background: var(--color-canvas);
     color: var(--color-text);
@@ -174,10 +186,19 @@
   .band a:focus-visible { outline-color: var(--color-on-band); }
   .quote-float::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; }
   .quote-float [data-quote-count]:not([hidden]) { display: grid; }
+  /* El carrusel ya tiene botones y puntos para navegar: su scrollbar nativo
+     sobra, a diferencia del resto de la pagina donde si se estiliza. */
+  [data-carousel-track] { scrollbar-width: none; }
+  [data-carousel-track]::-webkit-scrollbar { display: none; }
+  /* Puntos y transicion del carrusel (detalle de producto y hero de la home). */
+  .gallery-dot[aria-current='true'] span { background: var(--color-action); }
+  .gallery-image { animation: appear .3s ease-in; }
+  @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
   @media (min-width: 768px) { .site-container { padding-inline: 24px; } }
   @media (min-width: 1024px) { .site-container { padding-inline: 40px; } }
   @media (prefers-reduced-motion: reduce) {
     .button { transition: none; }
     .button:active { transform: none; }
+    .gallery-image { animation: none; }
   }
 }

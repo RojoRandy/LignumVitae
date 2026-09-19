@@ -5,7 +5,7 @@
 // sobre el tipado exacto de la URL; el tipo de la RESPUESTA si se declara
 // en cada llamada via el generico <T>.
 import { ApiError, type ApiErrorBody } from '@lignumvitae/types';
-import type { ProductImageDto } from '@/lib/types';
+import type { ProductImageDto, TestimonialDto } from '@/lib/types';
 import { API_ORIGIN, tokenStore } from './api';
 
 const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
@@ -65,6 +65,19 @@ export const uploadProductImage = async (productId: number, file: File, isPrimar
   form.append('file', file);
   form.append('isPrimary', String(isPrimary));
   return request<ProductImageDto>(`/products/${productId}/images`, { method: 'POST', body: form });
+};
+
+export const uploadTestimonial = async (
+  file: File,
+  fields: { customerName: string; alt: string; orderId?: number; sortOrder?: number },
+): Promise<TestimonialDto> => {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('customerName', fields.customerName);
+  form.append('alt', fields.alt);
+  if (fields.orderId != null) form.append('orderId', String(fields.orderId));
+  if (fields.sortOrder != null) form.append('sortOrder', String(fields.sortOrder));
+  return request<TestimonialDto>('/testimonials', { method: 'POST', body: form });
 };
 
 export const downloadPdf = async (path: string, filename: string) => {

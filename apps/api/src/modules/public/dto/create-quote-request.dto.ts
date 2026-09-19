@@ -24,6 +24,7 @@ export class CreateQuoteRequestItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(60) candleColor?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(60) ribbonColor?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() withFragrance?: boolean;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() fragranceSupplyId?: number;
 }
 
 export class CreateQuoteRequestDto {

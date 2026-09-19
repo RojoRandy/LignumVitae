@@ -9,6 +9,8 @@ interface Product {
   kind: string;
   description: string | null;
   allowsFragrance: boolean;
+  allowsCandleColor: boolean;
+  allowsRibbonColor: boolean;
   category: { name: string; slug: string };
   images: { url: string; alt: string | null }[];
 }
@@ -18,6 +20,11 @@ interface PublicSettings {
   minLeadTimeDays: number;
 }
 
+interface Fragrance {
+  id: number;
+  name: string;
+}
+
 const product = await getJson<Product>(`/public/products/${encodeURIComponent(Astro.params.slug ?? '')}`)
   .catch((error: unknown) => {
     if (!(error instanceof ApiError) || error.status !== 404) throw error;
@@ -25,30 +32,33 @@ const product = await getJson<Product>(`/public/products/${encodeURIComponent(As
     return null;
   });
 const settings = product ? await getJson<PublicSettings>('/public/settings') : null;
+// Si el catalogo de aromas no responde, el checkbox de aroma simplemente no
+// se muestra: no es motivo para tumbar la ficha completa del producto.
+const fragrances = product?.allowsFragrance ? await getJson<Fragrance[]>('/public/fragrances').catch(() => []) : [];
 const images = product?.images ?? [];
 ---
 
 <Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'}>
   {product && settings ? <section class="site-container py-16 lg:py-24" aria-labelledby="product-title">
     <div class="grid gap-8 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
-      <div class="min-w-0">
+      <div class="min-w-0" data-carousel>
         <div class="relative">
-          <div id="product-gallery" class="flex snap-x snap-mandatory overflow-x-auto rounded-card bg-canvas-deep" tabindex="0" role="region" aria-roledescription="carrusel" aria-label={`Imágenes de ${product.name}`}>
+          <div id="product-gallery" data-carousel-track class="flex snap-x snap-mandatory overflow-x-auto rounded-card bg-canvas-deep" tabindex="0" role="region" aria-roledescription="carrusel" aria-label={`Imágenes de ${product.name}`}>
             {images.length ? images.map((image, index) => <div class="w-full shrink-0 snap-center" role="group" aria-roledescription="diapositiva" aria-label={`${index + 1} de ${images.length}`}>
               <img src={imageUrl(image.url)} alt={image.alt || product.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" class="gallery-image aspect-[4/5] w-full rounded-card object-cover" />
-            </div>) : <img src="/logo.svg" alt="Lignum Vitae" class="aspect-[4/5] w-full rounded-card object-contain p-8" />}
+            </div>) : <img src="/logo.svg" alt="Lignum Vitae" class="aspect-[4/5] w-full rounded-card object-contain p-6" />}
           </div>
           {images.length > 1 && <>
-            <button type="button" data-previous aria-label="Imagen anterior" aria-controls="product-gallery" class="button absolute top-1/2 left-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+            <button type="button" data-carousel-prev aria-label="Imagen anterior" aria-controls="product-gallery" class="button absolute top-1/2 left-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
             </button>
-            <button type="button" data-next aria-label="Imagen siguiente" aria-controls="product-gallery" class="button absolute top-1/2 right-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+            <button type="button" data-carousel-next aria-label="Imagen siguiente" aria-controls="product-gallery" class="button absolute top-1/2 right-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
             </button>
           </>}
         </div>
         {images.length > 1 && <div class="mt-4 flex flex-wrap justify-center" aria-label="Seleccionar imagen">
-          {images.map((_, index) => <button type="button" data-dot={index} aria-label={`Ver imagen ${index + 1}`} aria-controls="product-gallery" aria-current={index === 0 ? 'true' : 'false'} class="gallery-dot flex h-11 w-11 items-center justify-center rounded-full">
+          {images.map((_, index) => <button type="button" data-carousel-dot aria-label={`Ver imagen ${index + 1}`} aria-controls="product-gallery" aria-current={index === 0 ? 'true' : 'false'} class="gallery-dot flex h-11 w-11 items-center justify-center rounded-full">
             <span class="h-2 w-2 rounded-full bg-border-strong" aria-hidden="true" />
           </button>)}
         </div>}
@@ -74,17 +84,26 @@ const images = product?.images ?? [];
               <button type="button" data-more aria-label="Más" class="button h-10 min-h-10 w-10 border border-border-strong bg-surface p-0 text-text">+</button>
             </div>
           </div>
-          <div>
+          {product.allowsCandleColor && <div>
             <label for="candle-color" class="block text-body-sm font-medium">Color de la vela <span class="text-text-muted">(opcional)</span></label>
             <input id="candle-color" name="candleColor" type="text" class="pdp-input mt-2 w-full" />
-          </div>
-          <div>
+          </div>}
+          {product.allowsRibbonColor && <div>
             <label for="ribbon-color" class="block text-body-sm font-medium">Color del listón <span class="text-text-muted">(opcional)</span></label>
             <input id="ribbon-color" name="ribbonColor" type="text" class="pdp-input mt-2 w-full" />
-          </div>
-          {product.allowsFragrance && <label class="flex min-h-11 items-center gap-2 text-body">
-            <input type="checkbox" name="withFragrance" class="h-5 w-5 accent-action" /> Con aroma
-          </label>}
+          </div>}
+          {product.allowsFragrance && fragrances.length > 0 && <div>
+            <label class="flex min-h-11 items-center gap-2 text-body">
+              <input id="with-fragrance" type="checkbox" name="withFragrance" class="h-5 w-5 accent-action" /> Con aroma
+            </label>
+            <div class="mt-2">
+              <label for="fragrance" class="sr-only">Aroma</label>
+              <select id="fragrance" name="fragranceSupplyId" class="pdp-input w-full" disabled>
+                <option value="">Elige un aroma</option>
+                {fragrances.map((fragrance) => <option value={fragrance.id}>{fragrance.name}</option>)}
+              </select>
+            </div>
+          </div>}
           <p class="text-body-sm text-text-muted">Te enviamos el precio por WhatsApp</p>
           <button type="submit" class="button w-full bg-action text-surface hover:bg-action-hover">Agregar a mi cotización</button>
           <p id="quote-status" role="status" class="text-body-sm text-action" hidden>Agregado · <a href="/cotizar" class="underline">Ver mi cotización</a></p>
@@ -111,36 +130,14 @@ const images = product?.images ?? [];
     font-size: var(--text-body);
   }
   .pdp-input:focus { border-color: var(--color-action); box-shadow: 0 0 0 2px var(--color-action-soft); }
-  .gallery-dot[aria-current='true'] span { background: var(--color-action); }
-  .gallery-image { animation: appear .3s ease-in; }
-  @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { .gallery-image { animation: none; } }
 </style>
 
 <script>
   import { addQuoteItem } from '../../lib/quote-list';
+  import { initCarousel } from '../../lib/carousel';
 
-  const gallery = document.querySelector<HTMLElement>('#product-gallery');
-  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-dot]'));
-  if (gallery && dots.length > 1) {
-    const currentIndex = () => Math.round(gallery.scrollLeft / gallery.clientWidth);
-    const show = (index: number) => {
-      const next = (index + dots.length) % dots.length;
-      gallery.scrollTo({ left: next * gallery.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-    };
-    document.querySelector('[data-previous]')?.addEventListener('click', () => show(currentIndex() - 1));
-    document.querySelector('[data-next]')?.addEventListener('click', () => show(currentIndex() + 1));
-    dots.forEach((dot, index) => dot.addEventListener('click', () => show(index)));
-    gallery.addEventListener('keydown', (event) => {
-      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-      event.preventDefault();
-      show(currentIndex() + (event.key === 'ArrowLeft' ? -1 : 1));
-    });
-    gallery.addEventListener('scroll', () => {
-      const index = currentIndex();
-      dots.forEach((dot, position) => dot.setAttribute('aria-current', String(position === index)));
-    }, { passive: true });
-  }
+  const carouselRoot = document.querySelector('[data-carousel]');
+  if (carouselRoot) initCarousel(carouselRoot);
 
   const form = document.querySelector<HTMLFormElement>('#quote-form');
   if (form) {
@@ -163,10 +160,26 @@ const images = product?.images ?? [];
     more.addEventListener('click', () => step(1));
     form.addEventListener('input', () => { syncStepper(); status.hidden = true; error.hidden = true; });
     syncStepper();
+
+    // El select deshabilitado no viaja en FormData: es la unica garantia de
+    // que jamas se mande un aroma en un renglon con "Con aroma" desmarcado.
+    const withFragrance = form.querySelector<HTMLInputElement>('#with-fragrance');
+    const fragranceSelect = form.querySelector<HTMLSelectElement>('#fragrance');
+    if (withFragrance && fragranceSelect) {
+      const syncFragrance = () => {
+        fragranceSelect.disabled = !withFragrance.checked;
+        fragranceSelect.required = withFragrance.checked;
+        if (!withFragrance.checked) fragranceSelect.value = '';
+      };
+      withFragrance.addEventListener('change', syncFragrance);
+      syncFragrance();
+    }
+
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       if (!form.reportValidity()) return;
       const data = new FormData(form);
+      const fragranceOption = fragranceSelect?.selectedOptions[0];
       const added = addQuoteItem({
         productId: form.dataset.productId!,
         slug: form.dataset.slug!,
@@ -176,6 +189,8 @@ const images = product?.images ?? [];
         candleColor: String(data.get('candleColor') ?? '').trim(),
         ribbonColor: String(data.get('ribbonColor') ?? '').trim(),
         withFragrance: data.get('withFragrance') === 'on',
+        fragranceId: fragranceOption?.value ?? '',
+        fragranceName: fragranceOption?.text ?? '',
       });
       status.hidden = !added;
       error.hidden = added;

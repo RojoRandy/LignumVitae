@@ -276,6 +276,22 @@ export interface paths {
         patch: operations["ProductsController_update"];
         trace?: never;
     };
+    "/api/products/images/{imageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ProductsController_removeImage"];
+        options?: never;
+        head?: never;
+        patch: operations["ProductsController_updateImageFlags"];
+        trace?: never;
+    };
     "/api/products/{id}/reapply-templates": {
         parameters: {
             query?: never;
@@ -335,22 +351,6 @@ export interface paths {
         put?: never;
         post: operations["ProductsController_addImage"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/products/images/{imageId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["ProductsController_removeImage"];
         options?: never;
         head?: never;
         patch?: never;
@@ -966,6 +966,38 @@ export interface paths {
         patch: operations["PaymentsController_cancel"];
         trace?: never;
     };
+    "/api/testimonials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TestimonialsController_findAll"];
+        put?: never;
+        post: operations["TestimonialsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/testimonials/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["TestimonialsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["TestimonialsController_update"];
+        trace?: never;
+    };
     "/api/public/quotations/{token}": {
         parameters: {
             query?: never;
@@ -1054,6 +1086,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["PublicCatalogController_getProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/landing-images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicCatalogController_getLandingImages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/fragrances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicCatalogController_getFragrances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/testimonials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicCatalogController_getTestimonials"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1435,6 +1515,10 @@ export interface components {
             excludedSupplyIds?: number[];
             isActive?: boolean;
         };
+        UpdateProductImageDto: {
+            showInHero?: boolean;
+            showInGallery?: boolean;
+        };
         UpdateProductDto: {
             /** @example Osito Chico con Listón */
             name?: string;
@@ -1774,12 +1858,26 @@ export interface components {
             paidAt: string;
             notes?: string;
         };
+        CreateTestimonialDto: {
+            customerName: string;
+            alt: string;
+            orderId?: number;
+            sortOrder?: number;
+        };
+        UpdateTestimonialDto: {
+            customerName?: string;
+            alt?: string;
+            orderId?: number;
+            sortOrder?: number;
+            isActive?: boolean;
+        };
         CreateQuoteRequestItemDto: {
             productId: number;
             quantity: number;
             candleColor?: string;
             ribbonColor?: string;
             withFragrance?: boolean;
+            fragranceSupplyId?: number;
         };
         CreateQuoteRequestDto: {
             fullName: string;
@@ -2564,6 +2662,48 @@ export interface operations {
             };
         };
     };
+    ProductsController_removeImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                imageId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ProductsController_updateImageFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                imageId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductImageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ProductsController_reapplyTemplates: {
         parameters: {
             query?: never;
@@ -2641,25 +2781,6 @@ export interface operations {
         requestBody?: never;
         responses: {
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ProductsController_removeImage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                imageId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4006,6 +4127,92 @@ export interface operations {
             };
         };
     };
+    TestimonialsController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                search?: string;
+                /** @description Si es false, incluye tambien los registros dados de baja */
+                onlyActive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TestimonialsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTestimonialDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TestimonialsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TestimonialsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTestimonialDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     PublicQuotationsController_findByToken: {
         parameters: {
             query?: never;
@@ -4104,6 +4311,57 @@ export interface operations {
             path: {
                 slug: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicCatalogController_getLandingImages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicCatalogController_getFragrances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicCatalogController_getTestimonials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

@@ -7,14 +7,21 @@ export interface QuoteItem {
   candleColor: string;
   ribbonColor: string;
   withFragrance: boolean;
+  // Vacios cuando no hay aroma, igual que candleColor/ribbonColor cuando no
+  // se capturan: la forma del item no cambia segun sus opciones.
+  fragranceId: string;
+  fragranceName: string;
 }
 
-const STORAGE_KEY = 'lv.quote';
+// v2: agrega fragranceId/fragranceName. Subir la llave (no migrar la v1 in
+// situ) vacia los carritos guardados al desplegar esto, aceptable porque la
+// landing aun no se lanza; evita dejar codigo tolerante a una forma vieja.
+const STORAGE_KEY = 'lv.quote.v2';
 
 function isQuoteItem(value: unknown): value is QuoteItem {
   if (!value || typeof value !== 'object') return false;
   const item = value as Record<string, unknown>;
-  return ['productId', 'slug', 'name', 'imageUrl', 'candleColor', 'ribbonColor']
+  return ['productId', 'slug', 'name', 'imageUrl', 'candleColor', 'ribbonColor', 'fragranceId', 'fragranceName']
     .every((key) => typeof item[key] === 'string')
     && typeof item.quantity === 'number' && Number.isSafeInteger(item.quantity)
     && item.quantity >= 1 && typeof item.withFragrance === 'boolean';
@@ -38,7 +45,8 @@ export function readQuote(): QuoteItem[] {
 
 function sameOptions(a: QuoteItem, b: QuoteItem): boolean {
   return a.productId === b.productId && a.candleColor === b.candleColor
-    && a.ribbonColor === b.ribbonColor && a.withFragrance === b.withFragrance;
+    && a.ribbonColor === b.ribbonColor && a.withFragrance === b.withFragrance
+    && a.fragranceId === b.fragranceId;
 }
 
 function merge(items: QuoteItem[], item: QuoteItem): void {

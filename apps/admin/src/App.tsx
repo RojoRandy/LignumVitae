@@ -26,6 +26,7 @@ const PurchasesPage = lazy(() => import('@/features/purchases/PurchasesPage'));
 const AssetsPage = lazy(() => import('@/features/assets/AssetsPage'));
 const ExpensesPage = lazy(() => import('@/features/expenses/ExpensesPage'));
 const OverheadPage = lazy(() => import('@/features/overhead/OverheadPage'));
+const TestimonialsPage = lazy(() => import('@/features/testimonials/TestimonialsPage'));
 const UsersPage = lazy(() => import('@/features/users/UsersPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const NotFoundPage = lazy(() => import('@/features/not-found/NotFoundPage'));
@@ -110,6 +111,14 @@ export default function App() {
         <Route path="activos" element={<Navigate to="/finanzas/activos" replace />} />
         <Route path="gastos" element={<Navigate to="/finanzas/gastos" replace />} />
         <Route path="cierre-mensual" element={<Navigate to="/finanzas/cierre-mensual" replace />} />
+        <Route
+          path="testimoniales"
+          element={
+            <AdminRoute>
+              <TestimonialsPage />
+            </AdminRoute>
+          }
+        />
         <Route
           path="usuarios"
           element={

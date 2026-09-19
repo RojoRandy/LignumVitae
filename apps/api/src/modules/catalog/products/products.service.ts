@@ -267,6 +267,12 @@ export class ProductsService {
     return this.productRepository.removeImage(imageId);
   }
 
+  async updateImageFlags(imageId: number, data: { showInHero?: boolean; showInGallery?: boolean }) {
+    const image = await this.productRepository.findImage(imageId);
+    if (!image) throw CatalogErrors.Exceptions.PRODUCT_IMAGE_NOT_FOUND({ imageId });
+    return this.productRepository.updateImageFlags(imageId, data);
+  }
+
   /** Copia las plantillas de la vela, el empaque y la tarjeta a ProductSupply, mas los adicionales manuales del DTO. */
   private async applySuppliesFromTemplatesAndManual(productId: number, dto: CreateProductDto | UpdateProductDto) {
     let items: { supplyId: number; quantity: number; unitId: number; note?: string; source: SupplySource }[] = [];

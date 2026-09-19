@@ -118,7 +118,7 @@ export default function QuotationFormPage() {
         candleColor: item.candleColor ?? '',
         ribbonColor: item.ribbonColor ?? '',
         withFragrance: item.withFragrance,
-        fragranceSupplyId: null,
+        fragranceSupplyId: item.fragranceSupplyId ?? null,
         personalizationText: '',
         setupMinutesOverride: null,
         unitPriceOverride: null,

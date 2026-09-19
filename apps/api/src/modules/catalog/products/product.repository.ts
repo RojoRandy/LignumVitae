@@ -100,6 +100,10 @@ export class ProductRepository {
     return this.prisma.productImage.findUnique({ where: { id: imageId } });
   }
 
+  updateImageFlags(imageId: number, data: { showInHero?: boolean; showInGallery?: boolean }) {
+    return this.prisma.productImage.update({ where: { id: imageId }, data });
+  }
+
   removeImage(imageId: number) {
     return this.prisma.productImage.delete({ where: { id: imageId } });
   }

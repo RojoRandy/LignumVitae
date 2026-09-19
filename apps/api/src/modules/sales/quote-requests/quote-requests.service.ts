@@ -68,15 +68,28 @@ export class QuoteRequestsService {
     // 400 y no 404: el recurso es la solicitud, lo que esta mal es su contenido.
     if (missing.length) throw new BadRequestException(CatalogErrors.Responses.PRODUCT_NOT_FOUND({ productIds: missing }));
 
+    // Mismo criterio que la cotizacion del admin (create-quotation.usecase.ts):
+    // el aroma debe existir, estar activo y seguir marcado como aroma.
+    const fragranceIds = [...new Set(dto.items.map((item) => item.fragranceSupplyId).filter((id): id is number => id != null))];
+    const fragrances = new Map(
+      (fragranceIds.length ? await this.quoteRequestRepository.findQuotableFragrances(fragranceIds) : []).map((f) => [f.id, f]),
+    );
+    const missingFragrances = fragranceIds.filter((id) => !fragrances.has(id));
+    if (missingFragrances.length) throw SalesErrors.Exceptions.INVALID_FRAGRANCE_SUPPLY({ fragranceSupplyIds: missingFragrances });
+
     const items = dto.items.map((item) => {
       const product = products.get(item.productId)!;
+      const withFragrance = product.allowsFragrance && Boolean(item.withFragrance);
+      const fragrance = withFragrance && item.fragranceSupplyId != null ? fragrances.get(item.fragranceSupplyId) : undefined;
       return {
         productId: product.id,
         productName: product.name,
         quantity: item.quantity,
         candleColor: item.candleColor?.trim() || null,
         ribbonColor: item.ribbonColor?.trim() || null,
-        withFragrance: product.allowsFragrance && Boolean(item.withFragrance),
+        withFragrance,
+        fragranceSupplyId: fragrance?.id ?? null,
+        fragranceName: fragrance?.name ?? null,
       };
     });
 

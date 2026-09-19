@@ -34,6 +34,7 @@ const Responses = {
   CUSTOMER_HAS_ACTIVE_ORDERS: (data?: unknown) =>
     new ErrorResponseDto('CUSTOMER_HAS_ACTIVE_ORDERS', 'El cliente tiene pedidos activos, no se puede dar de baja', data),
   PAYMENT_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('PAYMENT_NOT_FOUND', 'No se encontro el pago', data),
+  TESTIMONIAL_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('TESTIMONIAL_NOT_FOUND', 'No se encontro el testimonio', data),
 };
 
 const Exceptions = {
@@ -53,6 +54,7 @@ const Exceptions = {
   QUOTATION_NOT_ACCEPTABLE: (data?: unknown) => new BadRequestException(Responses.QUOTATION_NOT_ACCEPTABLE(data)),
   CUSTOMER_HAS_ACTIVE_ORDERS: (data?: unknown) => new ConflictException(Responses.CUSTOMER_HAS_ACTIVE_ORDERS(data)),
   PAYMENT_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.PAYMENT_NOT_FOUND(data)),
+  TESTIMONIAL_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.TESTIMONIAL_NOT_FOUND(data)),
 };
 
 export const SalesErrors = { Responses, Exceptions };

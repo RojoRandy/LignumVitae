@@ -2,12 +2,13 @@ import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { errorMessage, httpDelete, uploadProductImage } from '@/lib/http';
+import { errorMessage, httpDelete, httpPatch, uploadProductImage } from '@/lib/http';
 import { staticUrl } from '@/lib/api';
-import type { ProductDto } from '@/lib/types';
+import type { ProductDto, ProductImageDto } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export const ProductImagesCard = ({ product }: { product: ProductDto }) => {
   const queryClient = useQueryClient();
@@ -46,6 +47,13 @@ export const ProductImagesCard = ({ product }: { product: ProductDto }) => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const flagsMutation = useMutation({
+    mutationFn: ({ imageId, data }: { imageId: number; data: Partial<Pick<ProductImageDto, 'showInHero' | 'showInGallery'>> }) =>
+      httpPatch(`/products/images/${imageId}`, data),
+    onError: (error) => toast.error(errorMessage(error)),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['products', String(product.id)] }),
+  });
+
   const isPending = uploadMutation.isPending || deleteMutation.isPending;
 
   return (
@@ -53,23 +61,45 @@ export const ProductImagesCard = ({ product }: { product: ProductDto }) => {
       <div>
         <h3 className="text-body font-semibold text-text">Imágenes</h3>
         <p className="text-caption text-text-muted">Agrega fotos del producto en formato JPEG, PNG o WebP, de hasta 5 MB cada una.</p>
+        <p className="mt-1 text-caption text-text-muted">
+          "Portada" publica la foto en el carrusel de la home (hasta 8 en total, priorizando destacados) y "Galería" en "Detalles que se
+          vuelven recuerdos". Marcar una foto la publica de inmediato, con el nombre del producto visible.
+        </p>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {images.map((image) => (
-          <div key={image.id} className="relative">
-            <img src={staticUrl(image.url)} alt={image.alt ?? product.name} className="aspect-square w-full rounded-input object-cover" />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Eliminar imagen"
-              className="absolute right-1 top-1 bg-surface-raised/90 text-danger-fg"
-              disabled={isPending}
-              onClick={() => deleteMutation.mutate(image.id)}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-            </Button>
-            {image.isPrimary && <Badge variant="accent" className="absolute bottom-1 left-1">Principal</Badge>}
+          <div key={image.id} className="flex flex-col gap-2">
+            <div className="relative">
+              <img src={staticUrl(image.url)} alt={image.alt ?? product.name} className="aspect-square w-full rounded-input object-cover" />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Eliminar imagen"
+                className="absolute right-1 top-1 bg-surface-raised/90 text-danger-fg"
+                disabled={isPending}
+                onClick={() => deleteMutation.mutate(image.id)}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
+              {image.isPrimary && <Badge variant="accent" className="absolute bottom-1 left-1">Principal</Badge>}
+            </div>
+            <label className="flex min-h-8 items-center gap-2 text-caption text-text">
+              <Checkbox
+                checked={image.showInHero}
+                disabled={flagsMutation.isPending}
+                onCheckedChange={(checked) => flagsMutation.mutate({ imageId: image.id, data: { showInHero: checked === true } })}
+              />
+              Portada
+            </label>
+            <label className="flex min-h-8 items-center gap-2 text-caption text-text">
+              <Checkbox
+                checked={image.showInGallery}
+                disabled={flagsMutation.isPending}
+                onCheckedChange={(checked) => flagsMutation.mutate({ imageId: image.id, data: { showInGallery: checked === true } })}
+              />
+              Galería
+            </label>
           </div>
         ))}
       </div>

@@ -170,6 +170,8 @@ export interface ProductImageDto {
   alt: string | null;
   sortOrder: number;
   isPrimary: boolean;
+  showInHero: boolean;
+  showInGallery: boolean;
 }
 
 export interface ProductCostBreakdownJson {
@@ -397,6 +399,19 @@ export interface OrderDto {
   items?: OrderItemDto[];
   payments?: PaymentDto[];
   quotation?: { id: number; folio: string } | null;
+  testimonial?: { id: number } | null;
+}
+
+export interface TestimonialDto {
+  id: number;
+  orderId: number | null;
+  customerName: string;
+  imageUrl: string;
+  alt: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuotationTotalsPreview {
@@ -581,6 +596,9 @@ export interface QuoteRequestItem {
   candleColor: string | null;
   ribbonColor: string | null;
   withFragrance: boolean;
+  // Opcionales: las solicitudes creadas antes de este campo no lo traen.
+  fragranceSupplyId?: number | null;
+  fragranceName?: string | null;
 }
 
 export interface QuoteRequestDto {
