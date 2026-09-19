@@ -16,7 +16,7 @@ export default defineRailway(() => {
     // existia aqui se elimino a proposito -- vuelve a aparecer si corres
     // `railway config pull` sobre un proyecto donde aun no se haya borrado
     // del lado de Railway.
-    env: { CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), JWT_EXPIRATION: preserve(), JWT_SECRET: preserve(), NODE_ENV: preserve(), PUBLIC_SITE_URL: preserve(), STORAGE_DRIVER: preserve(), UPLOADS_DIR: preserve() },
+    env: { CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), JWT_EXPIRATION: preserve(), JWT_SECRET: preserve(), NODE_ENV: preserve(), PUBLIC_SITE_URL: preserve(), STORAGE_DRIVER: preserve(), UPLOADS_DIR: preserve(), S3_ACCESS_KEY_ID: preserve(), S3_BUCKET: preserve(), S3_KEY_PREFIX: preserve(), S3_REGION: preserve(), S3_SECRET_ACCESS_KEY: preserve() },
   });
   const _lignumvitaeadmin = service("@lignumvitae/admin", {
     source: LignumVitae,
