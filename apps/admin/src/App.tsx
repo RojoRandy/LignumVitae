@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage';
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'));
 const CustomersPage = lazy(() => import('@/features/customers/CustomersPage'));
+const QuoteRequestsPage = lazy(() => import('@/features/quote-requests/QuoteRequestsPage'));
 const QuotationsPage = lazy(() => import('@/features/quotations/QuotationsPage'));
 const QuotationFormPage = lazy(() => import('@/features/quotations/QuotationFormPage'));
 const QuotationDetailPage = lazy(() => import('@/features/quotations/QuotationDetailPage'));
@@ -42,6 +43,7 @@ export default function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="clientes" element={<CustomersPage />} />
+        <Route path="solicitudes" element={<QuoteRequestsPage />} />
         <Route path="cotizaciones" element={<QuotationsPage />} />
         <Route path="cotizaciones/nueva" element={<QuotationFormPage />} />
         <Route path="cotizaciones/:id/editar" element={<QuotationFormPage />} />

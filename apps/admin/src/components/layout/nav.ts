@@ -10,6 +10,7 @@ import {
   Users2,
   FileText,
   ClipboardList,
+  Inbox,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ export const NAV: NavGroup[] = [
     // de cliente.
     group: 'Operacion',
     items: [
+      { label: 'Solicitudes web', to: '/solicitudes', icon: Inbox },
       { label: 'Cotizaciones', to: '/cotizaciones', icon: FileText },
       { label: 'Pedidos', to: '/pedidos', icon: ClipboardList },
       { label: 'Clientes', to: '/clientes', icon: Users2 },

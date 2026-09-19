@@ -571,6 +571,31 @@ export interface SettingsDto {
   updatedAt: string;
 }
 
+export type QuoteRequestStatus = 'NEW' | 'CONVERTED' | 'DISMISSED';
+
+/** Renglon tal como lo guarda la landing (QuoteRequest.items, JSON). */
+export interface QuoteRequestItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+  candleColor: string | null;
+  ribbonColor: string | null;
+  withFragrance: boolean;
+}
+
+export interface QuoteRequestDto {
+  id: number;
+  status: QuoteRequestStatus;
+  fullName: string;
+  whatsapp: string;
+  eventDate: string | null;
+  notes: string | null;
+  items: QuoteRequestItem[];
+  convertedQuotationId: number | null;
+  dismissedReason: string | null;
+  createdAt: string;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;
