@@ -1,0 +1,184 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { ApiError, getJson, imageUrl } from '../../lib/api';
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  kind: string;
+  description: string | null;
+  allowsFragrance: boolean;
+  category: { name: string; slug: string };
+  images: { url: string; alt: string | null }[];
+}
+
+interface PublicSettings {
+  city: string;
+  minLeadTimeDays: number;
+}
+
+const product = await getJson<Product>(`/public/products/${encodeURIComponent(Astro.params.slug ?? '')}`)
+  .catch((error: unknown) => {
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    Astro.response.status = 404;
+    return null;
+  });
+const settings = product ? await getJson<PublicSettings>('/public/settings') : null;
+const images = product?.images ?? [];
+---
+
+<Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'}>
+  {product && settings ? <section class="site-container py-16 lg:py-24" aria-labelledby="product-title">
+    <div class="grid gap-8 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
+      <div class="min-w-0">
+        <div class="relative">
+          <div id="product-gallery" class="flex snap-x snap-mandatory overflow-x-auto rounded-card bg-canvas-deep" tabindex="0" role="region" aria-roledescription="carrusel" aria-label={`Imágenes de ${product.name}`}>
+            {images.length ? images.map((image, index) => <div class="w-full shrink-0 snap-center" role="group" aria-roledescription="diapositiva" aria-label={`${index + 1} de ${images.length}`}>
+              <img src={imageUrl(image.url)} alt={image.alt || product.name} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" class="gallery-image aspect-[4/5] w-full rounded-card object-cover" />
+            </div>) : <img src="/logo.svg" alt="Lignum Vitae" class="aspect-[4/5] w-full rounded-card object-contain p-8" />}
+          </div>
+          {images.length > 1 && <>
+            <button type="button" data-previous aria-label="Imagen anterior" aria-controls="product-gallery" class="button absolute top-1/2 left-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+            </button>
+            <button type="button" data-next aria-label="Imagen siguiente" aria-controls="product-gallery" class="button absolute top-1/2 right-4 h-10 min-h-10 w-10 -translate-y-1/2 bg-surface/90 p-0 text-text">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
+            </button>
+          </>}
+        </div>
+        {images.length > 1 && <div class="mt-4 flex flex-wrap justify-center" aria-label="Seleccionar imagen">
+          {images.map((_, index) => <button type="button" data-dot={index} aria-label={`Ver imagen ${index + 1}`} aria-controls="product-gallery" aria-current={index === 0 ? 'true' : 'false'} class="gallery-dot flex h-11 w-11 items-center justify-center rounded-full">
+            <span class="h-2 w-2 rounded-full bg-border-strong" aria-hidden="true" />
+          </button>)}
+        </div>}
+      </div>
+
+      <div class="min-w-0 [overflow-wrap:anywhere]">
+        <nav aria-label="Ruta de navegación" class="text-caption">
+          <a href="/catalogo" class="text-action hover:underline">Catálogo</a> / <a href={`/catalogo#${encodeURIComponent(product.category.slug)}`} class="text-action hover:underline">{product.category.name}</a>
+        </nav>
+        <h1 id="product-title" class="mt-4 text-display-lg text-brand">{product.name}</h1>
+        {product.description && <p class="mt-6 whitespace-pre-line text-body text-text">{product.description}</p>}
+        <div class="mt-6 flex gap-4 rounded-input border-l-[3px] border-action bg-surface-tint p-4 text-body-sm text-text">
+          <svg class="shrink-0 text-action" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v2" /></svg>
+          <p>Entregas solo en {settings.city}. Mínimo {settings.minLeadTimeDays} días de anticipación.</p>
+        </div>
+
+        <form id="quote-form" class="mt-8 space-y-6" data-product-id={product.id} data-slug={product.slug} data-name={product.name} data-image-url={images[0] ? imageUrl(images[0].url) : '/logo.svg'}>
+          <div>
+            <label for="quantity" class="block text-body-sm font-medium">Cantidad</label>
+            <div class="mt-2 flex items-center gap-4">
+              <button type="button" data-less aria-label="Menos" class="button h-10 min-h-10 w-10 border border-border-strong bg-surface p-0 text-text disabled:opacity-50" disabled>−</button>
+              <input id="quantity" name="quantity" type="number" min="1" max={Number.MAX_SAFE_INTEGER} step="1" value="1" required class="pdp-input w-16 text-center font-semibold" />
+              <button type="button" data-more aria-label="Más" class="button h-10 min-h-10 w-10 border border-border-strong bg-surface p-0 text-text">+</button>
+            </div>
+          </div>
+          <div>
+            <label for="candle-color" class="block text-body-sm font-medium">Color de la vela <span class="text-text-muted">(opcional)</span></label>
+            <input id="candle-color" name="candleColor" type="text" class="pdp-input mt-2 w-full" />
+          </div>
+          <div>
+            <label for="ribbon-color" class="block text-body-sm font-medium">Color del listón <span class="text-text-muted">(opcional)</span></label>
+            <input id="ribbon-color" name="ribbonColor" type="text" class="pdp-input mt-2 w-full" />
+          </div>
+          {product.allowsFragrance && <label class="flex min-h-11 items-center gap-2 text-body">
+            <input type="checkbox" name="withFragrance" class="h-5 w-5 accent-action" /> Con aroma
+          </label>}
+          <p class="text-body-sm text-text-muted">Te enviamos el precio por WhatsApp</p>
+          <button type="submit" class="button w-full bg-action text-surface hover:bg-action-hover">Agregar a mi cotización</button>
+          <p id="quote-status" role="status" class="text-body-sm text-action" hidden>Agregado · <a href="/cotizar" class="underline">Ver mi cotización</a></p>
+          <p id="quote-error" role="alert" class="rounded-input bg-danger-bg p-4 text-caption text-danger-fg" hidden>No pudimos guardar tu cotización. Revisa que el navegador permita guardar datos e intenta de nuevo.</p>
+        </form>
+      </div>
+    </div>
+  </section> : <section class="site-container py-16 lg:py-24">
+    <p class="text-micro text-text-muted">404</p>
+    <h1 class="mt-4 text-display-lg text-brand">Producto no encontrado</h1>
+    <p class="mt-6 text-body">Este producto no está disponible. Explora las opciones de nuestro catálogo.</p>
+    <a href="/catalogo" class="button mt-8 bg-action text-surface hover:bg-action-hover">Ver catálogo</a>
+  </section>}
+</Layout>
+
+<style>
+  .pdp-input {
+    min-height: 44px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-input);
+    background: var(--color-surface);
+    color: var(--color-text);
+    padding: 12px;
+    font-size: var(--text-body);
+  }
+  .pdp-input:focus { border-color: var(--color-action); box-shadow: 0 0 0 2px var(--color-action-soft); }
+  .gallery-dot[aria-current='true'] span { background: var(--color-action); }
+  .gallery-image { animation: appear .3s ease-in; }
+  @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .gallery-image { animation: none; } }
+</style>
+
+<script>
+  import { addQuoteItem } from '../../lib/quote-list';
+
+  const gallery = document.querySelector<HTMLElement>('#product-gallery');
+  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-dot]'));
+  if (gallery && dots.length > 1) {
+    const currentIndex = () => Math.round(gallery.scrollLeft / gallery.clientWidth);
+    const show = (index: number) => {
+      const next = (index + dots.length) % dots.length;
+      gallery.scrollTo({ left: next * gallery.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    };
+    document.querySelector('[data-previous]')?.addEventListener('click', () => show(currentIndex() - 1));
+    document.querySelector('[data-next]')?.addEventListener('click', () => show(currentIndex() + 1));
+    dots.forEach((dot, index) => dot.addEventListener('click', () => show(index)));
+    gallery.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      show(currentIndex() + (event.key === 'ArrowLeft' ? -1 : 1));
+    });
+    gallery.addEventListener('scroll', () => {
+      const index = currentIndex();
+      dots.forEach((dot, position) => dot.setAttribute('aria-current', String(position === index)));
+    }, { passive: true });
+  }
+
+  const form = document.querySelector<HTMLFormElement>('#quote-form');
+  if (form) {
+    const quantity = form.querySelector<HTMLInputElement>('#quantity')!;
+    const less = form.querySelector<HTMLButtonElement>('[data-less]')!;
+    const more = form.querySelector<HTMLButtonElement>('[data-more]')!;
+    const status = form.querySelector<HTMLElement>('#quote-status')!;
+    const error = form.querySelector<HTMLElement>('#quote-error')!;
+    const syncStepper = () => {
+      less.disabled = !Number.isFinite(quantity.valueAsNumber) || quantity.valueAsNumber <= 1;
+      more.disabled = quantity.valueAsNumber >= Number.MAX_SAFE_INTEGER;
+    };
+    const step = (direction: number) => {
+      const value = Number.isSafeInteger(quantity.valueAsNumber) ? quantity.valueAsNumber : 1;
+      quantity.value = String(Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, value + direction)));
+      syncStepper();
+      status.hidden = true;
+    };
+    less.addEventListener('click', () => step(-1));
+    more.addEventListener('click', () => step(1));
+    form.addEventListener('input', () => { syncStepper(); status.hidden = true; error.hidden = true; });
+    syncStepper();
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const data = new FormData(form);
+      const added = addQuoteItem({
+        productId: form.dataset.productId!,
+        slug: form.dataset.slug!,
+        name: form.dataset.name!,
+        imageUrl: form.dataset.imageUrl!,
+        quantity: quantity.valueAsNumber,
+        candleColor: String(data.get('candleColor') ?? '').trim(),
+        ribbonColor: String(data.get('ribbonColor') ?? '').trim(),
+        withFragrance: data.get('withFragrance') === 'on',
+      });
+      status.hidden = !added;
+      error.hidden = added;
+    });
+  }
+</script>

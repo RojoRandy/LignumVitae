@@ -1,0 +1,70 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard, { type Product } from '../components/ProductCard.astro';
+import { getJson } from '../lib/api';
+
+interface Category {
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  products: Product[];
+}
+
+const categories = await getJson<Category[]>('/public/catalog');
+const hasProducts = categories.some((category) => category.products.length > 0);
+---
+
+<Layout title="Catálogo · Lignum Vitae" description="Explora nuestras velas personalizadas por categoría y encuentra un recuerdo para tu celebración.">
+  <div class="site-container py-16 lg:py-24">
+    <h1 class="text-display-lg text-brand">Catálogo</h1>
+    <p class="mt-4 text-body-lg text-text-muted">Encuentra las velas que acompañarán tu celebración.</p>
+    {!hasProducts && <p class="mt-8 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
+  </div>
+
+  {categories.length > 0 && <nav aria-label="Categorías del catálogo" class="category-nav sticky top-16 z-10 bg-canvas md:top-20">
+    <div class="category-chips site-container flex gap-2 overflow-x-auto py-2">
+      {categories.map((category) => <a href={`#${encodeURIComponent(category.slug)}`} class="category-chip flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-border-strong px-6 text-body-sm font-medium text-text hover:bg-action-soft hover:text-brand">
+        {category.name}
+      </a>)}
+    </div>
+  </nav>}
+
+  <div class="site-container space-y-16 py-16 lg:space-y-24 lg:py-24">
+    {categories.map((category) => <section id={category.slug} aria-label={category.name}>
+      <h2 class="text-heading-lg text-brand [overflow-wrap:anywhere]">{category.name}</h2>
+      {category.description && <p class="mt-4 whitespace-pre-line text-body-lg text-text-muted [overflow-wrap:anywhere]">{category.description}</p>}
+      {category.products.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
+        {category.products.map((product) => <ProductCard product={product} />)}
+      </div> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos las velas de esta categoría.</p>}
+    </section>)}
+  </div>
+</Layout>
+
+<style>
+  /* Header (64/80px) + chips (60px) + espacio para el foco y el título. */
+  :global(html:has(.category-nav)) { scroll-padding-top: 9rem; }
+  @media (min-width: 768px) {
+    :global(html:has(.category-nav)) { scroll-padding-top: 10rem; }
+  }
+  .category-chips { scrollbar-width: none; }
+  .category-chips::-webkit-scrollbar { display: none; }
+  .category-chip[aria-current="location"] {
+    background: var(--color-action-soft);
+    color: var(--color-brand);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+</style>
+
+<script>
+  const chips = document.querySelectorAll<HTMLAnchorElement>('.category-chip');
+  function updateActiveCategory() {
+    chips.forEach((chip) => {
+      if (chip.hash === window.location.hash) chip.setAttribute('aria-current', 'location');
+      else chip.removeAttribute('aria-current');
+    });
+  }
+  updateActiveCategory();
+  window.addEventListener('hashchange', updateActiveCategory);
+</script>

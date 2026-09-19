@@ -1,0 +1,149 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard, { type Product } from '../components/ProductCard.astro';
+import { getJson, imageUrl } from '../lib/api';
+
+interface PublicSettings {
+  brandName: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  city: string;
+  state: string;
+  businessHours: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+  minLeadTimeDays: number;
+  depositPct: number;
+}
+
+interface Category {
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  products: Product[];
+}
+
+const [settings, categories] = await Promise.all([
+  getJson<PublicSettings>('/public/settings'),
+  getJson<Category[]>('/public/catalog'),
+]);
+const featured = categories.flatMap((category) => category.products).filter((product) => product.isFeatured).slice(0, 8);
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits
+  ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
+  : null;
+const socialLinks = [
+  { href: settings.instagramUrl, label: 'Instagram' },
+  { href: settings.facebookUrl, label: 'Facebook' },
+  { href: settings.tiktokUrl, label: 'TikTok' },
+].filter((link) => link.href);
+const steps = [
+  { title: 'Planea con tiempo', text: `Mínimo ${settings.minLeadTimeDays} días de anticipación.`, icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z' },
+  { title: 'Confirma tu pedido', text: `Confirma con el ${settings.depositPct}% de anticipo.`, icon: 'M12 2v20m5-15H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6' },
+  { title: 'Elige cómo pagar', text: 'Pago por transferencia o efectivo.', icon: 'M3 5h18v14H3zM3 9h18M7 15h4' },
+  { title: 'Recibe tus velas', text: `Envío con costo adicional, solo en ${settings.city}.`, icon: 'M1 3h14v14H1zM15 8h4l3 4v5h-7M5 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4m13 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4' },
+  { title: 'Revisa cada detalle', text: 'Una vez confirmado, no hay cambios ni cancelaciones.', icon: 'M22 11v1a10 10 0 1 1-6-9M22 4 12 14l-3-3' },
+];
+---
+
+<Layout title={`${settings.brandName} · Velas personalizadas`} description={`Velas de recuerdo hechas a mano para tus momentos especiales. Entregas solo en ${settings.city}.`}>
+  <section class="site-container grid items-center gap-8 py-16 md:grid-cols-2 lg:gap-16 lg:py-24" aria-labelledby="hero-title">
+    <img src="/galeria/1.jpeg" alt="Velas de recuerdo con listón y tarjeta personalizada" decoding="async" fetchpriority="high" class="aspect-[4/5] w-full rounded-card bg-canvas-deep object-cover md:order-2" />
+    <div class="min-w-0">
+      <p class="text-micro text-text-muted">{settings.brandName} · Mi pequeño paraíso</p>
+      <h1 id="hero-title" class="mt-4 text-display-xl text-brand">Velas personalizadas para tus momentos especiales</h1>
+      <p class="mt-6 text-accent text-brand">hecho a mano</p>
+      <p class="mt-6 text-body-lg text-text">Un recuerdo para compartir en tus XV años, bautizo, boda o esa fecha que quieres guardar para siempre.</p>
+      <div class="mt-8 flex flex-col gap-4 md:flex-row md:flex-wrap">
+        <a href="/catalogo" class="button bg-action text-surface hover:bg-action-hover">Ver catálogo</a>
+        {whatsappUrl && <a href={whatsappUrl} class="button button-outline">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.4 7.9L3 21l1.6-4.6A9 9 0 1 1 21 11.5Z" /><path d="m8 7 2 3-1 1a8 8 0 0 0 4 4l1-1 3 2c-1 3-4 2-7-1s-4-6-2-8Z" /></svg>
+          WhatsApp
+        </a>}
+      </div>
+    </div>
+  </section>
+
+  <section class="site-container py-16 lg:py-24" aria-labelledby="categorias-title">
+    <h2 id="categorias-title" class="text-heading-lg text-brand">Un detalle para cada ocasión</h2>
+    <p class="mt-4 text-body-lg text-text-muted">Encuentra las velas que acompañarán tu celebración.</p>
+    {categories.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
+      {categories.map((category) => {
+        const cover = category.coverImageUrl || category.products[0]?.image?.url;
+        return <a href={`/catalogo#${encodeURIComponent(category.slug)}`} class="min-w-0 rounded-card bg-surface shadow-card">
+          <img src={cover ? imageUrl(cover) : '/logo.svg'} alt={category.name} loading="lazy" decoding="async" class:list={['aspect-square w-full rounded-t-card bg-canvas-deep', cover ? 'object-cover' : 'object-contain p-8']} />
+          <div class="p-4">
+            <h3 class="text-heading text-brand [overflow-wrap:anywhere]">{category.name}</h3>
+            {category.description && <p class="mt-2 truncate text-body-sm text-text-muted" title={category.description}>{category.description}</p>}
+          </div>
+        </a>;
+      })}
+    </div> : <p class="mt-8 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
+  </section>
+
+  <section class="site-container py-16 lg:py-24" aria-labelledby="destacados-title">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h2 id="destacados-title" class="text-heading-lg text-brand">Destacados</h2>
+      <a href="/catalogo" class="button button-outline">Ver todo el catálogo</a>
+    </div>
+    {featured.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
+      {featured.map((product) => <ProductCard product={product} />)}
+    </div> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos nuestros destacados. Explora las opciones del catálogo.</p>}
+  </section>
+
+  <section id="como-funciona" class="band bg-band py-16 text-on-band lg:py-24" aria-labelledby="proceso-title">
+    <div class="site-container">
+      <p class="text-accent text-on-band">Pedidos</p>
+      <h2 id="proceso-title" class="mt-4 text-heading-lg text-on-band">Cómo funciona</h2>
+      <ol class="mt-8 grid gap-8 lg:grid-cols-5">
+        {steps.map((step) => <li class="min-w-0">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-on-band-muted" aria-hidden="true"><path d={step.icon} /></svg>
+          <h3 class="mt-4 text-body font-semibold text-on-band">{step.title}</h3>
+          <p class="mt-2 text-body text-on-band-muted">{step.text}</p>
+        </li>)}
+      </ol>
+      <a href="/cotizar" class="button mt-8 bg-surface text-action hover:bg-action-soft">Solicitar cotización</a>
+    </div>
+  </section>
+
+  <section id="nosotros" class="site-container py-16 lg:py-24" aria-labelledby="nosotros-title">
+    <h2 id="nosotros-title" class="text-heading-lg text-brand">Nuestro pequeño paraíso</h2>
+    <!-- TODO dueña -->
+    <p class="mt-6 max-w-prose text-body-lg text-text">En {settings.brandName} creamos velas de recuerdo hechas a mano, con detalles personalizados para acompañar tus celebraciones. Desde {settings.city}, queremos que cada pieza sea una forma de compartir cariño y recordar un momento especial.</p>
+  </section>
+
+  <section class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="galeria-title">
+    <div class="site-container">
+      <h2 id="galeria-title" class="text-heading-lg text-text">Detalles que se vuelven recuerdos</h2>
+      <p class="mt-4 text-body-lg">Una mirada a nuestras velas y sus detalles personalizados.</p>
+      <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+        {Array.from({ length: 10 }, (_, index) => <img src={`/galeria/${index + 1}.jpeg`} alt={`Velas de recuerdo personalizadas, muestra ${index + 1} del taller`} loading="lazy" decoding="async" class="aspect-[4/5] w-full rounded-card object-cover" />)}
+      </div>
+    </div>
+  </section>
+
+  <section id="contacto" class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="contacto-title">
+    <div class="site-container grid gap-8 md:grid-cols-2 lg:gap-16">
+      <div class="min-w-0">
+        <h2 id="contacto-title" class="text-heading-lg text-text">Hablemos de tu celebración</h2>
+        <p class="mt-4 text-body-lg">Cuéntanos qué tienes en mente. Te ayudamos a elegir un recuerdo para ese día especial.</p>
+        <p class="mt-4 text-body">{settings.city}, {settings.state}</p>
+        <p class="mt-2 text-body">Entregas solo en {settings.city}.</p>
+      </div>
+      <div class="min-w-0 rounded-card bg-surface p-6">
+        <address class="flex flex-col items-start gap-2 not-italic">
+          {whatsappUrl && <a href={whatsappUrl} class="button button-outline">Escríbenos por WhatsApp</a>}
+          {settings.phone && <a href={`tel:${settings.phone}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.phone}</a>}
+          {settings.email && <a href={`mailto:${settings.email}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.email}</a>}
+        </address>
+        {settings.businessHours && <><h3 class="mt-6 text-heading-sm text-text">Horario de atención</h3><p class="mt-2 whitespace-pre-line text-body [overflow-wrap:anywhere]">{settings.businessHours}</p></>}
+        {socialLinks.length > 0 && <nav aria-label="Síguenos en redes sociales" class="mt-6 flex flex-wrap gap-x-6">
+          {socialLinks.map(({ href, label }) => <a href={href!} class="flex min-h-11 items-center text-body text-action hover:underline">{label}</a>)}
+        </nav>}
+      </div>
+    </div>
+  </section>
+</Layout>

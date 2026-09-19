@@ -1,0 +1,188 @@
+---
+// Link que la duena manda por WhatsApp o en el PDF: {PUBLIC_SITE_URL}/cotizacion/:token.
+// Abrirla la marca como VISTA en el admin (lo hace el API).
+import Layout from '../../layouts/Layout.astro';
+import { ApiError, getJson } from '../../lib/api';
+
+type QuotationStatus = 'DRAFT' | 'SENT' | 'VIEWED' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+
+interface PublicQuotation {
+  folio: string;
+  status: QuotationStatus;
+  issuedAt: string;
+  validUntil: string;
+  eventDate: string | null;
+  customer: { fullName: string };
+  items: {
+    productName: string;
+    quantity: number;
+    candleColor: string | null;
+    ribbonColor: string | null;
+    withFragrance: boolean;
+    fragranceName: string | null;
+    personalizationText: string | null;
+    unitPrice: string;
+    lineTotal: string;
+  }[];
+  subtotal: string;
+  discountEnabled: boolean;
+  discountAmount: string;
+  shippingCost: string;
+  total: string;
+  depositAmount: string;
+  terms: string | null;
+  notes: string | null;
+}
+
+interface PublicSettings {
+  whatsapp: string | null;
+}
+
+const token = Astro.params.token ?? '';
+const quotation = await getJson<PublicQuotation>(`/public/quotations/${encodeURIComponent(token)}`).catch((error: unknown) => {
+  if (!(error instanceof ApiError) || error.status !== 404) throw error;
+  Astro.response.status = 404;
+  return null;
+});
+const settings = await getJson<PublicSettings>('/public/settings');
+
+const STATUS_LABEL: Record<QuotationStatus, string> = {
+  DRAFT: 'En preparación',
+  SENT: 'Pendiente de respuesta',
+  VIEWED: 'Pendiente de respuesta',
+  ACCEPTED: 'Aceptada',
+  REJECTED: 'Rechazada',
+  EXPIRED: 'Vencida',
+};
+
+const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+const formatMoney = (value: string) => money.format(Number(value));
+// eventDate es fecha pura (medianoche UTC); issuedAt/validUntil son instantes.
+const formatDay = (value: string, timeZone = 'America/Mexico_City') =>
+  new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone }).format(new Date(value));
+
+const canRespond = quotation !== null && (quotation.status === 'SENT' || quotation.status === 'VIEWED');
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}` : null;
+---
+
+<Layout title={quotation ? `Cotización ${quotation.folio} · Lignum Vitae` : 'Cotización no encontrada · Lignum Vitae'} description="Tu cotización de Lignum Vitae.">
+  <meta slot="head" name="robots" content="noindex" />
+  <section class="site-container py-16 lg:py-24">
+    {quotation ? <article class="mx-auto max-w-[720px] rounded-card bg-surface p-6 shadow-card md:p-8" aria-labelledby="quotation-title">
+      <header class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p class="text-body-sm text-text-muted">Cotización para {quotation.customer.fullName}</p>
+          <h1 id="quotation-title" class="mt-2 text-heading-lg text-brand">{quotation.folio}</h1>
+        </div>
+        <span id="quotation-status" class="rounded-full bg-action-soft px-3 py-1 text-micro text-brand">{STATUS_LABEL[quotation.status]}</span>
+      </header>
+
+      <dl class="mt-6 grid gap-4 text-body-sm sm:grid-cols-3">
+        <div><dt class="text-text-muted">Emitida</dt><dd class="font-medium">{formatDay(quotation.issuedAt)}</dd></div>
+        <div><dt class="text-text-muted">Vigente hasta</dt><dd class="font-medium">{formatDay(quotation.validUntil)}</dd></div>
+        <div><dt class="text-text-muted">Fecha del evento</dt><dd class="font-medium">{quotation.eventDate ? formatDay(quotation.eventDate, 'UTC') : '—'}</dd></div>
+      </dl>
+
+      <table class="mt-8 w-full text-body-sm">
+        <caption class="sr-only">Productos cotizados</caption>
+        <thead class="text-left text-caption text-text-muted">
+          <tr class="border-b border-border">
+            <th scope="col" class="py-2 text-left font-medium">Producto</th>
+            <th scope="col" class="py-2 text-right font-medium">Precio</th>
+            <th scope="col" class="py-2 text-right font-medium">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {quotation.items.map((item) => <tr class="border-b border-border align-top">
+            <td class="py-4 pr-4 [overflow-wrap:anywhere]">
+              <p class="font-medium">{item.quantity} × {item.productName}</p>
+              <p class="mt-1 text-caption text-text-muted">{[
+                item.candleColor && `Vela: ${item.candleColor}`,
+                item.ribbonColor && `Listón: ${item.ribbonColor}`,
+                item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null,
+                item.personalizationText,
+              ].filter(Boolean).join(' · ')}</p>
+            </td>
+            <td class="py-4 text-right whitespace-nowrap">{formatMoney(item.unitPrice)}</td>
+            <td class="py-4 pl-4 text-right whitespace-nowrap">{formatMoney(item.lineTotal)}</td>
+          </tr>)}
+        </tbody>
+      </table>
+
+      <dl class="mt-6 ml-auto flex max-w-xs flex-col gap-2 text-body-sm">
+        <div class="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(quotation.subtotal)}</dd></div>
+        {quotation.discountEnabled && <div class="flex justify-between"><dt>Descuento</dt><dd>−{formatMoney(quotation.discountAmount)}</dd></div>}
+        <div class="flex justify-between"><dt>Envío</dt><dd>{formatMoney(quotation.shippingCost)}</dd></div>
+        <div class="flex items-baseline justify-between border-t border-border pt-2"><dt class="font-medium">Total</dt><dd class="text-heading-lg text-brand">{formatMoney(quotation.total)}</dd></div>
+        <div class="flex justify-between rounded-input bg-surface-tint p-3 font-medium"><dt>Anticipo para confirmar</dt><dd>{formatMoney(quotation.depositAmount)}</dd></div>
+      </dl>
+
+      {quotation.notes && <div class="mt-8"><h2 class="text-heading-sm">Notas</h2><p class="mt-2 whitespace-pre-line text-body-sm">{quotation.notes}</p></div>}
+      {quotation.terms && <div class="mt-6"><h2 class="text-heading-sm">Términos</h2><p class="mt-2 whitespace-pre-line text-body-sm text-text-muted">{quotation.terms}</p></div>}
+
+      {canRespond && <div id="quotation-actions" class="mt-8 flex flex-col gap-4 md:flex-row" data-token={token}>
+        <button type="button" data-accept class="button bg-action text-surface hover:bg-action-hover disabled:opacity-60">Aceptar cotización</button>
+        <button type="button" data-reject class="button button-outline disabled:opacity-60">Rechazar</button>
+      </div>}
+      <p id="quotation-error" role="alert" class="mt-4 rounded-input bg-danger-bg p-4 text-body-sm text-danger-fg" hidden></p>
+
+      <div id="quotation-accepted" class="mt-8 rounded-input bg-surface-tint p-4 text-body" role="status" hidden>
+        <p class="font-medium">¡Gracias! Tu pedido <span data-order-folio></span> quedó registrado.</p>
+        <p class="mt-2">Para confirmarlo, envía tu anticipo de <span data-order-deposit></span> por transferencia o en efectivo.</p>
+        {whatsappUrl && <a href={whatsappUrl} class="button button-outline mt-4">Escríbenos por WhatsApp</a>}
+      </div>
+    </article> : <div>
+      <p class="text-micro text-text-muted">404</p>
+      <h1 class="mt-4 text-display-lg text-brand">Cotización no encontrada</h1>
+      <p class="mt-6 text-body">Revisa que el enlace esté completo o escríbenos para enviártelo de nuevo.</p>
+      {whatsappUrl && <a href={whatsappUrl} class="button button-outline mt-8">Escríbenos por WhatsApp</a>}
+    </div>}
+  </section>
+</Layout>
+
+<script>
+  import { API_URL } from '../../lib/api';
+
+  const actions = document.querySelector<HTMLElement>('#quotation-actions');
+  const errorBox = document.querySelector<HTMLElement>('#quotation-error');
+  if (actions && errorBox) {
+    const token = encodeURIComponent(actions.dataset.token ?? '');
+    const buttons = actions.querySelectorAll<HTMLButtonElement>('button');
+    const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+    const respond = async (action: 'accept' | 'reject') => {
+      errorBox.hidden = true;
+      buttons.forEach((button) => (button.disabled = true));
+      try {
+        const response = await fetch(`${API_URL}/public/quotations/${token}/${action}`, { method: 'POST' });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) {
+          errorBox.textContent = response.status === 429 ? 'Espera un minuto e intenta de nuevo.' : body?.description ?? 'No pudimos registrar tu respuesta.';
+          errorBox.hidden = false;
+          return;
+        }
+        if (action === 'reject') return location.reload();
+        // El pedido solo viene en esta respuesta: el GET publico no lo trae.
+        const accepted = document.querySelector<HTMLElement>('#quotation-accepted')!;
+        accepted.querySelector('[data-order-folio]')!.textContent = body.data.folio;
+        accepted.querySelector('[data-order-deposit]')!.textContent = money.format(Number(body.data.depositAmount));
+        accepted.hidden = false;
+        actions.hidden = true;
+        document.querySelector('#quotation-status')!.textContent = 'Aceptada';
+      } catch {
+        errorBox.textContent = 'No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.';
+        errorBox.hidden = false;
+      } finally {
+        buttons.forEach((button) => (button.disabled = false));
+      }
+    };
+
+    actions.querySelector('[data-accept]')!.addEventListener('click', () => {
+      if (confirm('¿Aceptas esta cotización? Se registrará tu pedido.')) respond('accept');
+    });
+    actions.querySelector('[data-reject]')!.addEventListener('click', () => {
+      if (confirm('¿Seguro que quieres rechazar esta cotización?')) respond('reject');
+    });
+  }
+</script>

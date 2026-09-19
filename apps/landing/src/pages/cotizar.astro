@@ -1,0 +1,234 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getJson } from '../lib/api';
+
+interface PublicSettings {
+  city: string;
+  minLeadTimeDays: number;
+  whatsapp: string | null;
+}
+
+const settings = await getJson<PublicSettings>('/public/settings');
+
+// Misma regla que el API: hoy en la zona del negocio + N dias, como fecha pura.
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
+const min = new Date(`${today}T00:00:00Z`);
+min.setUTCDate(min.getUTCDate() + settings.minLeadTimeDays);
+const minEventDate = min.toISOString().slice(0, 10);
+
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}` : null;
+---
+
+<Layout title="Mi cotización · Lignum Vitae" description="Revisa tus productos y solicita tu cotización.">
+  <section class="site-container py-16 lg:py-24" aria-labelledby="cotizar-title">
+    <h1 id="cotizar-title" class="text-display-lg text-brand">Mi cotización</h1>
+
+    <div id="quote-sent" class="mt-8 max-w-2xl rounded-card bg-surface p-6 shadow-card" role="status" hidden>
+      <h2 class="text-heading text-brand">¡Recibimos tu solicitud!</h2>
+      <p class="mt-4 text-body">Te escribiremos por WhatsApp con el precio y los detalles de tu pedido.</p>
+      <div class="mt-6 flex flex-col gap-4 md:flex-row">
+        {whatsappUrl && <a href={whatsappUrl} class="button button-outline">Escríbenos por WhatsApp</a>}
+        <a href="/catalogo" class="button bg-action text-surface hover:bg-action-hover">Seguir viendo el catálogo</a>
+      </div>
+    </div>
+
+    <div id="quote-empty" class="mt-8" hidden>
+      <p class="text-body-lg text-text-muted">Aún no agregas productos a tu cotización.</p>
+      <a href="/catalogo" class="button mt-6 bg-action text-surface hover:bg-action-hover">Ver catálogo</a>
+    </div>
+
+    <div id="quote-content" class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" hidden>
+      <div class="min-w-0">
+        <h2 class="text-heading-lg text-brand">Tus productos</h2>
+        <ul id="quote-items" class="mt-6 flex flex-col gap-4"></ul>
+      </div>
+
+      <form id="request-form" class="min-w-0 space-y-6 rounded-card bg-surface p-6 shadow-card" novalidate>
+        <h2 class="text-heading-lg text-brand">Tus datos</h2>
+
+        <div class="flex gap-4 rounded-input border-l-[3px] border-action bg-surface-tint p-4 text-body-sm text-text">
+          <svg class="shrink-0 text-action" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v2" /></svg>
+          <p>Entregas solo en {settings.city}. Pide con al menos {settings.minLeadTimeDays} días de anticipación. Te enviamos el precio por WhatsApp.</p>
+        </div>
+
+        <div>
+          <label for="full-name" class="block text-body-sm font-medium">Nombre</label>
+          <input id="full-name" name="fullName" type="text" autocomplete="name" required minlength="2" maxlength="120" class="field-input mt-2" />
+        </div>
+        <div>
+          <label for="whatsapp" class="block text-body-sm font-medium">WhatsApp</label>
+          <input id="whatsapp" name="whatsapp" type="tel" inputmode="numeric" autocomplete="tel-national" required pattern="[0-9]{10}" maxlength="10" aria-describedby="whatsapp-hint" class="field-input mt-2" />
+          <p id="whatsapp-hint" class="mt-2 text-caption text-text-muted">10 dígitos, sin espacios.</p>
+        </div>
+        <div>
+          <label for="event-date" class="block text-body-sm font-medium">¿Para qué fecha lo necesitas?</label>
+          <input id="event-date" name="eventDate" type="date" required min={minEventDate} aria-describedby="event-date-hint" class="field-input mt-2" />
+          <p id="event-date-hint" class="mt-2 text-caption text-text-muted">A partir del {minEventDate.split('-').reverse().join('/')}.</p>
+        </div>
+        <div>
+          <label for="notes" class="block text-body-sm font-medium">Notas <span class="text-text-muted">(opcional)</span></label>
+          <textarea id="notes" name="notes" rows="3" maxlength="1000" placeholder="Tipo de evento, nombres para las tarjetas, colores..." class="field-input mt-2"></textarea>
+        </div>
+        <div class="honeypot" aria-hidden="true">
+          <label for="website">No llenar</label>
+          <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <p id="request-error" role="alert" class="rounded-input bg-danger-bg p-4 text-body-sm text-danger-fg" hidden></p>
+        <button type="submit" class="button w-full bg-action text-surface hover:bg-action-hover disabled:opacity-60">Enviar solicitud</button>
+      </form>
+    </div>
+  </section>
+</Layout>
+
+<template id="quote-item-template">
+  <li class="flex gap-4 rounded-card bg-surface p-4 shadow-card">
+    <img data-image alt="" width="80" height="100" class="aspect-[4/5] w-20 shrink-0 rounded-input bg-canvas-deep object-cover" />
+    <div class="min-w-0 flex-1">
+      <a data-name class="text-heading-sm text-text [overflow-wrap:anywhere] hover:text-action"></a>
+      <p data-options class="mt-1 text-caption text-text-muted [overflow-wrap:anywhere]"></p>
+      <div class="mt-4 flex flex-wrap items-center gap-4">
+        <label class="flex items-center gap-2 text-body-sm">
+          Cantidad
+          <input data-quantity type="number" min="1" max="5000" step="1" class="field-input w-24 text-center font-semibold" />
+        </label>
+        <button data-remove type="button" class="flex min-h-11 items-center text-body-sm text-action underline">Quitar</button>
+      </div>
+    </div>
+  </li>
+</template>
+
+<style>
+  .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+</style>
+
+<script>
+  import { API_URL } from '../lib/api';
+  import { clearQuote, readQuote, removeQuoteItem, updateQuoteItem } from '../lib/quote-list';
+
+  const content = document.querySelector<HTMLElement>('#quote-content')!;
+  const empty = document.querySelector<HTMLElement>('#quote-empty')!;
+  const sent = document.querySelector<HTMLElement>('#quote-sent')!;
+  const list = document.querySelector<HTMLUListElement>('#quote-items')!;
+  const template = document.querySelector<HTMLTemplateElement>('#quote-item-template')!;
+  const form = document.querySelector<HTMLFormElement>('#request-form')!;
+  const errorBox = document.querySelector<HTMLElement>('#request-error')!;
+  const submit = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+
+  const render = () => {
+    const items = readQuote();
+    content.hidden = items.length === 0 || !sent.hidden;
+    empty.hidden = items.length > 0 || !sent.hidden;
+    list.replaceChildren(
+      ...items.map((item, index) => {
+        const row = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
+        const image = row.querySelector<HTMLImageElement>('[data-image]')!;
+        image.src = item.imageUrl;
+        const name = row.querySelector<HTMLAnchorElement>('[data-name]')!;
+        name.textContent = item.name;
+        name.href = `/producto/${encodeURIComponent(item.slug)}`;
+        row.querySelector('[data-options]')!.textContent = [
+          item.candleColor && `Vela: ${item.candleColor}`,
+          item.ribbonColor && `Listón: ${item.ribbonColor}`,
+          item.withFragrance ? 'Con aroma' : 'Sin aroma',
+        ].filter(Boolean).join(' · ');
+        const quantity = row.querySelector<HTMLInputElement>('[data-quantity]')!;
+        quantity.value = String(item.quantity);
+        quantity.setAttribute('aria-label', `Cantidad de ${item.name}`);
+        quantity.addEventListener('change', () => {
+          const value = quantity.valueAsNumber;
+          if (Number.isInteger(value) && value >= 1 && value <= 5000) updateQuoteItem(index, { quantity: value });
+          else quantity.value = String(item.quantity);
+        });
+        const remove = row.querySelector<HTMLButtonElement>('[data-remove]')!;
+        remove.setAttribute('aria-label', `Quitar ${item.name}`);
+        remove.addEventListener('click', () => removeQuoteItem(index));
+        return row;
+      }),
+    );
+  };
+
+  const showError = (message: string) => {
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+  };
+
+  // Marca en rojo los campos que el navegador ya sabe que estan mal.
+  const markInvalid = () => {
+    form.querySelectorAll<HTMLInputElement>('input:not([name=website]), textarea').forEach((field) => {
+      field.setAttribute('aria-invalid', String(!field.checkValidity()));
+    });
+  };
+
+  const messageFor = (status: number, body: { code?: string; description?: string; data?: unknown } | null) => {
+    if (status === 429) return 'Espera un minuto e intenta de nuevo.';
+    const data = body?.data as { minEventDate?: string; minLeadTimeDays?: number } | string[] | undefined;
+    if (body?.code === 'LEAD_TIME_TOO_SHORT' && data && !Array.isArray(data)) {
+      return `Necesitamos al menos ${data.minLeadTimeDays} días de anticipación: elige una fecha a partir del ${data.minEventDate?.split('-').reverse().join('/')}.`;
+    }
+    if (body?.code === 'PRODUCT_NOT_FOUND') {
+      return 'Uno o más productos ya no están disponibles. Quítalos de tu cotización e intenta de nuevo.';
+    }
+    if (body?.code === 'VALIDATION_ERROR' && Array.isArray(data)) return data.join('. ');
+    return body?.description ?? 'No pudimos enviar tu solicitud. Intenta de nuevo.';
+  };
+
+  form.addEventListener('input', () => {
+    errorBox.hidden = true;
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    errorBox.hidden = true;
+    markInvalid();
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    const items = readQuote();
+    if (!items.length) return render();
+
+    const data = new FormData(form);
+    const text = (name: string) => String(data.get(name) ?? '').trim() || undefined;
+    const body = {
+      fullName: text('fullName'),
+      whatsapp: text('whatsapp'),
+      eventDate: text('eventDate'),
+      notes: text('notes'),
+      website: text('website'),
+      items: items.map((item) => ({
+        productId: Number(item.productId),
+        quantity: item.quantity,
+        candleColor: item.candleColor || undefined,
+        ribbonColor: item.ribbonColor || undefined,
+        withFragrance: item.withFragrance,
+      })),
+    };
+
+    submit.disabled = true;
+    try {
+      const response = await fetch(`${API_URL}/public/quote-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        showError(messageFor(response.status, await response.json().catch(() => null)));
+        return;
+      }
+      sent.hidden = false;
+      form.reset();
+      clearQuote();
+      sent.scrollIntoView({ block: 'center' });
+    } catch {
+      showError('No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  render();
+  window.addEventListener('quote:change', render);
+  window.addEventListener('storage', render);
+</script>
