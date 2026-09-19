@@ -172,7 +172,7 @@ export default function OrderDetailPage() {
                   <div>
                     <p className="text-body-sm font-medium text-text">{item.productName}</p>
                     <p className="text-caption text-text-muted">
-                      {[item.candleColor, item.ribbonColor, item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
+                      {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
                         .filter(Boolean)
                         .join(' · ') || '—'}
                     </p>

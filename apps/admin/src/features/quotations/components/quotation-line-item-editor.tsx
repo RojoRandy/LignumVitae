@@ -1,6 +1,6 @@
 // Editor de renglones de una cotizacion. Mismo patron add/remove/update de
 // SupplyTemplateEditor (components/domain/supply-template-editor.tsx), pero
-// con mas campos por renglon: color, liston, aroma, personalizacion, y dos
+// con mas campos por renglon: color, campos por insumo (liston...), aroma, personalizacion, y dos
 // overrides opcionales (minutos de diseno y precio manual).
 import { Plus, Trash2 } from 'lucide-react';
 import { Select } from '@/components/ui/select';
@@ -14,12 +14,15 @@ import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { formatMoney } from '@/lib/format';
+import type { ItemExtraField } from '@/lib/types';
 
 export interface QuotationLineItemRow {
   productId: number | null;
   quantity: number | null;
   candleColor: string;
+  /** Legacy: solo se muestra si un renglon viejo lo trae. */
   ribbonColor: string;
+  extraFields: ItemExtraField[];
   withFragrance: boolean;
   fragranceSupplyId: number | null;
   personalizationText: string;
@@ -35,6 +38,7 @@ export const emptyQuotationLineRow = (): QuotationLineItemRow => ({
   quantity: 1,
   candleColor: '',
   ribbonColor: '',
+  extraFields: [],
   withFragrance: false,
   fragranceSupplyId: null,
   personalizationText: '',
@@ -55,11 +59,24 @@ interface QuotationLineItemEditorProps {
 }
 
 export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationLineItemEditorProps) => {
-  const { options: productOptions } = useProductOptions();
+  const { options: productOptions, products } = useProductOptions();
   const { supplies } = useSupplyOptions();
   const fragranceOptions = supplies
     .filter((supply) => supply.isFragrance)
     .map((supply) => ({ value: String(supply.id), label: supply.name }));
+
+  // Insumos del BOM marcados "Indicar en cotizacion": un campo libre por cada uno.
+  const quoteFieldsOf = (productId: number | null) => {
+    const fields = new Map<number, string>();
+    for (const { supply } of products.find((p) => p.id === productId)?.supplies ?? []) {
+      if (supply.askInQuote && supply.quoteFieldLabel) fields.set(supply.id, supply.quoteFieldLabel);
+    }
+    return [...fields].map(([supplyId, label]) => ({ supplyId, label }));
+  };
+  const setExtraField = (index: number, supplyId: number, label: string, value: string) => {
+    const others = rows[index].extraFields.filter((field) => field.supplyId !== supplyId);
+    update(index, { extraFields: value ? [...others, { supplyId, label, value }] : others });
+  };
 
   const update = (index: number, patch: Partial<QuotationLineItemRow>) =>
     onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -81,7 +98,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 <Select
                   options={productOptions}
                   value={row.productId ? String(row.productId) : undefined}
-                  onChange={(v) => update(index, { productId: Number(v) })}
+                  onChange={(v) => update(index, { productId: Number(v), extraFields: [] })}
                   placeholder="Elegir producto..."
                   searchable
                 />
@@ -103,9 +120,21 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
               <RowField label="Color de vela" htmlFor={`color-${index}`} className="col-span-6 sm:col-span-3">
                 <Input id={`color-${index}`} value={row.candleColor} onChange={(e) => update(index, { candleColor: e.target.value })} />
               </RowField>
-              <RowField label="Liston" htmlFor={`ribbon-${index}`} className="col-span-6 sm:col-span-3">
-                <Input id={`ribbon-${index}`} value={row.ribbonColor} onChange={(e) => update(index, { ribbonColor: e.target.value })} />
-              </RowField>
+              {row.ribbonColor && (
+                <RowField label="Liston (anterior)" htmlFor={`ribbon-${index}`} className="col-span-6 sm:col-span-3">
+                  <Input id={`ribbon-${index}`} value={row.ribbonColor} onChange={(e) => update(index, { ribbonColor: e.target.value })} />
+                </RowField>
+              )}
+              {quoteFieldsOf(row.productId).map(({ supplyId, label }) => (
+                <RowField key={supplyId} label={label} htmlFor={`extra-${index}-${supplyId}`} className="col-span-6 sm:col-span-3">
+                  <Input
+                    id={`extra-${index}-${supplyId}`}
+                    maxLength={60}
+                    value={row.extraFields.find((field) => field.supplyId === supplyId)?.value ?? ''}
+                    onChange={(e) => setExtraField(index, supplyId, label, e.target.value)}
+                  />
+                </RowField>
+              ))}
               <div className="col-span-6 sm:col-span-4 flex items-end gap-2 pb-0.5">
                 <label className="flex items-center gap-2 text-body-sm text-text">
                   <Switch checked={row.withFragrance} onCheckedChange={(v) => update(index, { withFragrance: v, fragranceSupplyId: v ? row.fragranceSupplyId : null })} />

@@ -30,6 +30,7 @@ export class DuplicateQuotationUseCase implements UseCase<DuplicateQuotationArgs
       quantity: item.quantity,
       candleColor: item.candleColor ?? undefined,
       ribbonColor: item.ribbonColor ?? undefined,
+      extraFields: item.extraFields as unknown as CreateQuotationItemDto['extraFields'],
       withFragrance: item.withFragrance,
       fragranceSupplyId: item.fragranceSupplyId ?? undefined,
       personalizationText: item.personalizationText ?? undefined,

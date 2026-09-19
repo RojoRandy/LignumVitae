@@ -456,6 +456,12 @@ model Supply {
   sku         String? @unique
   typeId      Int     @map("type_id")
   isFragrance Boolean @default(false) @map("is_fragrance")
+  /// Si el insumo esta en el BOM de un producto, la landing pide un dato libre
+  /// al cotizar (ej. "Color del liston"). Reemplaza la deteccion por slug del
+  /// tipo de insumo, que se rompia al renombrar el tipo.
+  askInQuote            Boolean @default(false) @map("ask_in_quote")
+  quoteFieldLabel       String? @map("quote_field_label")
+  quoteFieldPlaceholder String? @map("quote_field_placeholder")
   /// Unidad BASE: en la que se expresa el consumo y las existencias.
   unitId      Int     @map("unit_id")
 
@@ -837,7 +843,7 @@ model QuoteRequest {
   dueDate   DateTime? @map("due_date") @db.Date
   notes     String?
 
-  /// [{ productId, productName, quantity, candleColor?, ribbonColor?, withFragrance?, fragranceSupplyId?, fragranceName? }]
+  /// [{ productId, productName, quantity, candleColor?, ribbonColor? (legacy), extraFields?: [{ supplyId, label, value }], withFragrance?, fragranceSupplyId?, fragranceName? }]
   items Json
 
   convertedQuotationId Int?    @unique @map("converted_quotation_id")
@@ -932,6 +938,8 @@ model QuotationItem {
   /// libre del Excel se vuelve tres campos estructurados.
   candleColor          String? @map("candle_color")
   ribbonColor          String? @map("ribbon_color")
+  /// [{ supplyId, label, value }] con el label copiado al capturar (snapshot).
+  extraFields          Json    @default("[]") @map("extra_fields")
   withFragrance        Boolean @default(false) @map("with_fragrance")
   fragranceSupplyId    Int?    @map("fragrance_supply_id")
   personalizationText  String? @map("personalization_text")
@@ -1065,6 +1073,7 @@ model OrderItem {
   quantity            Int
   candleColor         String? @map("candle_color")
   ribbonColor         String? @map("ribbon_color")
+  extraFields         Json    @default("[]") @map("extra_fields")
   withFragrance       Boolean @default(false) @map("with_fragrance")
   fragranceName       String? @map("fragrance_name")
   personalizationText String? @map("personalization_text")

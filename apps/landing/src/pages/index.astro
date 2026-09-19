@@ -164,9 +164,28 @@ const steps = [
       <h2 id="galeria-title" class="text-heading-lg text-text">Detalles que se vuelven recuerdos</h2>
       <p class="mt-4 text-body-lg">Una mirada a nuestras velas y sus detalles personalizados.</p>
       <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-6">
-        {landingImages.gallery.map((image) => <img src={imageUrl(image.url)} alt={image.alt} loading="lazy" decoding="async" class="aspect-[4/5] w-full rounded-card object-cover" />)}
+        {landingImages.gallery.map((image, index) => <button type="button" data-lightbox-open={index} aria-label={`Ampliar: ${image.alt}`} class="group block aspect-square w-full overflow-hidden rounded-card">
+          <img src={imageUrl(image.url)} alt={image.alt} loading="lazy" decoding="async" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none" />
+        </button>)}
       </div>
     </div>
+    <dialog id="lightbox" aria-label="Galería" class="m-auto max-h-none max-w-none bg-transparent p-0 backdrop:bg-ink/85">
+      <figure class="relative flex items-center justify-center">
+        <img data-lightbox-image src="" alt="" class="max-h-[85dvh] max-w-[92vw] rounded-card object-contain" />
+        <figcaption data-lightbox-caption class="sr-only"></figcaption>
+      </figure>
+      <button type="button" data-lightbox-close aria-label="Cerrar" class="button fixed top-4 right-4 h-11 min-h-11 w-11 bg-surface/90 p-0 text-text">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+      {landingImages.gallery.length > 1 && <>
+        <button type="button" data-lightbox-prev aria-label="Imagen anterior" class="button fixed top-1/2 left-4 h-11 min-h-11 w-11 -translate-y-1/2 bg-surface/90 p-0 text-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg>
+        </button>
+        <button type="button" data-lightbox-next aria-label="Imagen siguiente" class="button fixed top-1/2 right-4 h-11 min-h-11 w-11 -translate-y-1/2 bg-surface/90 p-0 text-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg>
+        </button>
+      </>}
+    </dialog>
   </section>}
 
   {testimonials.length > 0 && <section class="site-container py-16 lg:py-24" aria-labelledby="testimoniales-title">
@@ -207,5 +226,32 @@ const steps = [
   import { initCarousel } from '../lib/carousel';
 
   const carouselRoot = document.querySelector('[data-carousel]');
-  if (carouselRoot) initCarousel(carouselRoot);
+  if (carouselRoot) initCarousel(carouselRoot, { autoplay: 5000 });
+
+  // Lightbox de la galeria: <dialog> nativo (Esc, foco atrapado y fondo inerte
+  // vienen gratis). Clic fuera de la imagen o en la X cierra.
+  const lightbox = document.querySelector<HTMLDialogElement>('#lightbox');
+  if (lightbox) {
+    const thumbs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-lightbox-open]'));
+    const image = lightbox.querySelector<HTMLImageElement>('[data-lightbox-image]')!;
+    const caption = lightbox.querySelector<HTMLElement>('[data-lightbox-caption]')!;
+    let current = 0;
+    const show = (index: number) => {
+      current = (index + thumbs.length) % thumbs.length;
+      const source = thumbs[current].querySelector('img')!;
+      image.src = source.currentSrc || source.src;
+      image.alt = source.alt;
+      caption.textContent = source.alt;
+    };
+    thumbs.forEach((thumb, index) => thumb.addEventListener('click', () => { show(index); lightbox.showModal(); }));
+    lightbox.querySelector('[data-lightbox-prev]')?.addEventListener('click', () => show(current - 1));
+    lightbox.querySelector('[data-lightbox-next]')?.addEventListener('click', () => show(current + 1));
+    lightbox.querySelector('[data-lightbox-close]')!.addEventListener('click', () => lightbox.close());
+    lightbox.addEventListener('click', (event) => { if (event.target === lightbox || event.target === image.parentElement) lightbox.close(); });
+    lightbox.addEventListener('keydown', (event) => {
+      if (thumbs.length < 2 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+      event.preventDefault();
+      show(current + (event.key === 'ArrowLeft' ? -1 : 1));
+    });
+  }
 </script>

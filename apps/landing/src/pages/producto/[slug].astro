@@ -9,8 +9,7 @@ interface Product {
   kind: string;
   description: string | null;
   allowsFragrance: boolean;
-  allowsCandleColor: boolean;
-  allowsRibbonColor: boolean;
+  quoteFields: { supplyId: number; label: string; placeholder: string | null }[];
   category: { name: string; slug: string };
   images: { url: string; alt: string | null }[];
 }
@@ -84,19 +83,19 @@ const images = product?.images ?? [];
               <button type="button" data-more aria-label="Más" class="button h-10 min-h-10 w-10 border border-border-strong bg-surface p-0 text-text">+</button>
             </div>
           </div>
-          {product.allowsCandleColor && <div>
+          <div>
             <label for="candle-color" class="block text-body-sm font-medium">Color de la vela <span class="text-text-muted">(opcional)</span></label>
-            <input id="candle-color" name="candleColor" type="text" class="pdp-input mt-2 w-full" />
-          </div>}
-          {product.allowsRibbonColor && <div>
-            <label for="ribbon-color" class="block text-body-sm font-medium">Color del listón <span class="text-text-muted">(opcional)</span></label>
-            <input id="ribbon-color" name="ribbonColor" type="text" class="pdp-input mt-2 w-full" />
-          </div>}
+            <input id="candle-color" name="candleColor" type="text" maxlength="60" class="pdp-input mt-2 w-full" />
+          </div>
+          {product.quoteFields.map((field) => <div>
+            <label for={`extra-${field.supplyId}`} class="block text-body-sm font-medium">{field.label} <span class="text-text-muted">(opcional)</span></label>
+            <input id={`extra-${field.supplyId}`} type="text" data-extra-field data-supply-id={field.supplyId} data-label={field.label} maxlength="60" placeholder={field.placeholder ?? undefined} class="pdp-input mt-2 w-full" />
+          </div>)}
           {product.allowsFragrance && fragrances.length > 0 && <div>
             <label class="flex min-h-11 items-center gap-2 text-body">
               <input id="with-fragrance" type="checkbox" name="withFragrance" class="h-5 w-5 accent-action" /> Con aroma
             </label>
-            <div class="mt-2">
+            <div id="fragrance-field" class="mt-2" hidden>
               <label for="fragrance" class="sr-only">Aroma</label>
               <select id="fragrance" name="fragranceSupplyId" class="pdp-input w-full" disabled>
                 <option value="">Elige un aroma</option>
@@ -165,8 +164,10 @@ const images = product?.images ?? [];
     // que jamas se mande un aroma en un renglon con "Con aroma" desmarcado.
     const withFragrance = form.querySelector<HTMLInputElement>('#with-fragrance');
     const fragranceSelect = form.querySelector<HTMLSelectElement>('#fragrance');
-    if (withFragrance && fragranceSelect) {
+    const fragranceField = form.querySelector<HTMLElement>('#fragrance-field');
+    if (withFragrance && fragranceSelect && fragranceField) {
       const syncFragrance = () => {
+        fragranceField.hidden = !withFragrance.checked;
         fragranceSelect.disabled = !withFragrance.checked;
         fragranceSelect.required = withFragrance.checked;
         if (!withFragrance.checked) fragranceSelect.value = '';
@@ -187,7 +188,9 @@ const images = product?.images ?? [];
         imageUrl: form.dataset.imageUrl!,
         quantity: quantity.valueAsNumber,
         candleColor: String(data.get('candleColor') ?? '').trim(),
-        ribbonColor: String(data.get('ribbonColor') ?? '').trim(),
+        extraFields: Array.from(form.querySelectorAll<HTMLInputElement>('[data-extra-field]'))
+          .map((input) => ({ supplyId: Number(input.dataset.supplyId), label: input.dataset.label!, value: input.value.trim() }))
+          .filter((field) => field.value),
         withFragrance: data.get('withFragrance') === 'on',
         fragranceId: fragranceOption?.value ?? '',
         fragranceName: fragranceOption?.text ?? '',

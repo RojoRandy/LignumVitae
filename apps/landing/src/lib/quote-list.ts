@@ -1,3 +1,11 @@
+// Dato libre de un insumo "Indicar en cotizacion" (ej. Color del liston); el
+// label viaja para mostrarlo tal cual sin volver a consultar el catalogo.
+export interface QuoteExtraField {
+  supplyId: number;
+  label: string;
+  value: string;
+}
+
 export interface QuoteItem {
   productId: string;
   slug: string;
@@ -5,24 +13,32 @@ export interface QuoteItem {
   imageUrl: string;
   quantity: number;
   candleColor: string;
-  ribbonColor: string;
+  extraFields: QuoteExtraField[];
   withFragrance: boolean;
-  // Vacios cuando no hay aroma, igual que candleColor/ribbonColor cuando no
+  // Vacios cuando no hay aroma, igual que candleColor/extraFields cuando no
   // se capturan: la forma del item no cambia segun sus opciones.
   fragranceId: string;
   fragranceName: string;
 }
 
-// v2: agrega fragranceId/fragranceName. Subir la llave (no migrar la v1 in
-// situ) vacia los carritos guardados al desplegar esto, aceptable porque la
-// landing aun no se lanza; evita dejar codigo tolerante a una forma vieja.
-const STORAGE_KEY = 'lv.quote.v2';
+// v2: agrega fragranceId/fragranceName. v3: ribbonColor -> extraFields. Subir
+// la llave (no migrar in situ) vacia los carritos guardados al desplegar,
+// aceptable porque la landing aun no se lanza; evita dejar codigo tolerante
+// a una forma vieja.
+const STORAGE_KEY = 'lv.quote.v3';
+
+const isExtraField = (value: unknown): value is QuoteExtraField => {
+  if (!value || typeof value !== 'object') return false;
+  const field = value as Record<string, unknown>;
+  return Number.isSafeInteger(field.supplyId) && typeof field.label === 'string' && typeof field.value === 'string';
+};
 
 function isQuoteItem(value: unknown): value is QuoteItem {
   if (!value || typeof value !== 'object') return false;
   const item = value as Record<string, unknown>;
-  return ['productId', 'slug', 'name', 'imageUrl', 'candleColor', 'ribbonColor', 'fragranceId', 'fragranceName']
+  return ['productId', 'slug', 'name', 'imageUrl', 'candleColor', 'fragranceId', 'fragranceName']
     .every((key) => typeof item[key] === 'string')
+    && Array.isArray(item.extraFields) && item.extraFields.every(isExtraField)
     && typeof item.quantity === 'number' && Number.isSafeInteger(item.quantity)
     && item.quantity >= 1 && typeof item.withFragrance === 'boolean';
 }
@@ -45,7 +61,7 @@ export function readQuote(): QuoteItem[] {
 
 function sameOptions(a: QuoteItem, b: QuoteItem): boolean {
   return a.productId === b.productId && a.candleColor === b.candleColor
-    && a.ribbonColor === b.ribbonColor && a.withFragrance === b.withFragrance
+    && JSON.stringify(a.extraFields) === JSON.stringify(b.extraFields) && a.withFragrance === b.withFragrance
     && a.fragranceId === b.fragranceId;
 }
 
@@ -80,7 +96,7 @@ export function addQuoteItem(item: QuoteItem): boolean {
 
 // Index is the item's position in readQuote(). Editing into an existing variant merges quantities.
 export function updateQuoteItem(index: number, changes: Partial<Pick<QuoteItem,
-  'quantity' | 'candleColor' | 'ribbonColor' | 'withFragrance'>>): boolean {
+  'quantity' | 'candleColor' | 'withFragrance'>>): boolean {
   try {
     const items = load();
     if (!Number.isInteger(index) || !items[index]) return false;

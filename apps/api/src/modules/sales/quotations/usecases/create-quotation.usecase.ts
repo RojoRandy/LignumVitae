@@ -225,6 +225,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
         quantity: item.quantity,
         candleColor: item.candleColor,
         ribbonColor: item.ribbonColor,
+        extraFields: (item.extraFields ?? []).map(({ supplyId, label, value }) => ({ supplyId, label, value })),
         withFragrance: Boolean(item.withFragrance),
         fragranceSupplyId: item.withFragrance ? (item.fragranceSupplyId ?? null) : null,
         personalizationText: item.personalizationText,

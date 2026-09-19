@@ -10,6 +10,25 @@ import type { CreateQuoteRequestDto } from '../../public/dto/create-quote-reques
 import { QuoteRequestRepository } from './quote-request.repository';
 import type { FindQuoteRequestsQueryDto } from './dto/find-quote-requests.query.dto';
 
+type QuotableSupply = { supply: { id: number; quoteFieldLabel: string | null } };
+
+// Frontera de confianza: la landing manda supplyId + valor, pero solo cuentan
+// los insumos marcados "Indicar en cotizacion" que de verdad estan en el BOM
+// del producto; el label sale de la BD, nunca del cliente. Lo demas se descarta.
+export const cleanExtraFields = (input: { supplyId: number; value: string }[] | undefined, supplies: QuotableSupply[]) => {
+  const allowed = new Map(supplies.filter((s) => s.supply.quoteFieldLabel).map((s) => [s.supply.id, s.supply.quoteFieldLabel!]));
+  const seen = new Set<number>();
+  const clean: { supplyId: number; label: string; value: string }[] = [];
+  for (const field of input ?? []) {
+    const value = field.value.trim();
+    const label = allowed.get(field.supplyId);
+    if (!value || !label || seen.has(field.supplyId)) continue;
+    seen.add(field.supplyId);
+    clean.push({ supplyId: field.supplyId, label, value });
+  }
+  return clean;
+};
+
 @Injectable()
 export class QuoteRequestsService {
   constructor(
@@ -86,7 +105,7 @@ export class QuoteRequestsService {
         productName: product.name,
         quantity: item.quantity,
         candleColor: item.candleColor?.trim() || null,
-        ribbonColor: item.ribbonColor?.trim() || null,
+        extraFields: cleanExtraFields(item.extraFields, product.supplies),
         withFragrance,
         fragranceSupplyId: fragrance?.id ?? null,
         fragranceName: fragrance?.name ?? null,

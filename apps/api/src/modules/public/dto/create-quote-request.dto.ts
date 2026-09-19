@@ -18,11 +18,22 @@ import {
 } from 'class-validator';
 import { MEXICAN_PHONE_REGEX } from '../../../common/utils/regex';
 
+export class QuoteExtraFieldInputDto {
+  @ApiProperty() @Type(() => Number) @IsInt() supplyId: number;
+  @ApiProperty() @IsString() @MaxLength(60) value: string;
+}
+
 export class CreateQuoteRequestItemDto {
   @ApiProperty() @Type(() => Number) @IsInt() productId: number;
   @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(5000) quantity: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(60) candleColor?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(60) ribbonColor?: string;
+  @ApiPropertyOptional({ type: [QuoteExtraFieldInputDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => QuoteExtraFieldInputDto)
+  extraFields?: QuoteExtraFieldInputDto[];
   @ApiPropertyOptional() @IsOptional() @IsBoolean() withFragrance?: boolean;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() fragranceSupplyId?: number;
 }

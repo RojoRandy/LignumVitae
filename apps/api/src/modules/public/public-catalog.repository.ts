@@ -42,8 +42,9 @@ export const publicCatalogSelect = {
   },
 } satisfies Prisma.CandleCategorySelect;
 
-// Sin `supplies`: cargan costo. Se usan solo para derivar allowsCandleColor /
-// allowsRibbonColor en el mapper y nunca deben llegar crudas a la respuesta.
+// `supplies` se pide SOLO para derivar quoteFields en el mapper (etiqueta y
+// placeholder de los insumos marcados "Indicar en cotizacion"): nunca traer
+// costos ni existencias, y nunca devolver el BOM crudo.
 export const publicProductSelect = {
   id: true,
   name: true,
@@ -53,7 +54,7 @@ export const publicProductSelect = {
   allowsFragrance: true,
   category: { select: { name: true, slug: true } },
   images: { orderBy: imageOrder, select: { url: true, alt: true } },
-  supplies: { select: { supply: { select: { type: { select: { slug: true } } } } } },
+  supplies: { select: { supply: { select: { id: true, askInQuote: true, quoteFieldLabel: true, quoteFieldPlaceholder: true } } } },
 } satisfies Prisma.ProductSelect;
 
 export type PublicCatalogCategory = Prisma.CandleCategoryGetPayload<{ select: typeof publicCatalogSelect }>;

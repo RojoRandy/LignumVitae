@@ -37,7 +37,16 @@ export class QuoteRequestRepository {
         isVisibleOnLanding: true,
         category: { isActive: true, isVisibleOnLanding: true },
       },
-      select: { id: true, name: true, allowsFragrance: true },
+      select: {
+        id: true,
+        name: true,
+        allowsFragrance: true,
+        // Solo para validar extraFields contra el BOM (nunca sale en la respuesta).
+        supplies: {
+          where: { supply: { askInQuote: true, isActive: true } },
+          select: { supply: { select: { id: true, quoteFieldLabel: true } } },
+        },
+      },
     });
   }
 

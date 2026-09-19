@@ -74,6 +74,9 @@ export interface SupplyDto {
   notes: string | null;
   isActive: boolean;
   isFragrance: boolean;
+  askInQuote: boolean;
+  quoteFieldLabel: string | null;
+  quoteFieldPlaceholder: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -141,6 +144,13 @@ export interface CardTypeDto {
 }
 
 export type ProductKind = 'SIMPLE' | 'BOUQUET';
+
+/** Dato libre de un insumo "Indicar en cotizacion"; label copiado al capturar. */
+export interface ItemExtraField {
+  supplyId: number;
+  label: string;
+  value: string;
+}
 
 export interface ProductSupplyDto {
   id: number;
@@ -288,6 +298,8 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   quantity: number;
   candleColor: string | null;
   ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
   withFragrance: boolean;
   fragranceSupplyId: number | null;
   fragranceSupply?: { id: number; name: string } | null;
@@ -344,6 +356,8 @@ export interface OrderItemDto extends SalesLineItemCostFields {
   quantity: number;
   candleColor: string | null;
   ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
   withFragrance: boolean;
   fragranceName: string | null;
   personalizationText: string | null;
@@ -595,6 +609,8 @@ export interface QuoteRequestItem {
   quantity: number;
   candleColor: string | null;
   ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
   withFragrance: boolean;
   // Opcionales: las solicitudes creadas antes de este campo no lo traen.
   fragranceSupplyId?: number | null;

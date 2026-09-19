@@ -36,7 +36,7 @@ const candleFacets = Array.from(
 
   {categories.length > 0 && (
     <div class="site-container grid gap-8 pb-16 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:pb-24">
-      <aside>
+      <aside class="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
         <details class="filters-panel rounded-card border border-border bg-surface lg:border-none lg:bg-transparent" open>
           <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-body-sm font-medium text-text lg:hidden [&::-webkit-details-marker]:hidden">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>

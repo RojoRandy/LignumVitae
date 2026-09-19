@@ -63,12 +63,19 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         </div>
         <div>
           <label for="event-date" class="block text-body-sm font-medium">¿Para qué fecha lo necesitas?</label>
-          <input id="event-date" name="eventDate" type="date" required min={minEventDate} aria-describedby="event-date-hint" class="field-input mt-2" />
+          <div data-date-picker data-min={minEventDate} class="relative mt-2">
+            <input type="hidden" name="eventDate" />
+            <button id="event-date" type="button" data-date-trigger aria-haspopup="dialog" aria-expanded="false" aria-describedby="event-date-hint" class="field-input flex items-center gap-2 text-left">
+              <svg class="shrink-0 text-text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /></svg>
+              <span data-date-label class="truncate">Elegir fecha...</span>
+            </button>
+            <div data-date-popover role="dialog" aria-label="Elegir fecha" hidden class="absolute top-full left-0 z-20 mt-2 w-[18.5rem] rounded-card bg-surface p-3 shadow-float"></div>
+          </div>
           <p id="event-date-hint" class="mt-2 text-caption text-text-muted">A partir del {minEventDate.split('-').reverse().join('/')}.</p>
         </div>
         <div>
           <label for="notes" class="block text-body-sm font-medium">Notas <span class="text-text-muted">(opcional)</span></label>
-          <textarea id="notes" name="notes" rows="3" maxlength="1000" placeholder="Tipo de evento, nombres para las tarjetas, colores..." class="field-input mt-2"></textarea>
+          <textarea id="notes" name="notes" rows="3" maxlength="1000" placeholder="Tipo de evento, temática, colores…" class="field-input mt-2"></textarea>
         </div>
         <div class="honeypot" aria-hidden="true">
           <label for="website">No llenar</label>
@@ -83,18 +90,15 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
 </Layout>
 
 <template id="quote-item-template">
-  <li class="flex gap-4 rounded-card bg-surface p-4 shadow-card">
-    <img data-image alt="" width="80" height="100" class="aspect-[4/5] w-20 shrink-0 rounded-input bg-canvas-deep object-cover" />
-    <div class="min-w-0 flex-1">
+  <li class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4 rounded-card bg-surface p-4 shadow-card">
+    <img data-image alt="" width="128" height="128" class="aspect-square w-24 rounded-input bg-canvas-deep object-cover md:w-32" />
+    <div class="min-w-0">
       <a data-name class="text-heading-sm text-text [overflow-wrap:anywhere] hover:text-action"></a>
       <p data-options class="mt-1 text-caption text-text-muted [overflow-wrap:anywhere]"></p>
-      <div class="mt-4 flex flex-wrap items-center gap-4">
-        <label class="flex items-center gap-2 text-body-sm">
-          Cantidad
-          <input data-quantity type="number" min="1" max="5000" step="1" class="field-input w-24 text-center font-semibold" />
-        </label>
-        <button data-remove type="button" class="flex min-h-11 items-center text-body-sm text-action underline">Quitar</button>
-      </div>
+    </div>
+    <div class="flex flex-col items-end gap-2">
+      <input data-quantity type="number" min="1" max="5000" step="1" class="field-input w-20 text-center font-semibold" />
+      <button data-remove type="button" class="flex min-h-11 items-center text-body-sm text-action underline">Quitar</button>
     </div>
   </li>
 </template>
@@ -102,22 +106,22 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
 <style>
   .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
-  /* El popup del calendario nativo no es estilizable sin una libreria (y en
-     Firefox el pseudo-elemento del indicador ni existe): esto solo iguala el
-     CAMPO al resto del formulario, no el popup que abre al hacer clic. */
-  #event-date { color-scheme: light; }
-  #event-date::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    padding: 8px;
-    margin-right: -8px;
-    opacity: 0.6;
-  }
-  #event-date::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+  /* Calendario de src/lib/date-picker.ts (su HTML se genera en JS, por eso
+     :global). Mismas medidas que el DatePicker del admin. */
+  :global(.dp-weekday) { padding-bottom: 4px; text-align: center; font-size: var(--text-micro); font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); }
+  :global(.dp-day), :global(.dp-nav) { display: flex; height: 40px; align-items: center; justify-content: center; border-radius: 8px; font-size: var(--text-body-sm); color: var(--color-text); }
+  :global(.dp-nav) { width: 36px; height: 36px; color: var(--color-text-muted); }
+  :global(.dp-day:hover:not([disabled])), :global(.dp-nav:hover:not([disabled])) { background: var(--color-action-soft); }
+  :global(.dp-outside) { color: var(--color-border-strong); }
+  :global(.dp-today) { font-weight: 700; color: var(--color-action); }
+  :global(.dp-day[aria-pressed="true"]) { background: var(--color-action); color: var(--color-surface); }
+  :global(.dp-day[disabled]), :global(.dp-nav[disabled]) { opacity: 0.3; cursor: not-allowed; }
 </style>
 
 <script>
   import { API_URL } from '../lib/api';
   import { clearQuote, readQuote, removeQuoteItem, updateQuoteItem } from '../lib/quote-list';
+  import { initDatePicker } from '../lib/date-picker';
 
   const content = document.querySelector<HTMLElement>('#quote-content')!;
   const empty = document.querySelector<HTMLElement>('#quote-empty')!;
@@ -127,6 +131,10 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
   const form = document.querySelector<HTMLFormElement>('#request-form')!;
   const errorBox = document.querySelector<HTMLElement>('#request-error')!;
   const submit = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+  const datePicker = form.querySelector<HTMLElement>('[data-date-picker]')!;
+  const eventDate = datePicker.querySelector<HTMLInputElement>('input[name=eventDate]')!;
+  const eventDateButton = datePicker.querySelector<HTMLButtonElement>('[data-date-trigger]')!;
+  initDatePicker(datePicker, { min: datePicker.dataset.min! });
 
   const render = () => {
     const items = readQuote();
@@ -142,7 +150,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         name.href = `/producto/${encodeURIComponent(item.slug)}`;
         row.querySelector('[data-options]')!.textContent = [
           item.candleColor && `Vela: ${item.candleColor}`,
-          item.ribbonColor && `Listón: ${item.ribbonColor}`,
+          ...item.extraFields.map((field) => `${field.label}: ${field.value}`),
           item.withFragrance ? `Aroma: ${item.fragranceName || 'sin especificar'}` : 'Sin aroma',
         ].filter(Boolean).join(' · ');
         const quantity = row.querySelector<HTMLInputElement>('[data-quantity]')!;
@@ -201,6 +209,13 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
       form.reportValidity();
       return;
     }
+    // Un input hidden no participa en checkValidity: la fecha se valida aqui.
+    if (!eventDate.value) {
+      eventDateButton.setAttribute('aria-invalid', 'true');
+      showError('Elige la fecha de tu evento.');
+      eventDateButton.focus();
+      return;
+    }
     const items = readQuote();
     if (!items.length) return render();
 
@@ -216,7 +231,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         productId: Number(item.productId),
         quantity: item.quantity,
         candleColor: item.candleColor || undefined,
-        ribbonColor: item.ribbonColor || undefined,
+        extraFields: item.extraFields.length ? item.extraFields.map(({ supplyId, value }) => ({ supplyId, value })) : undefined,
         withFragrance: item.withFragrance,
         fragranceSupplyId: item.withFragrance && item.fragranceId ? Number(item.fragranceId) : undefined,
       })),

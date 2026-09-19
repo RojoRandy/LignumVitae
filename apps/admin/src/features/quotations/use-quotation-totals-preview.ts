@@ -13,6 +13,7 @@ export interface QuotationLineInput {
   quantity: number;
   candleColor?: string;
   ribbonColor?: string;
+  extraFields?: { supplyId: number; label: string; value: string }[];
   withFragrance?: boolean;
   fragranceSupplyId?: number;
   personalizationText?: string;

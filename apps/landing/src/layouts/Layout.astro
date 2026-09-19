@@ -62,7 +62,7 @@ const showFloatingQuote = !/^\/cotizar\/?$/.test(Astro.url.pathname)
     <header class="sticky top-0 z-20 bg-canvas shadow-nav">
       <div class="site-container flex h-16 items-center justify-between gap-4 md:h-20">
         <a href="/" class="flex min-h-11 min-w-11 items-center" aria-label={`${settings.brandName}, inicio`}>
-          <img src="/logo.svg" alt={settings.brandName} width="48" height="48" class="h-10 w-10 object-contain md:h-12 md:w-12" />
+          <img src="/logo-texto.svg" alt={settings.brandName} width="186" height="48" class="h-9 w-auto object-contain md:h-12" />
         </a>
         <nav aria-label="Principal" class="hidden items-center gap-4 text-body-sm font-medium md:flex lg:gap-8">
           {navigation.map(({ href, label }) => <a class="nav-link" href={href}>{label}</a>)}

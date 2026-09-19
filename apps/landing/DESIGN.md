@@ -189,7 +189,7 @@ No se quita el foco: `outline 2px action, offset 2px`.
   - Imagen 1:1 con `--radius-card`, sin overlay ni degradado. El nombre va en una franja sólida `surface` debajo de la imagen.
   - Contenido: nombre (`text-heading`, Fraunces) y descripción de 1 línea (`text-muted`).
 - **Aviso informativo:** fondo `surface-tint`, borde izquierdo 3px `action`, `--radius-input`, icono y texto `text-body-sm`. Se usa para "Entregas solo en {city}" y "Mínimo {N} días de anticipación".
-- **Modal / confirm:** se usa `confirm()` nativo. No hay modal propio.
+- **Modal / confirm:** se usa `confirm()` nativo. Única excepción: el lightbox de la galería de la home, con `<dialog>` nativo (fondo `ink` al 85 %, controles `surface/90`).
 
 ### Inputs & Forms
 - **Input:**

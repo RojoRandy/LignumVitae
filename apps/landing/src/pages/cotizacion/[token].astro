@@ -18,6 +18,7 @@ interface PublicQuotation {
     quantity: number;
     candleColor: string | null;
     ribbonColor: string | null;
+    extraFields?: { label: string; value: string }[];
     withFragrance: boolean;
     fragranceName: string | null;
     personalizationText: string | null;
@@ -100,6 +101,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
               <p class="mt-1 text-caption text-text-muted">{[
                 item.candleColor && `Vela: ${item.candleColor}`,
                 item.ribbonColor && `Listón: ${item.ribbonColor}`,
+                ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`),
                 item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null,
                 item.personalizationText,
               ].filter(Boolean).join(' · ')}</p>

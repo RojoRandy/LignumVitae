@@ -52,6 +52,9 @@ export class SuppliesService {
       yieldPerBaseUnit: dto.yieldPerBaseUnit ?? 1,
       notes: dto.notes,
       isFragrance: dto.isFragrance ?? false,
+      askInQuote: dto.askInQuote ?? false,
+      quoteFieldLabel: dto.askInQuote ? dto.quoteFieldLabel?.trim() : null,
+      quoteFieldPlaceholder: dto.askInQuote ? dto.quoteFieldPlaceholder?.trim() || null : null,
     });
   }
 
@@ -61,6 +64,7 @@ export class SuppliesService {
     const { typeId, unitId, ...rest } = dto;
     const updated = await this.supplyRepository.update(id, {
       ...rest,
+      ...(dto.askInQuote === false ? { quoteFieldLabel: null, quoteFieldPlaceholder: null } : {}),
       ...(typeId !== undefined ? { type: { connect: { id: typeId } } } : {}),
       ...(unitId !== undefined ? { unit: { connect: { id: unitId } } } : {}),
     });

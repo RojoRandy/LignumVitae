@@ -90,6 +90,7 @@ const QuoteRequestDetail = ({ request, onDone }: { request: QuoteRequestDto; onD
               {[
                 item.candleColor && `Vela: ${item.candleColor}`,
                 item.ribbonColor && `Liston: ${item.ribbonColor}`,
+                ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`),
                 item.withFragrance ? `Aroma: ${item.fragranceName ?? 'sin especificar'}` : 'Sin aroma',
               ]
                 .filter(Boolean)

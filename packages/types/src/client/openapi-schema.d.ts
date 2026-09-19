@@ -1588,6 +1588,12 @@ export interface components {
             notes?: string;
             isActive?: boolean;
             isFragrance?: boolean;
+            /** @description La landing pide un dato libre de este insumo al cotizar */
+            askInQuote?: boolean;
+            /** @example Color del liston */
+            quoteFieldLabel?: string;
+            /** @example Ej. rosa palo */
+            quoteFieldPlaceholder?: string;
         };
         UpdateSupplyDto: {
             /** @example Celofan transparente */
@@ -1605,6 +1611,12 @@ export interface components {
             notes?: string;
             isActive?: boolean;
             isFragrance?: boolean;
+            /** @description La landing pide un dato libre de este insumo al cotizar */
+            askInQuote?: boolean;
+            /** @example Color del liston */
+            quoteFieldLabel?: string;
+            /** @example Ej. rosa palo */
+            quoteFieldPlaceholder?: string;
         };
         CreatePurchaseItemDto: {
             /** @enum {string} */
@@ -1772,11 +1784,18 @@ export interface components {
             notes?: string;
             isActive?: boolean;
         };
+        ItemExtraFieldDto: {
+            supplyId: number;
+            label: string;
+            value: string;
+        };
         CreateQuotationItemDto: {
             productId: number;
             quantity: number;
             candleColor?: string;
+            /** @description Legacy: ya no se captura, se conserva al duplicar */
             ribbonColor?: string;
+            extraFields?: components["schemas"]["ItemExtraFieldDto"][];
             /** @default false */
             withFragrance: boolean;
             fragranceSupplyId?: number;
@@ -1871,11 +1890,15 @@ export interface components {
             sortOrder?: number;
             isActive?: boolean;
         };
+        QuoteExtraFieldInputDto: {
+            supplyId: number;
+            value: string;
+        };
         CreateQuoteRequestItemDto: {
             productId: number;
             quantity: number;
             candleColor?: string;
-            ribbonColor?: string;
+            extraFields?: components["schemas"]["QuoteExtraFieldInputDto"][];
             withFragrance?: boolean;
             fragranceSupplyId?: number;
         };
