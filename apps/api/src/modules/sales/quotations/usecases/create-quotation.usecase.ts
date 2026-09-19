@@ -22,6 +22,7 @@ import { SettingsService } from '../../../settings/settings.service';
 import { OverheadRepository } from '../../../inventory/overhead/overhead.repository';
 import { SupplyRepository } from '../../../inventory/supplies/supply.repository';
 import { FolioService } from '../../../../common/folio/folio.service';
+import { QuoteRequestRepository } from '../../quote-requests/quote-request.repository';
 import { SalesErrors } from '../../../../common/errors/sales.errors';
 import { CatalogErrors } from '../../../../common/errors/catalog.errors';
 import { UseCase } from '../../../../common/interfaces/use-case.interface';
@@ -56,6 +57,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
     private readonly supplyRepository: SupplyRepository,
     private readonly lineCosting: QuotationLineCostingService,
     private readonly folioService: FolioService,
+    private readonly quoteRequestRepository: QuoteRequestRepository,
   ) {}
 
   /** Costea los renglones y arma los totales, sin persistir nada. Lanza los
@@ -157,6 +159,11 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
   async execute({ dto, userId, existingId }: CreateQuotationArgs): Promise<QuotationWithRelations> {
     const customer = await this.customerRepository.findById(dto.customerId);
     if (!customer) throw SalesErrors.Exceptions.CUSTOMER_NOT_FOUND({ id: dto.customerId });
+
+    const quoteRequestId = existingId ? undefined : dto.quoteRequestId;
+    if (quoteRequestId && !(await this.quoteRequestRepository.findById(quoteRequestId))) {
+      throw SalesErrors.Exceptions.QUOTE_REQUEST_NOT_FOUND({ id: quoteRequestId });
+    }
 
     const settings = await this.settingsService.get();
 
@@ -266,6 +273,17 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
         } as Prisma.QuotationUncheckedCreateInput,
       });
       await tx.quotationItem.createMany({ data: itemsData.map((i) => ({ ...i, quotationId: quotation.id })) });
+      // Dentro de la transaccion: si la solicitud ya no esta en NEW (otra
+      // pestana la convirtio o la descartaron), no queda cotizacion huerfana
+      // ni se quema el folio.
+      if (quoteRequestId) {
+        const changed = await this.quoteRequestRepository.markFromNew(
+          quoteRequestId,
+          { status: 'CONVERTED', convertedQuotationId: quotation.id },
+          tx,
+        );
+        if (!changed) throw SalesErrors.Exceptions.QUOTE_REQUEST_NOT_NEW({ id: quoteRequestId });
+      }
       return quotation;
     });
 

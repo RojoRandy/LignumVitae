@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -8,7 +9,11 @@ import { ApiResponseInterceptor } from './common/interceptors/response.intercept
 import { swaggerOptions } from './common/swagger/options';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Railway pone un proxy delante: sin esto req.ip es la IP del proxy y el
+  // ThrottlerGuard reparte un mismo limite entre todos los visitantes.
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api');
 

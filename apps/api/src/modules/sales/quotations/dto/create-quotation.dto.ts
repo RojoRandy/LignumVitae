@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -55,9 +55,16 @@ export class CreateQuotationDto {
   @ValidateNested({ each: true })
   @Type(() => CreateQuotationItemDto)
   items: CreateQuotationItemDto[];
+
+  @ApiPropertyOptional({ description: 'Solicitud web de la que sale esta cotizacion; queda CONVERTED en la misma transaccion' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  quoteRequestId?: number;
 }
 
-export class UpdateQuotationDto extends PartialType(CreateQuotationDto) {
+// Una cotizacion ya creada no puede "volver a salir" de una solicitud.
+export class UpdateQuotationDto extends PartialType(OmitType(CreateQuotationDto, ['quoteRequestId'] as const)) {
   // items sigue obligatorio en un update: no tiene sentido "actualizar
   // parcialmente" la lista de renglones, siempre se manda la lista completa
   // vigente (igual que hace ProductWizardPage con supplyTemplate).

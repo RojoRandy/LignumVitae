@@ -12,9 +12,10 @@ import { ProductsModule } from '../../catalog/products/products.module';
 import { OverheadModule } from '../../inventory/overhead/overhead.module';
 import { SuppliesModule } from '../../inventory/supplies/supplies.module';
 import { PdfModule } from '../../pdf/pdf.module';
+import { QuoteRequestsModule } from '../quote-requests/quote-requests.module';
 
 @Module({
-  imports: [CustomersModule, SettingsModule, ProductsModule, OverheadModule, SuppliesModule, PdfModule],
+  imports: [CustomersModule, SettingsModule, ProductsModule, OverheadModule, SuppliesModule, PdfModule, QuoteRequestsModule],
   controllers: [QuotationsController],
   providers: [
     QuotationsService,
