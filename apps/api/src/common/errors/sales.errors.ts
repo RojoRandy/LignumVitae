@@ -13,6 +13,8 @@ const Responses = {
     new ErrorResponseDto('PAYMENT_EXCEEDS_BALANCE', 'El abono excede el saldo pendiente del pedido', data),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) =>
     new ErrorResponseDto('QUOTE_REQUEST_NOT_FOUND', 'No se encontro la solicitud de cotizacion', data),
+  QUOTE_REQUEST_NOT_NEW: (data?: unknown) =>
+    new ErrorResponseDto('QUOTE_REQUEST_NOT_NEW', 'Esta solicitud ya se convirtio o se descarto', data),
   LEAD_TIME_TOO_SHORT: (data?: unknown) =>
     new ErrorResponseDto(
       'LEAD_TIME_TOO_SHORT',
@@ -32,6 +34,7 @@ const Responses = {
   CUSTOMER_HAS_ACTIVE_ORDERS: (data?: unknown) =>
     new ErrorResponseDto('CUSTOMER_HAS_ACTIVE_ORDERS', 'El cliente tiene pedidos activos, no se puede dar de baja', data),
   PAYMENT_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('PAYMENT_NOT_FOUND', 'No se encontro el pago', data),
+  TESTIMONIAL_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('TESTIMONIAL_NOT_FOUND', 'No se encontro el testimonio', data),
 };
 
 const Exceptions = {
@@ -42,6 +45,7 @@ const Exceptions = {
   ORDER_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.ORDER_NOT_FOUND(data)),
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) => new BadRequestException(Responses.PAYMENT_EXCEEDS_BALANCE(data)),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTE_REQUEST_NOT_FOUND(data)),
+  QUOTE_REQUEST_NOT_NEW: (data?: unknown) => new ConflictException(Responses.QUOTE_REQUEST_NOT_NEW(data)),
   LEAD_TIME_TOO_SHORT: (data?: unknown) => new BadRequestException(Responses.LEAD_TIME_TOO_SHORT(data)),
   BELOW_MIN_MARGIN: (data?: unknown) => new BadRequestException(Responses.BELOW_MIN_MARGIN(data)),
   INVALID_FRAGRANCE_SUPPLY: (data?: unknown) => new BadRequestException(Responses.INVALID_FRAGRANCE_SUPPLY(data)),
@@ -50,6 +54,7 @@ const Exceptions = {
   QUOTATION_NOT_ACCEPTABLE: (data?: unknown) => new BadRequestException(Responses.QUOTATION_NOT_ACCEPTABLE(data)),
   CUSTOMER_HAS_ACTIVE_ORDERS: (data?: unknown) => new ConflictException(Responses.CUSTOMER_HAS_ACTIVE_ORDERS(data)),
   PAYMENT_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.PAYMENT_NOT_FOUND(data)),
+  TESTIMONIAL_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.TESTIMONIAL_NOT_FOUND(data)),
 };
 
 export const SalesErrors = { Responses, Exceptions };

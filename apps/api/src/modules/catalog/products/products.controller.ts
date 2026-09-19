@@ -7,6 +7,7 @@ import { UserRoles } from '@prisma/client';
 import { ProductsService } from './products.service';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
+import { UpdateProductImageDto } from './dto/update-product-image.dto';
 import { PreviewProductCostDto } from './dto/preview-product-cost.dto';
 import { FindProductsQueryDto } from './dto/find-products.query.dto';
 import { PreviewProductCostingUseCase } from './usecases/preview-product-costing.usecase';
@@ -47,6 +48,15 @@ export class ProductsController {
   @Post()
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
+  }
+
+  // Declarado antes de @Patch(':id'): aunque Nest/Express no confunden
+  // "images/:imageId" (2 segmentos) con ":id" (1 segmento), se deja primero
+  // por seguridad, igual que @Delete('images/:imageId') mas abajo.
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Patch('images/:imageId')
+  updateImageFlags(@Param('imageId', ParseIntPipe) imageId: number, @Body() dto: UpdateProductImageDto) {
+    return this.productsService.updateImageFlags(imageId, dto);
   }
 
   @Auth(UserRoles.admin, UserRoles.super_user)

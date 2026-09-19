@@ -396,6 +396,13 @@ model ProductImage {
   sortOrder Int     @default(0) @map("sort_order")
   isPrimary Boolean @default(false) @map("is_primary")
 
+  /// Se publica en el carrusel de la portada. El orden entre productos lo fija
+  /// la consulta publica (destacados primero), no una columna: reordenar 6
+  /// fotos a mano no vale un drag&drop.
+  showInHero    Boolean @default(false) @map("show_in_hero")
+  /// Se publica en la seccion "Detalles que se vuelven recuerdos".
+  showInGallery Boolean @default(false) @map("show_in_gallery")
+
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
@@ -416,8 +423,8 @@ model SupplyType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  supplies            Supply[]
-  settingsAsWax       Settings[] @relation("SettingsWaxType")
+  supplies      Supply[]
+  settingsAsWax Settings[] @relation("SettingsWaxType")
 
   @@map("supply_types")
   @@schema("inventory")
@@ -444,13 +451,19 @@ model UnitOfMeasure {
 }
 
 model Supply {
-  id     Int     @id @default(autoincrement())
-  name   String  @unique
-  sku    String? @unique
-  typeId Int     @map("type_id")
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  sku         String? @unique
+  typeId      Int     @map("type_id")
   isFragrance Boolean @default(false) @map("is_fragrance")
+  /// Si el insumo esta en el BOM de un producto, la landing pide un dato libre
+  /// al cotizar (ej. "Color del liston"). Reemplaza la deteccion por slug del
+  /// tipo de insumo, que se rompia al renombrar el tipo.
+  askInQuote            Boolean @default(false) @map("ask_in_quote")
+  quoteFieldLabel       String? @map("quote_field_label")
+  quoteFieldPlaceholder String? @map("quote_field_placeholder")
   /// Unidad BASE: en la que se expresa el consumo y las existencias.
-  unitId Int     @map("unit_id")
+  unitId      Int     @map("unit_id")
 
   /// El costo que USA el motor de costeo. Solo cambia porque alguien lo cambia.
   currentUnitCost         Decimal   @map("current_unit_cost") @db.Decimal(14, 6)
@@ -479,14 +492,14 @@ model Supply {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  productSupplies   ProductSupply[]
-  packagingTemplate PackagingSupplyTemplate[]
-  cardTemplate      CardSupplyTemplate[]
-  candleTemplate    CandleSupplyTemplate[]
-  purchaseItems     PurchaseItem[]
-  movements         StockMovement[]
-  candlesUsingAsWax Candle[]                  @relation("CandleWax")
-  quotationItemsUsingAsFragrance QuotationItem[] @relation("QuotationItemFragrance")
+  productSupplies                ProductSupply[]
+  packagingTemplate              PackagingSupplyTemplate[]
+  cardTemplate                   CardSupplyTemplate[]
+  candleTemplate                 CandleSupplyTemplate[]
+  purchaseItems                  PurchaseItem[]
+  movements                      StockMovement[]
+  candlesUsingAsWax              Candle[]                  @relation("CandleWax")
+  quotationItemsUsingAsFragrance QuotationItem[]           @relation("QuotationItemFragrance")
 
   type SupplyType    @relation(fields: [typeId], references: [id])
   unit UnitOfMeasure @relation(fields: [unitId], references: [id])
@@ -830,7 +843,7 @@ model QuoteRequest {
   dueDate   DateTime? @map("due_date") @db.Date
   notes     String?
 
-  /// [{ productId, productName, quantity, candleColor?, ribbonColor?, withFragrance? }]
+  /// [{ productId, productName, quantity, candleColor?, ribbonColor? (legacy), extraFields?: [{ supplyId, label, value }], withFragrance?, fragranceSupplyId?, fragranceName? }]
   items Json
 
   convertedQuotationId Int?    @unique @map("converted_quotation_id")
@@ -925,6 +938,8 @@ model QuotationItem {
   /// libre del Excel se vuelve tres campos estructurados.
   candleColor          String? @map("candle_color")
   ribbonColor          String? @map("ribbon_color")
+  /// [{ supplyId, label, value }] con el label copiado al capturar (snapshot).
+  extraFields          Json    @default("[]") @map("extra_fields")
   withFragrance        Boolean @default(false) @map("with_fragrance")
   fragranceSupplyId    Int?    @map("fragrance_supply_id")
   personalizationText  String? @map("personalization_text")
@@ -956,9 +971,9 @@ model QuotationItem {
   /// requerimientos de insumos sin depender de que el producto no haya cambiado.
   suppliesSnapshot Json @map("supplies_snapshot")
 
-  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
-  product   Product   @relation(fields: [productId], references: [id])
-  fragranceSupply Supply? @relation("QuotationItemFragrance", fields: [fragranceSupplyId], references: [id], onDelete: Restrict)
+  quotation       Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product         Product   @relation(fields: [productId], references: [id])
+  fragranceSupply Supply?   @relation("QuotationItemFragrance", fields: [fragranceSupplyId], references: [id], onDelete: Restrict)
 
   @@index([quotationId])
   @@index([productId])
@@ -1009,16 +1024,39 @@ model Order {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  quotation Quotation?  @relation(fields: [quotationId], references: [id])
-  customer  Customer    @relation(fields: [customerId], references: [id])
-  createdBy User?       @relation(fields: [createdById], references: [id])
-  items     OrderItem[]
-  payments  Payment[]
+  quotation   Quotation?   @relation(fields: [quotationId], references: [id])
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  createdBy   User?        @relation(fields: [createdById], references: [id])
+  items       OrderItem[]
+  payments    Payment[]
+  testimonial Testimonial?
 
   @@index([status])
   @@index([dueDate])
   @@index([deliveredAt])
   @@map("orders")
+  @@schema("sales")
+}
+
+/// Captura de pantalla del mensaje de una clienta. Se toma al entregar el
+/// pedido. El nombre va desnormalizado a proposito: lo que se publica es
+/// como ella quiere aparecer ("Ana L."), no el nombre legal del Customer.
+model Testimonial {
+  id           Int      @id @default(autoincrement())
+  orderId      Int?     @unique @map("order_id")
+  customerName String   @map("customer_name")
+  imageUrl     String   @map("image_url")
+  /// Transcripcion del mensaje. Es el texto alternativo de la imagen: sin
+  /// esto el testimonial es invisible para un lector de pantalla.
+  alt          String
+  sortOrder    Int      @default(0) @map("sort_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("testimonials")
   @@schema("sales")
 }
 
@@ -1035,6 +1073,7 @@ model OrderItem {
   quantity            Int
   candleColor         String? @map("candle_color")
   ribbonColor         String? @map("ribbon_color")
+  extraFields         Json    @default("[]") @map("extra_fields")
   withFragrance       Boolean @default(false) @map("with_fragrance")
   fragranceName       String? @map("fragrance_name")
   personalizationText String? @map("personalization_text")
@@ -1156,17 +1195,17 @@ model Settings {
   defaultWastePct Decimal @default(0.03) @map("default_waste_pct") @db.Decimal(5, 4)
 
   // --- Cera y aroma
-  waxSupplyId           Int?    @map("wax_supply_id")
+  waxSupplyId        Int?    @map("wax_supply_id")
   /// QUE tipo de insumo es la cera y cual el aroma. El codigo dependia del
   /// TEXTO del slug ('WAX', 'FRAGRANCE'), asi que renombrar un tipo rompia
   /// el costeo de cera y el dropdown de aroma en silencio. Apuntando por id,
   /// el nombre y el slug de esos tipos se pueden cambiar libremente.
-  waxSupplyTypeId       Int?    @map("wax_supply_type_id")
+  waxSupplyTypeId    Int?    @map("wax_supply_type_id")
   /// Carga de esencia sobre el peso de la vela. 0.08 = 8%.
-  fragranceLoadPct      Decimal @default(0.08) @map("fragrance_load_pct") @db.Decimal(5, 4)
+  fragranceLoadPct   Decimal @default(0.08) @map("fragrance_load_pct") @db.Decimal(5, 4)
   /// Lo que se COBRA por aromatizar. El costo se calcula aparte: el reporte
   /// de cobertura de aroma dice si este $1.00 alcanza o no.
-  fragranceSurcharge    Decimal @default(1.00) @map("fragrance_surcharge") @db.Decimal(12, 2)
+  fragranceSurcharge Decimal @default(1.00) @map("fragrance_surcharge") @db.Decimal(12, 2)
 
   // --- Gastos indirectos
   overheadRateMode         OverheadRateMode @default(DERIVED) @map("overhead_rate_mode")
@@ -1212,7 +1251,7 @@ model Settings {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  waxSupplyType       SupplyType? @relation("SettingsWaxType", fields: [waxSupplyTypeId], references: [id], onDelete: SetNull)
+  waxSupplyType SupplyType? @relation("SettingsWaxType", fields: [waxSupplyTypeId], references: [id], onDelete: SetNull)
 
   @@map("settings")
   @@schema("config")

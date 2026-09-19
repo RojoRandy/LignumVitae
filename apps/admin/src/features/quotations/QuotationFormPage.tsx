@@ -3,15 +3,15 @@
 // panel de totales aqui es SOLO vista previa (POST /quotations/preview-totals,
 // sin guardar), la fuente de la verdad es lo que el servidor recalcula al
 // guardar de verdad, igual que el panel de costo del asistente de producto.
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
-import type { AdjustmentTypeValue, QuotationDto, SettingsDto } from '@/lib/types';
+import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuoteRequestDto, SettingsDto } from '@/lib/types';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
@@ -35,7 +35,10 @@ export default function QuotationFormPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { formError, handleError, clear } = useFieldErrors();
-  const { options: customerOptions } = useCustomerOptions();
+  const { options: customerOptions, customers, isLoading: loadingCustomers } = useCustomerOptions();
+  const [searchParams] = useSearchParams();
+  // Alta desde la bandeja de solicitudes web: /cotizaciones/nueva?solicitud=ID
+  const quoteRequestId = isEditing ? undefined : Number(searchParams.get('solicitud')) || undefined;
 
   const [customerId, setCustomerId] = useState<string | undefined>();
   const [eventDate, setEventDate] = useState<Date | undefined>();
@@ -60,6 +63,14 @@ export default function QuotationFormPage() {
     staleTime: 60_000,
   });
 
+  const { data: quoteRequest } = useQuery({
+    queryKey: ['quote-requests', quoteRequestId],
+    queryFn: () => httpGet<QuoteRequestDto>(`/quote-requests/${quoteRequestId}`),
+    enabled: Boolean(quoteRequestId),
+  });
+  const fromRequest = quoteRequest?.status === 'NEW' ? quoteRequest : undefined;
+  const requestCustomer = fromRequest ? customers.find((c) => c.phone === fromRequest.whatsapp) : undefined;
+
   const readOnly = isEditing && existing && existing.status !== 'DRAFT';
 
   useEffect(() => {
@@ -78,6 +89,7 @@ export default function QuotationFormPage() {
         quantity: item.quantity,
         candleColor: item.candleColor ?? '',
         ribbonColor: item.ribbonColor ?? '',
+        extraFields: item.extraFields ?? [],
         withFragrance: item.withFragrance,
         fragranceSupplyId: item.fragranceSupplyId ?? null,
         personalizationText: item.personalizationText ?? '',
@@ -86,6 +98,52 @@ export default function QuotationFormPage() {
       })),
     );
   }, [existing]);
+
+  // Igual que la precarga de `existing`, pero una sola vez: si la query se
+  // refresca no debe pisar lo que la duena ya ajusto.
+  const prefilledRequest = useRef(false);
+  useEffect(() => {
+    if (!fromRequest || prefilledRequest.current) return;
+    prefilledRequest.current = true;
+    // eventDate llega como fecha pura en UTC; se arma a medianoche LOCAL para
+    // que el DatePicker muestre el mismo dia y toISOString() lo regrese igual.
+    if (fromRequest.eventDate) {
+      const [y, m, d] = fromRequest.eventDate.slice(0, 10).split('-').map(Number);
+      setEventDate(new Date(y, m - 1, d));
+    }
+    setNotes(fromRequest.notes ?? '');
+    setRows(
+      fromRequest.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        candleColor: item.candleColor ?? '',
+        ribbonColor: item.ribbonColor ?? '',
+        extraFields: item.extraFields ?? [],
+        withFragrance: item.withFragrance,
+        fragranceSupplyId: item.fragranceSupplyId ?? null,
+        personalizationText: '',
+        setupMinutesOverride: null,
+        unitPriceOverride: null,
+      })),
+    );
+  }, [fromRequest]);
+
+  const selectedRequestCustomer = useRef(false);
+  useEffect(() => {
+    if (!requestCustomer || selectedRequestCustomer.current) return;
+    selectedRequestCustomer.current = true;
+    setCustomerId(String(requestCustomer.id));
+  }, [requestCustomer]);
+
+  const createRequestCustomer = useMutation({
+    mutationFn: () => httpPost<CustomerDto>('/customers', { fullName: fromRequest!.fullName, phone: fromRequest!.whatsapp }),
+    onSuccess: (customer) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Cliente creado');
+      setCustomerId(String(customer.id));
+    },
+    onError: handleError,
+  });
 
   useEffect(() => {
     if (!settings || isEditing) return;
@@ -109,6 +167,7 @@ export default function QuotationFormPage() {
         quantity: r.quantity,
         candleColor: r.candleColor || undefined,
         ribbonColor: r.ribbonColor || undefined,
+        extraFields: r.extraFields.length ? r.extraFields : undefined,
         withFragrance: r.withFragrance,
         fragranceSupplyId: r.fragranceSupplyId ?? undefined,
         personalizationText: r.personalizationText || undefined,
@@ -168,6 +227,7 @@ export default function QuotationFormPage() {
       discountValue: discountValue ?? 0,
       shippingCost: shippingCost ?? 0,
       items: previewInput.items,
+      quoteRequestId: fromRequest?.id,
     });
   };
 
@@ -184,6 +244,28 @@ export default function QuotationFormPage() {
         title={isEditing ? `Editar ${existing?.folio ?? ''}` : 'Nueva cotizacion'}
         description="Elige el cliente, agrega renglones y ajusta descuentos o envio."
       />
+
+      {quoteRequest && !fromRequest && (
+        <Card className="border-warning-solid/40 bg-warning-bg p-4">
+          <p className="text-body-sm text-warning-fg">
+            La solicitud web #{quoteRequest.id} ya no esta nueva ({quoteRequest.status === 'CONVERTED' ? 'ya se convirtio' : 'se descarto'}), asi que no se precargo.
+          </p>
+        </Card>
+      )}
+
+      {fromRequest && (
+        <Card className="flex flex-col gap-3 border-info-solid/40 bg-info-bg p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-body-sm text-info-fg">
+            Desde la solicitud web #{fromRequest.id} de {fromRequest.fullName} ({fromRequest.whatsapp}).
+            {!requestCustomer && !loadingCustomers && ' Este cliente aun no esta registrado.'}
+          </p>
+          {!requestCustomer && !loadingCustomers && (
+            <Button type="button" size="sm" loading={createRequestCustomer.isPending} onClick={() => createRequestCustomer.mutate()}>
+              Darlo de alta
+            </Button>
+          )}
+        </Card>
+      )}
 
       {readOnly && (
         <Card className="border-warning-solid/40 bg-warning-bg p-4">

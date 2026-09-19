@@ -109,7 +109,7 @@ export const AppLayout = () => {
   };
 
   return (
-    <div className="flex h-dvh bg-surface-sunken">
+    <div className="flex h-dvh overflow-hidden bg-surface-sunken">
       {/* Sidebar de escritorio */}
       <aside
         className={cn(
@@ -158,7 +158,11 @@ export const AppLayout = () => {
           </button>
           <Wordmark />
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-7">
+        {/* relative: los inputs ocultos position:absolute de Radix (Checkbox y
+            Select dentro de un <form>) toman aqui su bloque contenedor. Sin
+            esto se anclan al viewport, escapan del scroll de <main> y alargan
+            el documento (hueco en blanco al final de /productos/:id/editar). */}
+        <main className="relative flex-1 overflow-y-auto p-4 md:p-7">
           <Suspense
             fallback={
               <PageState isLoading />

@@ -6,6 +6,8 @@ const Responses = {
     new ErrorResponseDto('PRODUCT_MUST_BE_INACTIVE', 'Da de baja el producto antes de eliminarlo permanentemente', data),
   PRODUCT_IMAGE_LIMIT_REACHED: (data?: unknown) =>
     new ErrorResponseDto('PRODUCT_IMAGE_LIMIT_REACHED', 'Limite de imagenes: maximo 10 por producto', data),
+  PRODUCT_IMAGE_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('PRODUCT_IMAGE_NOT_FOUND', 'No se encontro la imagen', data),
   INVALID_IMAGE_TYPE: (data?: unknown) =>
     new ErrorResponseDto('INVALID_IMAGE_TYPE', 'Se requiere una imagen JPEG, PNG o WebP', data),
   CATEGORY_NOT_FOUND: (data?: unknown) =>
@@ -50,6 +52,7 @@ const Responses = {
 const Exceptions = {
   PRODUCT_MUST_BE_INACTIVE: (data?: unknown) => new BadRequestException(Responses.PRODUCT_MUST_BE_INACTIVE(data)),
   PRODUCT_IMAGE_LIMIT_REACHED: (data?: unknown) => new BadRequestException(Responses.PRODUCT_IMAGE_LIMIT_REACHED(data)),
+  PRODUCT_IMAGE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.PRODUCT_IMAGE_NOT_FOUND(data)),
   INVALID_IMAGE_TYPE: (data?: unknown) => new BadRequestException(Responses.INVALID_IMAGE_TYPE(data)),
   CATEGORY_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.CATEGORY_NOT_FOUND(data)),
   CANDLE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.CANDLE_NOT_FOUND(data)),

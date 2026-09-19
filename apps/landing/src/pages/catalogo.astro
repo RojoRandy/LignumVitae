@@ -1,0 +1,200 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ProductCard, { type Product } from '../components/ProductCard.astro';
+import { getJson } from '../lib/api';
+
+interface Category {
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  products: Product[];
+}
+
+const categories = await getJson<Category[]>('/public/catalog');
+const hasProducts = categories.some((category) => category.products.length > 0);
+
+// Solo los moldes que de verdad se usan en el catalogo visible, deduplicados
+// por slug: un mismo molde se repite entre productos y hasta entre los
+// componentes de varios ramos.
+const candleFacets = Array.from(
+  new Map(
+    categories
+      .flatMap((category) => category.products)
+      .flatMap((product) => product.candles ?? [])
+      .map((candle) => [candle.slug, candle] as const),
+  ).values(),
+).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+---
+
+<Layout title="Catálogo · Lignum Vitae" description="Explora nuestras velas personalizadas por categoría y molde, y encuentra un recuerdo para tu celebración.">
+  <div class="site-container py-16 lg:py-24">
+    <h1 class="text-display-lg text-brand">Catálogo</h1>
+    <p class="mt-4 text-body-lg text-text-muted">Encuentra las velas que acompañarán tu celebración.</p>
+    {!hasProducts && <p class="mt-8 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
+  </div>
+
+  {categories.length > 0 && (
+    <div class="site-container grid gap-8 pb-16 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:pb-24">
+      <aside class="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+        <details class="filters-panel rounded-card border border-border bg-surface lg:border-none lg:bg-transparent" open>
+          <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-body-sm font-medium text-text lg:hidden [&::-webkit-details-marker]:hidden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            Filtros
+          </summary>
+          <div class="filters-body flex flex-col gap-6 border-t border-border p-4 lg:border-none lg:p-0">
+            <fieldset>
+              <legend class="text-body-sm font-medium text-text">Categoría</legend>
+              <div class="mt-3 flex flex-col gap-1">
+                {categories.map((category) => <label class="flex min-h-9 items-center gap-2 text-body-sm text-text">
+                  <input type="checkbox" data-filter-category value={category.slug} class="h-4 w-4 accent-action" />
+                  {category.name}
+                </label>)}
+              </div>
+            </fieldset>
+            {candleFacets.length > 0 && <fieldset>
+              <legend class="text-body-sm font-medium text-text">Molde</legend>
+              <div class="mt-3 flex flex-col gap-1">
+                {candleFacets.map((candle) => <label class="flex min-h-9 items-center gap-2 text-body-sm text-text">
+                  <input type="checkbox" data-filter-candle value={candle.slug} class="h-4 w-4 accent-action" />
+                  {candle.name}
+                </label>)}
+              </div>
+            </fieldset>}
+            <button type="button" data-clear-filters class="self-start text-body-sm text-action underline" hidden>Limpiar filtros</button>
+          </div>
+        </details>
+      </aside>
+
+      <div class="min-w-0">
+        <nav aria-label="Categorías del catálogo" class="category-nav sticky top-16 z-10 bg-canvas md:top-20">
+          <div class="category-chips flex gap-2 overflow-x-auto py-2">
+            {categories.map((category) => <button
+              type="button"
+              data-category-chip={category.slug}
+              aria-pressed="false"
+              class="category-chip flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-border-strong px-6 text-body-sm font-medium text-text hover:bg-action-soft hover:text-brand"
+            >
+              {category.name}
+            </button>)}
+          </div>
+        </nav>
+
+        <p id="catalog-empty" class="mt-8 text-body text-text-muted" hidden>
+          No hay productos con esos filtros. <button type="button" data-clear-filters class="text-action underline">Limpiar filtros</button>
+        </p>
+
+        <div class="mt-8 space-y-16 lg:space-y-24">
+          {categories.map((category) => <section id={category.slug} data-category-section={category.slug} aria-label={category.name}>
+            <h2 class="text-heading-lg text-brand [overflow-wrap:anywhere]">{category.name}</h2>
+            {category.description && <p class="mt-4 whitespace-pre-line text-body-lg text-text-muted [overflow-wrap:anywhere]">{category.description}</p>}
+            {category.products.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:gap-6">
+              {category.products.map((product) => <ProductCard product={product} categorySlug={category.slug} />)}
+            </div> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos las velas de esta categoría.</p>}
+          </section>)}
+        </div>
+      </div>
+    </div>
+  )}
+</Layout>
+
+<style>
+  /* <details open>: el panel siempre esta en el DOM con su contenido en flujo
+     normal (necesario para que tenga alto real; forzar visible un <details>
+     CERRADO por CSS no funciona de forma confiable -- el contenido pinta pero
+     no participa en el layout del padre). El disparador se oculta en lg+
+     (clase lg:hidden) para que en escritorio nunca se pueda colapsar. */
+
+  /* Header (64/80px) + chips (60px) + espacio para el foco y el titulo. */
+  :global(html:has(.category-nav)) { scroll-padding-top: 9rem; }
+  @media (min-width: 768px) {
+    :global(html:has(.category-nav)) { scroll-padding-top: 10rem; }
+  }
+  .category-chips { scrollbar-width: none; }
+  .category-chips::-webkit-scrollbar { display: none; }
+  .category-chip[aria-pressed="true"] {
+    background: var(--color-action-soft);
+    color: var(--color-brand);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+</style>
+
+<script>
+  const categoryCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-category]'));
+  const candleCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-candle]'));
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-category-chip]'));
+  const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-category-section]'));
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.product-card'));
+  const emptyState = document.querySelector<HTMLElement>('#catalog-empty');
+  const clearButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-clear-filters]'));
+
+  const selected = (checkboxes: HTMLInputElement[]) => checkboxes.filter((c) => c.checked).map((c) => c.value);
+
+  const applyFilters = () => {
+    const categories = selected(categoryCheckboxes);
+    const candles = selected(candleCheckboxes);
+    const anyFilter = categories.length > 0 || candles.length > 0;
+
+    let visibleCount = 0;
+    cards.forEach((card) => {
+      const cardCategory = card.dataset.category ?? '';
+      const cardCandles = (card.dataset.candles ?? '').split(',').filter(Boolean);
+      const matchesCategory = categories.length === 0 || categories.includes(cardCategory);
+      const matchesCandle = candles.length === 0 || cardCandles.some((slug) => candles.includes(slug));
+      const visible = matchesCategory && matchesCandle;
+      card.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+
+    sections.forEach((section) => {
+      // Sin filtros activos, las secciones se comportan exactamente como
+      // antes (todas visibles, incluida la de "Pronto compartiremos...").
+      if (!anyFilter) {
+        section.hidden = false;
+        return;
+      }
+      const slug = section.dataset.categorySection!;
+      const matchesCategoryFilter = categories.length === 0 || categories.includes(slug);
+      const hasVisibleCard = Array.from(section.querySelectorAll<HTMLElement>('.product-card')).some((c) => !c.hidden);
+      section.hidden = !matchesCategoryFilter || !hasVisibleCard;
+    });
+
+    chips.forEach((chip) => chip.setAttribute('aria-pressed', String(categories.includes(chip.dataset.categoryChip!))));
+    clearButtons.forEach((button) => { button.hidden = !anyFilter; });
+    if (emptyState) emptyState.hidden = !anyFilter || visibleCount > 0;
+  };
+
+  categoryCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
+  candleCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const slug = chip.dataset.categoryChip!;
+      // Un click en el chip deja SOLO esa categoria marcada (o la limpia, si
+      // ya era la unica marcada) -- es la version filtrable del enlace-ancla
+      // que el chip usaba antes.
+      const onlyThisSelected = selected(categoryCheckboxes).length === 1 && selected(categoryCheckboxes)[0] === slug;
+      categoryCheckboxes.forEach((checkbox) => { checkbox.checked = !onlyThisSelected && checkbox.value === slug; });
+      applyFilters();
+      document.getElementById(slug)?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+  });
+
+  clearButtons.forEach((button) => button.addEventListener('click', () => {
+    categoryCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
+    candleCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
+    applyFilters();
+  }));
+
+  // Deep link /catalogo#slug: index.astro y producto/[slug].astro enlazan asi
+  // a una categoria. Antes era un ancla nativa; ahora preselecciona el
+  // filtro para que el chip y el checkbox reflejen la categoria activa.
+  const initialSlug = decodeURIComponent(location.hash.replace('#', ''));
+  if (initialSlug) {
+    const checkbox = categoryCheckboxes.find((c) => c.value === initialSlug);
+    if (checkbox) checkbox.checked = true;
+  }
+  applyFilters();
+  if (initialSlug) document.getElementById(initialSlug)?.scrollIntoView({ block: 'start' });
+</script>

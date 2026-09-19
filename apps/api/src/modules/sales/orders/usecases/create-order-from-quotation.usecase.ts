@@ -109,6 +109,7 @@ export class CreateOrderFromQuotationUseCase implements UseCase<CreateOrderFromQ
             quantity: item.quantity,
             candleColor: item.candleColor,
             ribbonColor: item.ribbonColor,
+            extraFields: (item.extraFields ?? []) as Prisma.InputJsonValue,
             withFragrance: item.withFragrance,
             fragranceName: item.fragranceSupply?.name ?? null,
             personalizationText: item.personalizationText,

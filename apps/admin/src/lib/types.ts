@@ -74,6 +74,9 @@ export interface SupplyDto {
   notes: string | null;
   isActive: boolean;
   isFragrance: boolean;
+  askInQuote: boolean;
+  quoteFieldLabel: string | null;
+  quoteFieldPlaceholder: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,6 +145,13 @@ export interface CardTypeDto {
 
 export type ProductKind = 'SIMPLE' | 'BOUQUET';
 
+/** Dato libre de un insumo "Indicar en cotizacion"; label copiado al capturar. */
+export interface ItemExtraField {
+  supplyId: number;
+  label: string;
+  value: string;
+}
+
 export interface ProductSupplyDto {
   id: number;
   productId: number;
@@ -170,6 +180,8 @@ export interface ProductImageDto {
   alt: string | null;
   sortOrder: number;
   isPrimary: boolean;
+  showInHero: boolean;
+  showInGallery: boolean;
 }
 
 export interface ProductCostBreakdownJson {
@@ -286,6 +298,8 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   quantity: number;
   candleColor: string | null;
   ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
   withFragrance: boolean;
   fragranceSupplyId: number | null;
   fragranceSupply?: { id: number; name: string } | null;
@@ -342,6 +356,8 @@ export interface OrderItemDto extends SalesLineItemCostFields {
   quantity: number;
   candleColor: string | null;
   ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
   withFragrance: boolean;
   fragranceName: string | null;
   personalizationText: string | null;
@@ -397,6 +413,19 @@ export interface OrderDto {
   items?: OrderItemDto[];
   payments?: PaymentDto[];
   quotation?: { id: number; folio: string } | null;
+  testimonial?: { id: number } | null;
+}
+
+export interface TestimonialDto {
+  id: number;
+  orderId: number | null;
+  customerName: string;
+  imageUrl: string;
+  alt: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuotationTotalsPreview {
@@ -569,6 +598,36 @@ export interface SettingsDto {
   paymentFolioPrefix: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type QuoteRequestStatus = 'NEW' | 'CONVERTED' | 'DISMISSED';
+
+/** Renglon tal como lo guarda la landing (QuoteRequest.items, JSON). */
+export interface QuoteRequestItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+  candleColor: string | null;
+  ribbonColor: string | null;
+  // Opcional: registros anteriores a los campos por insumo no lo traen.
+  extraFields?: ItemExtraField[];
+  withFragrance: boolean;
+  // Opcionales: las solicitudes creadas antes de este campo no lo traen.
+  fragranceSupplyId?: number | null;
+  fragranceName?: string | null;
+}
+
+export interface QuoteRequestDto {
+  id: number;
+  status: QuoteRequestStatus;
+  fullName: string;
+  whatsapp: string;
+  eventDate: string | null;
+  notes: string | null;
+  items: QuoteRequestItem[];
+  convertedQuotationId: number | null;
+  dismissedReason: string | null;
+  createdAt: string;
 }
 
 export interface Paginated<T> {

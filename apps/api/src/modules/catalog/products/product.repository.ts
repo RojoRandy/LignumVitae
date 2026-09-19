@@ -11,7 +11,7 @@ export const productInclude = {
   cardType: { include: { supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } },
   supplies: { include: { supply: { include: { type: true, unit: true } }, unit: true } },
   components: { include: { candle: { include: { waxSupply: { include: { type: true, unit: true } }, supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } } }, orderBy: { sortOrder: 'asc' } },
-  images: { orderBy: { sortOrder: 'asc' } },
+  images: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
 } satisfies Prisma.ProductInclude;
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
@@ -98,6 +98,10 @@ export class ProductRepository {
 
   findImage(imageId: number) {
     return this.prisma.productImage.findUnique({ where: { id: imageId } });
+  }
+
+  updateImageFlags(imageId: number, data: { showInHero?: boolean; showInGallery?: boolean }) {
+    return this.prisma.productImage.update({ where: { id: imageId }, data });
   }
 
   removeImage(imageId: number) {

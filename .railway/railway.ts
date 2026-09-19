@@ -27,7 +27,19 @@ export default defineRailway(() => {
     env: { PUBLIC_API_URL: preserve(), VITE_API_URL: preserve(), VITE_PUBLIC_SITE_URL: preserve() },
   });
 
+  // Astro SSR (adapter node standalone): lee PORT de Railway y escucha en
+  // 0.0.0.0 (server.host en astro.config.mjs). PUBLIC_API_URL se inlinea al
+  // compilar, asi que tiene que existir tambien en tiempo de build.
+  const _lignumvitaelanding = service("@lignumvitae/landing", {
+    source: LignumVitae,
+    build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/landing build",
+    start: "pnpm --filter @lignumvitae/landing start",
+    replicas: { "us-west2": 1 },
+    networking: { privateNetworkEndpoint: "lignumvitaelanding" },
+    env: { PUBLIC_API_URL: preserve() },
+  });
+
   return project("Lignum Vitae", {
-    resources: [_lignumvitaeapi, _lignumvitaeadmin, postgresDatabase, postgresVolume],
+    resources: [_lignumvitaeapi, _lignumvitaeadmin, _lignumvitaelanding, postgresDatabase, postgresVolume],
   });
 });

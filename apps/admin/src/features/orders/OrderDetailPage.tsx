@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PaymentProgress } from '@/components/domain/payment-progress';
 import { PaymentDialog } from './components/payment-dialog';
+import { TestimonialDialog } from './components/testimonial-dialog';
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING_DEPOSIT: 'Pendiente anticipo', CONFIRMED: 'Confirmado', IN_PRODUCTION: 'En produccion',
@@ -50,6 +51,7 @@ export default function OrderDetailPage() {
   const confirm = useConfirm();
   const { isAdmin } = useAuth();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -58,10 +60,13 @@ export default function OrderDetailPage() {
 
   const statusMutation = useMutation({
     mutationFn: (status: OrderStatus) => httpPatch<OrderDto>(`/orders/${id}/status`, { status }),
-    onSuccess: () => {
+    onSuccess: (updated, status) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['orders', id] });
       toast.success('Estado actualizado');
+      // La entrega ya quedo registrada; el testimonio es un extra opcional
+      // que no debe poder bloquearla, por eso se ofrece DESPUES del PATCH.
+      if (status === 'DELIVERED' && !updated.testimonial) setTestimonialDialogOpen(true);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -125,6 +130,14 @@ export default function OrderDetailPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {order.status === 'DELIVERED' && (
+                      <>
+                        <DropdownMenuItem onSelect={() => setTestimonialDialogOpen(true)}>
+                          {order.testimonial ? 'Reemplazar testimonio' : 'Agregar testimonio'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuLabel>Cambiar estado manualmente</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {(Object.entries(STATUS_LABEL) as [OrderStatus, string][])
@@ -159,7 +172,7 @@ export default function OrderDetailPage() {
                   <div>
                     <p className="text-body-sm font-medium text-text">{item.productName}</p>
                     <p className="text-caption text-text-muted">
-                      {[item.candleColor, item.ribbonColor, item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
+                      {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
                         .filter(Boolean)
                         .join(' · ') || '—'}
                     </p>
@@ -220,6 +233,7 @@ export default function OrderDetailPage() {
       </div>
 
       <PaymentDialog order={order} open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} />
+      <TestimonialDialog order={order} open={testimonialDialogOpen} onOpenChange={setTestimonialDialogOpen} />
     </div>
   );
 }

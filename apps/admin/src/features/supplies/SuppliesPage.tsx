@@ -32,6 +32,7 @@ export default function SuppliesPage() {
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SupplyDto | null>(null);
+  const [askInQuote, setAskInQuote] = useState(false);
   const defaultTypeId = String(editing?.typeId ?? supplyTypes.find((t) => t.slug === 'OTHER')?.id ?? '');
   const defaultUnitId = String(editing?.unitId ?? units.find((u) => u.slug === 'PIECE')?.id ?? '');
 
@@ -92,12 +93,14 @@ export default function SuppliesPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setAskInQuote(false);
     clear();
     setDialogOpen(true);
   };
 
   const openEdit = (supply: SupplyDto) => {
     setEditing(supply);
+    setAskInQuote(supply.askInQuote);
     clear();
     setDialogOpen(true);
   };
@@ -114,6 +117,9 @@ export default function SuppliesPage() {
       minStockQty: form.get('minStockQty') ? Number(form.get('minStockQty')) : undefined,
       defaultBaseQtyPerPack: form.get('defaultBaseQtyPerPack') ? Number(form.get('defaultBaseQtyPerPack')) : undefined,
       notes: form.get('notes') || undefined,
+      askInQuote,
+      quoteFieldLabel: askInQuote ? String(form.get('quoteFieldLabel') ?? '') : undefined,
+      quoteFieldPlaceholder: askInQuote ? String(form.get('quoteFieldPlaceholder') ?? '') : undefined,
     });
   };
 
@@ -132,6 +138,7 @@ export default function SuppliesPage() {
           <span className="font-medium text-text">{row.original.name}</span>
           <span className="text-caption text-text-muted">{row.original.type.name}</span>
           {row.original.isFragrance && <Badge variant="neutral" className="self-start">Aroma</Badge>}
+          {row.original.askInQuote && <Badge variant="neutral" className="self-start">Cotización</Badge>}
         </div>
       ),
     },
@@ -250,6 +257,20 @@ export default function SuppliesPage() {
               <Field label="Notas" htmlFor="notes">
                 <Input id="notes" name="notes" defaultValue={editing?.notes ?? ''} />
               </Field>
+              <label htmlFor="askInQuote" className="flex items-center gap-2 text-body-sm text-text">
+                <Checkbox id="askInQuote" checked={askInQuote} onCheckedChange={(checked) => setAskInQuote(checked === true)} />
+                Indicar en cotización
+              </label>
+              {askInQuote && (
+                <>
+                  <Field label="Etiqueta del campo" htmlFor="quoteFieldLabel" required hint="Lo que ve el cliente en la landing, ej. Color del listón" error={fieldErrors.quoteFieldLabel}>
+                    <Input id="quoteFieldLabel" name="quoteFieldLabel" maxLength={60} defaultValue={editing?.quoteFieldLabel ?? ''} required />
+                  </Field>
+                  <Field label="Placeholder" htmlFor="quoteFieldPlaceholder" hint="Texto de ayuda dentro del campo (opcional)">
+                    <Input id="quoteFieldPlaceholder" name="quoteFieldPlaceholder" maxLength={60} defaultValue={editing?.quoteFieldPlaceholder ?? ''} />
+                  </Field>
+                </>
+              )}
               <FormError>{formError}</FormError>
               <DialogFooter>
                 <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>Cancelar</Button>

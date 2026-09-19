@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage';
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'));
 const CustomersPage = lazy(() => import('@/features/customers/CustomersPage'));
+const QuoteRequestsPage = lazy(() => import('@/features/quote-requests/QuoteRequestsPage'));
 const QuotationsPage = lazy(() => import('@/features/quotations/QuotationsPage'));
 const QuotationFormPage = lazy(() => import('@/features/quotations/QuotationFormPage'));
 const QuotationDetailPage = lazy(() => import('@/features/quotations/QuotationDetailPage'));
@@ -25,6 +26,7 @@ const PurchasesPage = lazy(() => import('@/features/purchases/PurchasesPage'));
 const AssetsPage = lazy(() => import('@/features/assets/AssetsPage'));
 const ExpensesPage = lazy(() => import('@/features/expenses/ExpensesPage'));
 const OverheadPage = lazy(() => import('@/features/overhead/OverheadPage'));
+const TestimonialsPage = lazy(() => import('@/features/testimonials/TestimonialsPage'));
 const UsersPage = lazy(() => import('@/features/users/UsersPage'));
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'));
 const NotFoundPage = lazy(() => import('@/features/not-found/NotFoundPage'));
@@ -42,6 +44,7 @@ export default function App() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="clientes" element={<CustomersPage />} />
+        <Route path="solicitudes" element={<QuoteRequestsPage />} />
         <Route path="cotizaciones" element={<QuotationsPage />} />
         <Route path="cotizaciones/nueva" element={<QuotationFormPage />} />
         <Route path="cotizaciones/:id/editar" element={<QuotationFormPage />} />
@@ -108,6 +111,14 @@ export default function App() {
         <Route path="activos" element={<Navigate to="/finanzas/activos" replace />} />
         <Route path="gastos" element={<Navigate to="/finanzas/gastos" replace />} />
         <Route path="cierre-mensual" element={<Navigate to="/finanzas/cierre-mensual" replace />} />
+        <Route
+          path="testimoniales"
+          element={
+            <AdminRoute>
+              <TestimonialsPage />
+            </AdminRoute>
+          }
+        />
         <Route
           path="usuarios"
           element={

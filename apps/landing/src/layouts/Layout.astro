@@ -1,0 +1,122 @@
+---
+import '../styles/global.css';
+import { getJson } from '../lib/api';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+interface PublicSettings {
+  brandName: string;
+  city: string;
+  state: string;
+  minLeadTimeDays: number;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  businessHours: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+}
+
+const { title, description } = Astro.props;
+const settings = await getJson<PublicSettings>('/public/settings');
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits
+  ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
+  : null;
+const navigation = [
+  { href: '/catalogo', label: 'Catálogo' },
+  { href: '/#como-funciona', label: 'Cómo funciona' },
+  { href: '/#nosotros', label: 'Nosotros' },
+  { href: '/#contacto', label: 'Contacto' },
+];
+const socialLinks = [
+  { href: settings.instagramUrl, label: 'Instagram' },
+  { href: settings.facebookUrl, label: 'Facebook' },
+  { href: settings.tiktokUrl, label: 'TikTok' },
+].filter((link) => link.href);
+const showFloatingQuote = !/^\/cotizar\/?$/.test(Astro.url.pathname)
+  && !Astro.url.pathname.startsWith('/cotizacion/');
+---
+
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Jost:wght@400;500;600&family=Parisienne&display=swap" rel="stylesheet" />
+    <slot name="head" />
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 bg-surface p-4 text-action">Saltar al contenido</a>
+    <div class="bg-band px-4 py-2 text-center text-caption text-on-band">
+      Entregas solo en {settings.city} · Pide con al menos {settings.minLeadTimeDays} días de anticipación
+    </div>
+    <header class="sticky top-0 z-20 bg-canvas shadow-nav">
+      <div class="site-container flex h-16 items-center justify-between gap-4 md:h-20">
+        <a href="/" class="flex min-h-11 min-w-11 items-center" aria-label={`${settings.brandName}, inicio`}>
+          <img src="/logo-texto.svg" alt={settings.brandName} width="186" height="48" class="h-9 w-auto object-contain md:h-12" />
+        </a>
+        <nav aria-label="Principal" class="hidden items-center gap-4 text-body-sm font-medium md:flex lg:gap-8">
+          {navigation.map(({ href, label }) => <a class="nav-link" href={href}>{label}</a>)}
+        </nav>
+        <a href="/cotizar" class="button button-outline whitespace-nowrap">
+          Mi cotización (<span data-quote-count>0</span>)
+        </a>
+        <details class="md:hidden">
+          <summary aria-label="Menú principal" class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full [&::-webkit-details-marker]:hidden">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </summary>
+          <nav aria-label="Principal móvil" class="absolute inset-x-0 top-full border-t border-border bg-surface px-4 py-4 text-body-sm font-medium shadow-nav">
+            {navigation.map(({ href, label }) => <a class="nav-link" href={href}>{label}</a>)}
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="contenido" class="flex-1" tabindex="-1"><slot /></main>
+
+    <footer class="band bg-band pt-16 pb-24 text-on-band lg:pt-24">
+      <div class="site-container grid gap-8 md:grid-cols-3">
+        <div>
+          <p class="text-heading">{settings.brandName}</p>
+          <p class="mt-4 text-body-sm text-on-band-muted">{settings.city}, {settings.state}</p>
+        </div>
+        <div>
+          <h2 class="text-heading-sm">Contacto</h2>
+          <address class="mt-4 flex flex-col items-start text-body-sm not-italic">
+            {whatsappUrl && <a class="flex min-h-11 items-center hover:underline" href={whatsappUrl}>WhatsApp</a>}
+            {settings.phone && <a class="flex min-h-11 items-center hover:underline" href={`tel:${settings.phone}`}>{settings.phone}</a>}
+            {settings.email && <a class="flex min-h-11 max-w-full items-center break-all hover:underline" href={`mailto:${settings.email}`}>{settings.email}</a>}
+          </address>
+        </div>
+        <div>
+          {settings.businessHours && <><h2 class="text-heading-sm">Horario</h2><p class="mt-4 whitespace-pre-line text-body-sm text-on-band-muted">{settings.businessHours}</p></>}
+          {socialLinks.length > 0 && <nav aria-label="Redes sociales" class="mt-4 flex flex-wrap gap-x-4 text-body-sm">{socialLinks.map(({ href, label }) => <a class="flex min-h-11 items-center hover:underline" href={href!}>{label}</a>)}</nav>}
+        </div>
+      </div>
+    </footer>
+
+    {showFloatingQuote && <a href="/cotizar" aria-label="Mi cotización, 0 productos" class="quote-float button fixed right-4 bottom-4 z-30 h-14 w-14 rounded-full bg-action p-0 text-surface shadow-float hover:bg-action-hover">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 7h14l1 14H4L5 7Z" /><path d="M8 8V6a4 4 0 0 1 8 0v2" /></svg>
+      <span data-quote-count hidden class="absolute -top-1 -right-1 h-6 min-w-6 place-items-center rounded-full bg-action-soft px-1 text-micro text-brand">0</span>
+    </a>}
+  </body>
+</html>
+
+<script>
+  import { updateQuoteCount } from '../lib/quote-list';
+
+  updateQuoteCount();
+  document.addEventListener('astro:page-load', updateQuoteCount);
+  window.addEventListener('quote:change', updateQuoteCount);
+  window.addEventListener('pageshow', updateQuoteCount);
+  window.addEventListener('storage', updateQuoteCount);
+</script>

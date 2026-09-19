@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateIf } from 'class-validator';
 
 export class CreateSupplyDto {
   @ApiProperty({ example: 'Celofan transparente' })
@@ -64,6 +64,24 @@ export class CreateSupplyDto {
   @IsOptional()
   @IsBoolean()
   isFragrance?: boolean;
+
+  @ApiPropertyOptional({ description: 'La landing pide un dato libre de este insumo al cotizar' })
+  @IsOptional()
+  @IsBoolean()
+  askInQuote?: boolean;
+
+  @ApiPropertyOptional({ example: 'Color del liston' })
+  @ValidateIf((dto: CreateSupplyDto) => dto.askInQuote === true)
+  @IsString()
+  @IsNotEmpty({ message: 'La etiqueta es obligatoria cuando el insumo se indica en la cotizacion' })
+  @MaxLength(60)
+  quoteFieldLabel?: string;
+
+  @ApiPropertyOptional({ example: 'Ej. rosa palo' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  quoteFieldPlaceholder?: string;
 }
 
 export class UpdateSupplyDto extends PartialType(CreateSupplyDto) {}

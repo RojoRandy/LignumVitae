@@ -7,6 +7,9 @@ export const orderInclude = {
   items: { orderBy: { sortOrder: 'asc' } },
   payments: { where: { isActive: true }, orderBy: { paidAt: 'desc' } },
   quotation: { select: { id: true, folio: true } },
+  // Solo el id: para que el admin sepa si ya existe un testimonio de este
+  // pedido (el unique en orderId no perdona un segundo intento silencioso).
+  testimonial: { select: { id: true } },
 } satisfies Prisma.OrderInclude;
 
 export type OrderWithRelations = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;

@@ -1,6 +1,7 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -10,16 +11,31 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { AdjustmentType } from '@lignumvitae/types';
 
+/** Dato libre de un insumo marcado "Indicar en cotizacion"; label copiado al capturar. */
+export class ItemExtraFieldDto {
+  @ApiProperty() @Type(() => Number) @IsInt() supplyId: number;
+  @ApiProperty() @IsString() @MaxLength(60) label: string;
+  @ApiProperty() @IsString() @MaxLength(60) value: string;
+}
+
 export class CreateQuotationItemDto {
   @ApiProperty() @Type(() => Number) @IsInt() productId: number;
   @ApiProperty() @Type(() => Number) @IsInt() @Min(1) quantity: number;
   @ApiPropertyOptional() @IsOptional() @IsString() candleColor?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() ribbonColor?: string;
+  @ApiPropertyOptional({ description: 'Legacy: ya no se captura, se conserva al duplicar' }) @IsOptional() @IsString() ribbonColor?: string;
+  @ApiPropertyOptional({ type: [ItemExtraFieldDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => ItemExtraFieldDto)
+  extraFields?: ItemExtraFieldDto[];
   @ApiPropertyOptional({ default: false }) @IsOptional() @IsBoolean() withFragrance?: boolean;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() fragranceSupplyId?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() personalizationText?: string;
@@ -55,9 +71,16 @@ export class CreateQuotationDto {
   @ValidateNested({ each: true })
   @Type(() => CreateQuotationItemDto)
   items: CreateQuotationItemDto[];
+
+  @ApiPropertyOptional({ description: 'Solicitud web de la que sale esta cotizacion; queda CONVERTED en la misma transaccion' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  quoteRequestId?: number;
 }
 
-export class UpdateQuotationDto extends PartialType(CreateQuotationDto) {
+// Una cotizacion ya creada no puede "volver a salir" de una solicitud.
+export class UpdateQuotationDto extends PartialType(OmitType(CreateQuotationDto, ['quoteRequestId'] as const)) {
   // items sigue obligatorio en un update: no tiene sentido "actualizar
   // parcialmente" la lista de renglones, siempre se manda la lista completa
   // vigente (igual que hace ProductWizardPage con supplyTemplate).

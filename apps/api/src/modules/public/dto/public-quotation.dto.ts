@@ -15,6 +15,7 @@ export const toPublicQuotationDto = (quotation: QuotationWithRelations) => ({
     quantity: item.quantity,
     candleColor: item.candleColor,
     ribbonColor: item.ribbonColor,
+    extraFields: item.extraFields,
     withFragrance: item.withFragrance,
     fragranceName: item.fragranceSupply?.name ?? null,
     personalizationText: item.personalizationText,
