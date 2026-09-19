@@ -11,7 +11,7 @@ export const productInclude = {
   cardType: { include: { supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } },
   supplies: { include: { supply: { include: { type: true, unit: true } }, unit: true } },
   components: { include: { candle: { include: { waxSupply: { include: { type: true, unit: true } }, supplyTemplate: { include: { supply: { include: { type: true, unit: true } }, unit: true } } } } }, orderBy: { sortOrder: 'asc' } },
-  images: { orderBy: { sortOrder: 'asc' } },
+  images: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }] },
 } satisfies Prisma.ProductInclude;
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
