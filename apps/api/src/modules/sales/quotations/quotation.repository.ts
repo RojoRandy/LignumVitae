@@ -41,6 +41,20 @@ export class QuotationRepository {
     return this.prisma.quotation.update({ where: { id }, data });
   }
 
+  setActive(id: number, isActive: boolean) {
+    return this.prisma.quotation.update({ where: { id }, data: { isActive } });
+  }
+
+  deletePermanently(id: number) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.quoteRequest.updateMany({
+        where: { convertedQuotationId: id },
+        data: { status: 'NEW', convertedQuotationId: null },
+      });
+      return tx.quotation.delete({ where: { id } });
+    });
+  }
+
   /** Vencimiento perezoso: se barre al leer, nunca por cron. Mismo idioma
    *  que ya usa paidAmount ("derivado, nunca dato viejo"). */
   expireOverdue() {

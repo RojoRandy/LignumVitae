@@ -2,6 +2,8 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { ErrorResponseDto } from '../dto/response.dto';
 
 const Responses = {
+  MUST_BE_INACTIVE: (data?: unknown) =>
+    new ErrorResponseDto('MUST_BE_INACTIVE', 'Da de baja el registro antes de eliminarlo permanentemente', data),
   CUSTOMER_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('CUSTOMER_NOT_FOUND', 'No se encontro el cliente', data),
   QUOTATION_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('QUOTATION_NOT_FOUND', 'No se encontro la cotizacion', data),
   QUOTATION_ALREADY_CONVERTED: (data?: unknown) =>
@@ -38,6 +40,7 @@ const Responses = {
 };
 
 const Exceptions = {
+  MUST_BE_INACTIVE: (data?: unknown) => new BadRequestException(Responses.MUST_BE_INACTIVE(data)),
   CUSTOMER_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.CUSTOMER_NOT_FOUND(data)),
   QUOTATION_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTATION_NOT_FOUND(data)),
   QUOTATION_ALREADY_CONVERTED: (data?: unknown) => new ConflictException(Responses.QUOTATION_ALREADY_CONVERTED(data)),

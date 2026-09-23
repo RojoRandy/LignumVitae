@@ -619,6 +619,7 @@ export interface QuoteRequestItem {
 
 export interface QuoteRequestDto {
   id: number;
+  isActive: boolean;
   status: QuoteRequestStatus;
   fullName: string;
   whatsapp: string;

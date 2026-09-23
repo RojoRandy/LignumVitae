@@ -32,12 +32,12 @@ const STATUS_TONE: Record<QuotationStatus, 'neutral' | 'info' | 'success' | 'dan
 
 export default function QuotationsPage() {
   const navigate = useNavigate();
-  const { page, setPage } = useTableParams();
+  const { page, setPage, onlyActive, setOnlyActive } = useTableParams();
   const [status, setStatus] = useState<string | undefined>();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['quotations', { page, status }],
-    queryFn: () => httpGet<Paginated<QuotationDto>>('/quotations', { page, status, limit: 20 }),
+    queryKey: ['quotations', { page, status, onlyActive }],
+    queryFn: () => httpGet<Paginated<QuotationDto>>('/quotations', { page, status, onlyActive, limit: 20 }),
   });
 
   const columns: ColumnDef<QuotationDto, unknown>[] = [
@@ -52,7 +52,12 @@ export default function QuotationsPage() {
     { header: 'Total', cell: ({ row }) => formatMoney(row.original.total) },
     {
       header: 'Estado',
-      cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>,
+      cell: ({ row }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>
+          {!row.original.isActive && <Badge variant="neutral">Baja</Badge>}
+        </div>
+      ),
       meta: { mobile: 'trailing' },
     },
     {
@@ -79,6 +84,7 @@ export default function QuotationsPage() {
       />
 
       <PageToolbar
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         filters={
           <div className="w-full sm:w-64">
             <Select

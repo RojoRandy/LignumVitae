@@ -8,7 +8,7 @@
  * un solo origen de verdad es la unica forma de que la consistencia se
  * sostenga sin que alguien tenga que acordarse de copiar bien.
  */
-import { useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { AlertTriangle, ArrowLeft, Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -57,7 +57,7 @@ export const PageHeader = ({ title, description, backTo, badge, actions }: PageH
 );
 
 export interface PageToolbarProps {
-  /** Buscador de texto. El debounce vive en useTableParams, no aqui. */
+  /** Buscador de texto. El debounce de 300ms vive en SearchInput. */
   search?: { value: string; onChange: (value: string) => void; placeholder?: string };
   /** Selects de filtro. Se apilan en movil. */
   filters?: ReactNode;
@@ -67,24 +67,47 @@ export interface PageToolbarProps {
   className?: string;
 }
 
+const SearchInput = ({ value, onChange, placeholder }: NonNullable<PageToolbarProps['search']>) => {
+  const [localValue, setLocalValue] = useState(value);
+  const lastEmittedValue = useRef(value);
+
+  useEffect(() => {
+    // La confirmacion de nuestro propio cambio no debe pisar texto nuevo.
+    if (value === lastEmittedValue.current) return;
+    lastEmittedValue.current = value;
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    if (localValue === lastEmittedValue.current) return;
+    const timeout = setTimeout(() => {
+      lastEmittedValue.current = localValue;
+      onChange(localValue);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [localValue, onChange, value]);
+
+  return (
+    <div className="relative w-full sm:max-w-xs">
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
+      <Input
+        type="search"
+        className="pl-9"
+        placeholder={placeholder ?? 'Buscar...'}
+        aria-label={placeholder ?? 'Buscar'}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+      />
+    </div>
+  );
+};
+
 export const PageToolbar = ({ search, filters, showInactive, actions, className }: PageToolbarProps) => {
   const showInactiveId = useId();
   if (!search && !filters && !showInactive && !actions) return null;
   return (
     <div className={cn('flex flex-col gap-3 sm:flex-row sm:items-center', className)}>
-      {search && (
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-faint" />
-          <Input
-            type="search"
-            className="pl-9"
-            placeholder={search.placeholder ?? 'Buscar...'}
-            aria-label={search.placeholder ?? 'Buscar'}
-            value={search.value}
-            onChange={(e) => search.onChange(e.target.value)}
-          />
-        </div>
-      )}
+      {search && <SearchInput {...search} />}
       {(filters || showInactive) && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           {filters}

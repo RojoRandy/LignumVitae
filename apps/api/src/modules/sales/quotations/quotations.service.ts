@@ -69,6 +69,24 @@ export class QuotationsService {
     return this.findById(id);
   }
 
+  async deactivate(id: number) {
+    const quotation = await this.findById(id);
+    if (quotation.order) throw SalesErrors.Exceptions.QUOTATION_ALREADY_CONVERTED({ id });
+    return this.quotationRepository.setActive(id, false);
+  }
+
+  async restore(id: number) {
+    await this.findById(id);
+    return this.quotationRepository.setActive(id, true);
+  }
+
+  async deletePermanently(id: number) {
+    const quotation = await this.findById(id);
+    if (quotation.isActive) throw SalesErrors.Exceptions.MUST_BE_INACTIVE({ id });
+    if (quotation.order) throw SalesErrors.Exceptions.QUOTATION_ALREADY_CONVERTED({ id });
+    return this.quotationRepository.deletePermanently(id);
+  }
+
   duplicate(id: number, userId?: number) {
     return this.duplicateQuotationUseCase.execute({ id, userId });
   }

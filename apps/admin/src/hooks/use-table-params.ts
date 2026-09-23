@@ -1,31 +1,23 @@
 // page/search/onlyActive viven en la URL, no en useState: refrescar la
-// pagina o compartir el link conserva el filtro. El search se debounce
-// 300ms antes de disparar la query.
-import { useEffect, useState } from 'react';
+// pagina o compartir el link conserva el filtro. El debounce de 300ms
+// vive en SearchInput de page.tsx, antes de actualizar la URL.
 import { useSearchParams } from 'react-router';
 
 export const useTableParams = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Number(searchParams.get('page') ?? '1');
-  const searchParam = searchParams.get('search') ?? '';
+  const search = searchParams.get('search') ?? '';
   const onlyActive = searchParams.get('all') !== '1';
 
-  const [search, setSearch] = useState(searchParam);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (search === searchParam) return;
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (search) next.set('search', search);
-        else next.delete('search');
-        next.set('page', '1');
-        return next;
-      });
-    }, 300);
-    return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  const setSearch = (value: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set('search', value);
+      else next.delete('search');
+      next.set('page', '1');
+      return next;
+    });
+  };
 
   const setPage = (nextPage: number) => {
     setSearchParams((prev) => {

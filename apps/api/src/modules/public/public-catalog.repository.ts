@@ -38,6 +38,7 @@ export const publicCatalogSelect = {
       // en el admin.
       candle: { select: { name: true, slug: true } },
       components: { select: { candle: { select: { name: true, slug: true } } } },
+      packagingType: { select: { name: true, slug: true } },
     },
   },
 } satisfies Prisma.CandleCategorySelect;
