@@ -18,6 +18,14 @@ export class QuoteRequestRepository {
     return this.prisma.quoteRequest.findUnique({ where: { id } });
   }
 
+  setActive(id: number, isActive: boolean) {
+    return this.prisma.quoteRequest.update({ where: { id }, data: { isActive } });
+  }
+
+  delete(id: number) {
+    return this.prisma.quoteRequest.delete({ where: { id } });
+  }
+
   /** Solo desde NEW: el `where` compuesto hace la transicion atomica. Devuelve cuantas cambio. */
   async markFromNew(id: number, data: Prisma.QuoteRequestUpdateManyMutationInput, tx: Prisma.TransactionClient = this.prisma) {
     const { count } = await tx.quoteRequest.updateMany({ where: { id, status: 'NEW' }, data });

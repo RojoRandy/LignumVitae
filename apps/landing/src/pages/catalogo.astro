@@ -17,14 +17,27 @@ const hasProducts = categories.some((category) => category.products.length > 0);
 // Solo los moldes que de verdad se usan en el catalogo visible, deduplicados
 // por slug: un mismo molde se repite entre productos y hasta entre los
 // componentes de varios ramos.
-const candleFacets = Array.from(
-  new Map(
-    categories
-      .flatMap((category) => category.products)
-      .flatMap((product) => product.candles ?? [])
-      .map((candle) => [candle.slug, candle] as const),
-  ).values(),
-).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+const candlesBySlug = new Map<string, { name: string; slug: string; categorySlugs: Set<string> }>();
+const packagingBySlug = new Map<string, { name: string; slug: string; categorySlugs: Set<string> }>();
+for (const category of categories) {
+  for (const product of category.products) {
+    for (const candle of product.candles ?? []) {
+      if (!candlesBySlug.has(candle.slug)) {
+        candlesBySlug.set(candle.slug, { ...candle, categorySlugs: new Set() });
+      }
+      candlesBySlug.get(candle.slug)!.categorySlugs.add(category.slug);
+    }
+    const pkg = product.packagingType;
+    if (pkg) {
+      if (!packagingBySlug.has(pkg.slug)) {
+        packagingBySlug.set(pkg.slug, { ...pkg, categorySlugs: new Set() });
+      }
+      packagingBySlug.get(pkg.slug)!.categorySlugs.add(category.slug);
+    }
+  }
+}
+const candleFacets = Array.from(candlesBySlug.values()).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.name.localeCompare(b.name, 'es'));
 ---
 
 <Layout title="Catálogo · Lignum Vitae" description="Explora nuestras velas personalizadas por categoría y molde, y encuentra un recuerdo para tu celebración.">
@@ -55,9 +68,18 @@ const candleFacets = Array.from(
             {candleFacets.length > 0 && <fieldset>
               <legend class="text-body-sm font-medium text-text">Molde</legend>
               <div class="mt-3 flex flex-col gap-1">
-                {candleFacets.map((candle) => <label class="flex min-h-9 items-center gap-2 text-body-sm text-text">
+                {candleFacets.map((candle) => <label data-facet-categories={[...candle.categorySlugs].join(',')} class="flex min-h-9 items-center gap-2 text-body-sm text-text">
                   <input type="checkbox" data-filter-candle value={candle.slug} class="h-4 w-4 accent-action" />
                   {candle.name}
+                </label>)}
+              </div>
+            </fieldset>}
+            {packagingFacets.length > 0 && <fieldset>
+              <legend class="text-body-sm font-medium text-text">Empaque</legend>
+              <div class="mt-3 flex flex-col gap-1">
+                {packagingFacets.map((pkg) => <label data-facet-categories={[...pkg.categorySlugs].join(',')} class="flex min-h-9 items-center gap-2 text-body-sm text-text">
+                  <input type="checkbox" data-filter-packaging value={pkg.slug} class="h-4 w-4 accent-action" />
+                  {pkg.name}
                 </label>)}
               </div>
             </fieldset>}
@@ -123,6 +145,7 @@ const candleFacets = Array.from(
 <script>
   const categoryCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-category]'));
   const candleCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-candle]'));
+  const packagingCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-packaging]'));
   const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-category-chip]'));
   const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-category-section]'));
   const cards = Array.from(document.querySelectorAll<HTMLElement>('.product-card'));
@@ -133,16 +156,32 @@ const candleFacets = Array.from(
 
   const applyFilters = () => {
     const categories = selected(categoryCheckboxes);
+    [candleCheckboxes, packagingCheckboxes].forEach((checkboxes) => {
+      checkboxes.forEach((checkbox) => {
+        const label = checkbox.closest('label');
+        if (!label) return;
+        const categorySlugs = (label.dataset.facetCategories ?? '').split(',');
+        label.hidden = categories.length > 0 && !categorySlugs.some((slug) => categories.includes(slug));
+        if (label.hidden) checkbox.checked = false;
+      });
+      const fieldset = checkboxes[0]?.closest('fieldset');
+      if (fieldset) {
+        fieldset.hidden = Array.from(fieldset.querySelectorAll('label')).every((label) => label.hidden);
+      }
+    });
     const candles = selected(candleCheckboxes);
-    const anyFilter = categories.length > 0 || candles.length > 0;
+    const packagings = selected(packagingCheckboxes);
+    const anyFilter = categories.length > 0 || candles.length > 0 || packagings.length > 0;
 
     let visibleCount = 0;
     cards.forEach((card) => {
       const cardCategory = card.dataset.category ?? '';
       const cardCandles = (card.dataset.candles ?? '').split(',').filter(Boolean);
+      const cardPackaging = card.dataset.packaging ?? '';
       const matchesCategory = categories.length === 0 || categories.includes(cardCategory);
       const matchesCandle = candles.length === 0 || cardCandles.some((slug) => candles.includes(slug));
-      const visible = matchesCategory && matchesCandle;
+      const matchesPackaging = packagings.length === 0 || packagings.includes(cardPackaging);
+      const visible = matchesCategory && matchesCandle && matchesPackaging;
       card.hidden = !visible;
       if (visible) visibleCount += 1;
     });
@@ -167,6 +206,7 @@ const candleFacets = Array.from(
 
   categoryCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
   candleCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
+  packagingCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
 
   chips.forEach((chip) => {
     chip.addEventListener('click', () => {
@@ -184,6 +224,7 @@ const candleFacets = Array.from(
   clearButtons.forEach((button) => button.addEventListener('click', () => {
     categoryCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     candleCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
+    packagingCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     applyFilters();
   }));
 

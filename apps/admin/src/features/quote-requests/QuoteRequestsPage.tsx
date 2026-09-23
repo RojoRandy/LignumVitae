@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
-import { errorMessage, httpGet, httpPost } from '@/lib/http';
+import { errorMessage, httpDelete, httpGet, httpPost } from '@/lib/http';
 import type { Paginated, QuoteRequestDto, QuoteRequestStatus } from '@/lib/types';
 import { formatDate, formatDateTime, formatNumber } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,53 @@ const QuoteRequestDetail = ({ request, onDone }: { request: QuoteRequestDto; onD
     },
   });
 
+  const deactivateMutation = useMutation({
+    mutationFn: () => httpDelete(`/quote-requests/${request.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote-requests'] });
+      toast.success('Solicitud dada de baja');
+      onDone();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () => httpPost(`/quote-requests/${request.id}/restore`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote-requests'] });
+      toast.success('Solicitud restaurada');
+      onDone();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const deletePermanentlyMutation = useMutation({
+    mutationFn: () => httpDelete(`/quote-requests/${request.id}/permanent`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quote-requests'] });
+      toast.success('Solicitud eliminada permanentemente');
+      onDone();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const handleDeactivate = async () => {
+    const ok = await confirm({
+      title: `¿Eliminar la solicitud de ${request.fullName}?`,
+      description: 'Se dará de baja. Puedes restaurarla después.',
+    });
+    if (ok) deactivateMutation.mutate();
+  };
+
+  const handleDeletePermanently = async () => {
+    const ok = await confirm({
+      title: `¿Eliminar permanentemente la solicitud de ${request.fullName}?`,
+      description: 'Esta acción no se puede deshacer.',
+      variant: 'danger',
+    });
+    if (ok) deletePermanentlyMutation.mutate();
+  };
+
   const handleDismiss = async () => {
     const ok = await confirm({ title: `¿Descartar la solicitud de ${request.fullName}?`, description: 'Ya no se podra convertir en cotizacion.' });
     if (ok) dismissMutation.mutate();
@@ -63,6 +110,7 @@ const QuoteRequestDetail = ({ request, onDone }: { request: QuoteRequestDto; onD
         <div>
           <Badge variant={STATUS_TONE[request.status]}>{STATUS_LABEL[request.status]}</Badge>
         </div>
+        {!request.isActive && <div><Badge variant="neutral">Dada de baja</Badge></div>}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -117,7 +165,7 @@ const QuoteRequestDetail = ({ request, onDone }: { request: QuoteRequestDto; onD
         <p className="text-body-sm text-text-muted">Motivo: {request.dismissedReason}</p>
       )}
 
-      {request.status === 'NEW' && (
+      {request.isActive && request.status === 'NEW' && (
         <>
           <Separator />
           <Button onClick={() => navigate(`/cotizaciones/nueva?solicitud=${request.id}`)}>Crear cotizacion</Button>
@@ -130,18 +178,33 @@ const QuoteRequestDetail = ({ request, onDone }: { request: QuoteRequestDto; onD
           </Button>
         </>
       )}
+
+      {request.isActive ? (
+        <Button variant="ghost" className="text-danger-fg" loading={deactivateMutation.isPending} onClick={handleDeactivate}>
+          Eliminar
+        </Button>
+      ) : (
+        <>
+          <Button variant="ghost" loading={restoreMutation.isPending} onClick={() => restoreMutation.mutate()}>
+            Restaurar
+          </Button>
+          <Button variant="ghost" className="text-danger-fg" loading={deletePermanentlyMutation.isPending} onClick={handleDeletePermanently}>
+            Eliminar permanentemente
+          </Button>
+        </>
+      )}
     </div>
   );
 };
 
 export default function QuoteRequestsPage() {
-  const { page, setPage } = useTableParams();
+  const { page, setPage, onlyActive, setOnlyActive } = useTableParams();
   const [status, setStatus] = useState<string | undefined>('NEW');
   const [selected, setSelected] = useState<QuoteRequestDto | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['quote-requests', { page, status }],
-    queryFn: () => httpGet<Paginated<QuoteRequestDto>>('/quote-requests', { page, status, limit: 20 }),
+    queryKey: ['quote-requests', { page, status, onlyActive }],
+    queryFn: () => httpGet<Paginated<QuoteRequestDto>>('/quote-requests', { page, status, onlyActive, limit: 20 }),
   });
 
   const columns: ColumnDef<QuoteRequestDto, unknown>[] = [
@@ -178,6 +241,7 @@ export default function QuoteRequestsPage() {
       <PageHeader title="Solicitudes web" description="Lo que piden los clientes desde la landing. Aun sin precio: conviertelas en cotizacion." />
 
       <PageToolbar
+        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
         filters={
           <div className="w-full sm:w-64">
             <Select

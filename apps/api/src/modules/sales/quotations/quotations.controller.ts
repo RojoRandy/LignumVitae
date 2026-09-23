@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
+import { UserRoles } from '@prisma/client';
 import { QuotationsService } from './quotations.service';
 import { PreviewQuotationTotalsUseCase } from './usecases/preview-quotation-totals.usecase';
 import { Auth } from '../../auth/decorators/auth.decorator';
@@ -53,6 +54,24 @@ export class QuotationsController {
   @Post(':id/reject')
   reject(@Param('id', ParseIntPipe) id: number) {
     return this.quotationsService.reject(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Delete(':id')
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.quotationsService.deactivate(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Post(':id/restore')
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.quotationsService.restore(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Delete(':id/permanent')
+  deletePermanently(@Param('id', ParseIntPipe) id: number) {
+    return this.quotationsService.deletePermanently(id);
   }
 
   @Post(':id/duplicate')

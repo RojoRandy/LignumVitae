@@ -1,8 +1,8 @@
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Download, FileStack, MoreHorizontal, Pencil, Send, X } from 'lucide-react';
-import { downloadPdf, errorMessage, httpGet, httpPost } from '@/lib/http';
+import { Copy, Download, FileStack, MoreHorizontal, Pencil, RotateCcw, Send, Trash2, X } from 'lucide-react';
+import { downloadPdf, errorMessage, httpDelete, httpGet, httpPost } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
 import { formatDate, formatMoney, formatPercent } from '@/lib/format';
@@ -57,6 +57,29 @@ export default function QuotationDetailPage() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const deactivateMutation = useMutation({
+    mutationFn: () => httpDelete(`/quotations/${id}`),
+    onSuccess: () => { invalidate(); toast.success('Cotización dada de baja'); },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () => httpPost(`/quotations/${id}/restore`),
+    onSuccess: () => { invalidate(); toast.success('Cotización restaurada'); },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const deletePermanentlyMutation = useMutation({
+    mutationFn: () => httpDelete(`/quotations/${id}/permanent`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-requests'] });
+      toast.success('Cotización eliminada permanentemente');
+      navigate('/cotizaciones');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   const duplicateMutation = useMutation({
     mutationFn: () => httpPost<QuotationDto>(`/quotations/${id}/duplicate`),
     onSuccess: (dup) => {
@@ -85,6 +108,23 @@ export default function QuotationDetailPage() {
   const handleReject = async () => {
     const ok = await confirm({ title: '¿Rechazar esta cotizacion?', description: 'El cliente no podra aceptarla despues.' });
     if (ok) rejectMutation.mutate();
+  };
+
+  const handleDeactivate = async () => {
+    const ok = await confirm({
+      title: '¿Dar de baja esta cotización?',
+      description: 'Se dará de baja. Puedes restaurarla después.',
+    });
+    if (ok) deactivateMutation.mutate();
+  };
+
+  const handleDeletePermanently = async () => {
+    const ok = await confirm({
+      title: '¿Eliminar permanentemente esta cotización?',
+      description: 'Esta acción no se puede deshacer.',
+      variant: 'danger',
+    });
+    if (ok) deletePermanentlyMutation.mutate();
   };
 
   const handleAccept = async () => {
@@ -119,18 +159,23 @@ export default function QuotationDetailPage() {
         backTo="/cotizaciones"
         title={quotation.folio}
         description={quotation.customer?.fullName}
-        badge={<Badge variant={STATUS_TONE[quotation.status]}>{STATUS_LABEL[quotation.status]}</Badge>}
+        badge={
+          <>
+            <Badge variant={STATUS_TONE[quotation.status]}>{STATUS_LABEL[quotation.status]}</Badge>
+            {!quotation.isActive && <Badge variant="neutral">Dada de baja</Badge>}
+          </>
+        }
         actions={
           <>
             {/* Una sola accion primaria, la que toca segun el estado. Antes
                 eran hasta 7 botones del mismo peso que en movil se
                 envolvian en un muro y no decian por donde seguir. */}
-            {canSend && (
+            {canSend && quotation.isActive && (
               <Button onClick={() => sendMutation.mutate()} loading={sendMutation.isPending}>
                 <Send className="size-4" /> Enviar
               </Button>
             )}
-            {canAcceptReject && (
+            {canAcceptReject && quotation.isActive && (
               <Button onClick={handleAccept} loading={acceptMutation.isPending}>
                 Aceptar y crear pedido
               </Button>
@@ -147,7 +192,7 @@ export default function QuotationDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {quotation.status === 'DRAFT' && (
+                {quotation.status === 'DRAFT' && quotation.isActive && (
                   <DropdownMenuItem onSelect={() => navigate(`/cotizaciones/${id}/editar`)}>
                     <Pencil className="size-3.5" /> Editar
                   </DropdownMenuItem>
@@ -163,11 +208,30 @@ export default function QuotationDetailPage() {
                 <DropdownMenuItem onSelect={() => duplicateMutation.mutate()}>
                   <FileStack className="size-3.5" /> Duplicar
                 </DropdownMenuItem>
-                {canAcceptReject && (
+                {canAcceptReject && quotation.isActive && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleReject} className="text-danger-fg">
                       <X className="size-3.5" /> Rechazar
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {quotation.isActive && !quotation.order && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={handleDeactivate} className="text-danger-fg">
+                      <Trash2 className="size-3.5" /> Dar de baja
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {!quotation.isActive && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => restoreMutation.mutate()}>
+                      <RotateCcw className="size-3.5" /> Restaurar
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleDeletePermanently} className="text-danger-fg">
+                      <Trash2 className="size-3.5" /> Eliminar permanentemente
                     </DropdownMenuItem>
                   </>
                 )}

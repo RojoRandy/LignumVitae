@@ -7,7 +7,7 @@ export default defineRailway(() => {
   const postgresVolume = volume("postgres-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "us-west2", sizeMB: 5000 });
   const _lignumvitaeapi = service("@lignumvitae/api", {
     source: LignumVitae,
-    build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/types build && pnpm --filter @lignumvitae/api exec prisma generate && pnpm --filter @lignumvitae/api build && test -f apps/api/dist/main.js",
+    build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/types build && pnpm --filter @lignumvitae/api exec prisma generate && pnpm --filter @lignumvitae/api build && pnpm --filter @lignumvitae/api exec puppeteer browsers install chrome && test -f apps/api/dist/main.js",
     start: "pnpm --filter @lignumvitae/api exec prisma migrate deploy && pnpm --filter @lignumvitae/api start:prod",
     replicas: { "us-west2": 1 },
     networking: { privateNetworkEndpoint: "lignumvitaeapi" },
@@ -16,7 +16,7 @@ export default defineRailway(() => {
     // existia aqui se elimino a proposito -- vuelve a aparecer si corres
     // `railway config pull` sobre un proyecto donde aun no se haya borrado
     // del lado de Railway.
-    env: { CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), JWT_EXPIRATION: preserve(), JWT_SECRET: preserve(), NODE_ENV: preserve(), PUBLIC_SITE_URL: preserve(), STORAGE_DRIVER: preserve(), UPLOADS_DIR: preserve(), S3_ACCESS_KEY_ID: preserve(), S3_BUCKET: preserve(), S3_KEY_PREFIX: preserve(), S3_REGION: preserve(), S3_SECRET_ACCESS_KEY: preserve() },
+    env: { CORS_ORIGINS: preserve(), DATABASE_URL: preserve(), JWT_EXPIRATION: preserve(), JWT_SECRET: preserve(), NODE_ENV: preserve(), PUBLIC_SITE_URL: preserve(), PUPPETEER_CACHE_DIR: "/app/.cache/puppeteer", STORAGE_DRIVER: preserve(), UPLOADS_DIR: preserve(), S3_ACCESS_KEY_ID: preserve(), S3_BUCKET: preserve(), S3_KEY_PREFIX: preserve(), S3_REGION: preserve(), S3_SECRET_ACCESS_KEY: preserve() },
   });
   const _lignumvitaeadmin = service("@lignumvitae/admin", {
     source: LignumVitae,

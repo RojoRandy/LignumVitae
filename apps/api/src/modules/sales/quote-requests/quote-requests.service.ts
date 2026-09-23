@@ -62,6 +62,22 @@ export class QuoteRequestsService {
     return this.findById(id);
   }
 
+  async deactivate(id: number) {
+    await this.findById(id);
+    return this.quoteRequestRepository.setActive(id, false);
+  }
+
+  async restore(id: number) {
+    await this.findById(id);
+    return this.quoteRequestRepository.setActive(id, true);
+  }
+
+  async deletePermanently(id: number) {
+    const request = await this.findById(id);
+    if (request.isActive) throw SalesErrors.Exceptions.MUST_BE_INACTIVE({ id });
+    return this.quoteRequestRepository.delete(id);
+  }
+
   async createFromWeb(dto: CreateQuoteRequestDto) {
     const settings = await this.settingsService.get();
 

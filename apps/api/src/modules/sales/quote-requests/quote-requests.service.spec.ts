@@ -1,6 +1,8 @@
 // La landing manda supplyId + valor; solo cuentan los insumos marcados "Indicar
 // en cotizacion" que estan en el BOM del producto, y el label sale de la BD.
-import { cleanExtraFields } from './quote-requests.service';
+import { SettingsService } from '../../settings/settings.service';
+import { QuoteRequestRepository } from './quote-request.repository';
+import { cleanExtraFields, QuoteRequestsService } from './quote-requests.service';
 
 const bom = [
   { supply: { id: 5, quoteFieldLabel: 'Color del liston' } },
@@ -23,4 +25,37 @@ test('descarta insumos ajenos al BOM, sin label, vacios y duplicados; el label v
 test('valor en blanco o sin extraFields no genera nada', () => {
   expect(cleanExtraFields([{ supplyId: 5, value: '   ' }], bom)).toEqual([]);
   expect(cleanExtraFields(undefined, bom)).toEqual([]);
+});
+
+describe('deletePermanently', () => {
+  const repository = {
+    findById: jest.fn(),
+    delete: jest.fn(),
+  };
+  const service = new QuoteRequestsService(
+    repository as unknown as QuoteRequestRepository,
+    {} as SettingsService,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('bloquea el borrado permanente de una solicitud activa', async () => {
+    repository.findById.mockResolvedValue({ id: 1, isActive: true });
+
+    await expect(service.deletePermanently(1)).rejects.toMatchObject({
+      status: 400, response: { code: 'MUST_BE_INACTIVE' },
+    });
+    expect(repository.delete).not.toHaveBeenCalled();
+  });
+
+  it('borra permanentemente una solicitud inactiva', async () => {
+    const request = { id: 1, isActive: false };
+    repository.findById.mockResolvedValue(request);
+    repository.delete.mockResolvedValue(request);
+
+    await expect(service.deletePermanently(1)).resolves.toEqual(request);
+    expect(repository.delete).toHaveBeenCalledWith(1);
+  });
 });

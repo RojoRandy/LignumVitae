@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { UserRoles } from '@prisma/client';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { QuoteRequestsService } from './quote-requests.service';
 import { FindQuoteRequestsQueryDto } from './dto/find-quote-requests.query.dto';
@@ -24,5 +25,23 @@ export class QuoteRequestsController {
   @Post(':id/dismiss')
   dismiss(@Param('id', ParseIntPipe) id: number, @Body() dto: DismissQuoteRequestDto) {
     return this.quoteRequestsService.dismiss(id, dto.reason);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Delete(':id')
+  deactivate(@Param('id', ParseIntPipe) id: number) {
+    return this.quoteRequestsService.deactivate(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Post(':id/restore')
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.quoteRequestsService.restore(id);
+  }
+
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Delete(':id/permanent')
+  deletePermanently(@Param('id', ParseIntPipe) id: number) {
+    return this.quoteRequestsService.deletePermanently(id);
   }
 }
