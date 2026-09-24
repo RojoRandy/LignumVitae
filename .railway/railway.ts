@@ -10,7 +10,7 @@ export default defineRailway(() => {
     build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/types build && pnpm --filter @lignumvitae/api exec prisma generate && pnpm --filter @lignumvitae/api build && pnpm --filter @lignumvitae/api exec puppeteer browsers install chrome && test -f apps/api/dist/main.js",
     start: "pnpm --filter @lignumvitae/api exec prisma migrate deploy && pnpm --filter @lignumvitae/api start:prod",
     replicas: { "us-west2": 1 },
-    networking: { privateNetworkEndpoint: "lignumvitaeapi" },
+    networking: { privateNetworkEndpoint: "lignumvitaeapi", customDomains: { "api.lignumvitae.com.mx": {} } },
     // Sin volumen: las imagenes de producto ya se suben a S3
     // (STORAGE_DRIVER=s3), no a disco local. El volumen "api-uploads" que
     // existia aqui se elimino a proposito -- vuelve a aparecer si corres
@@ -23,7 +23,7 @@ export default defineRailway(() => {
     build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/types build && pnpm --filter @lignumvitae/admin build",
     start: "pnpm --filter @lignumvitae/admin start",
     replicas: { "us-west2": 1 },
-    networking: { privateNetworkEndpoint: "lignumvitaeadmin" },
+    networking: { privateNetworkEndpoint: "lignumvitaeadmin", customDomains: { "admin.lignumvitae.com.mx": {} } },
     env: { PUBLIC_API_URL: preserve(), VITE_API_URL: preserve(), VITE_PUBLIC_SITE_URL: preserve() },
   });
 
@@ -35,7 +35,7 @@ export default defineRailway(() => {
     build: "pnpm install --frozen-lockfile && pnpm --filter @lignumvitae/landing build",
     start: "pnpm --filter @lignumvitae/landing start",
     replicas: { "us-west2": 1 },
-    networking: { privateNetworkEndpoint: "lignumvitaelanding" },
+    networking: { privateNetworkEndpoint: "lignumvitaelanding", customDomains: { "lignumvitae.com.mx": {} } },
     env: { PUBLIC_API_URL: preserve() },
   });
 
