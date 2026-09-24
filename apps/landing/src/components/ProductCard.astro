@@ -5,6 +5,7 @@ export interface Product {
   name: string;
   slug: string;
   isFeatured: boolean;
+  isNew?: boolean;
   image: { url: string; alt: string | null } | null;
   candles?: { name: string; slug: string }[];
   packagingType?: { name: string; slug: string } | null;
@@ -35,7 +36,10 @@ const candleSlugs = (product.candles ?? []).map((c) => c.slug).join(',');
       decoding="async"
       class:list={['product-image aspect-[4/5] w-full', product.image ? 'object-cover' : 'object-contain p-6']}
     />
-    {product.isFeatured && <span class="absolute top-4 left-4 rounded-full bg-action-soft px-2 py-1 text-micro text-brand">Destacado</span>}
+    {(product.isNew || product.isFeatured) && <div class="absolute top-4 left-4 flex flex-col items-start gap-1">
+      {product.isNew && <span class="rounded-full bg-action px-2 py-1 text-micro text-surface">Nuevo</span>}
+      {product.isFeatured && <span class="rounded-full bg-action-soft px-2 py-1 text-micro text-brand">Destacado</span>}
+    </div>}
   </div>
   <h3 class="p-4 text-heading-sm text-text [overflow-wrap:anywhere]">{product.name}</h3>
 </a>

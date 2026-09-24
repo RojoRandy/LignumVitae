@@ -237,6 +237,9 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
       })),
     };
 
+    const originalText = submit.textContent;
+    submit.textContent = 'Enviando…';
+    submit.setAttribute('aria-busy', 'true');
     submit.disabled = true;
     try {
       const response = await fetch(`${API_URL}/public/quote-requests`, {
@@ -256,6 +259,8 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
       showError('No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.');
     } finally {
       submit.disabled = false;
+      submit.textContent = originalText;
+      submit.removeAttribute('aria-busy');
     }
   });
 

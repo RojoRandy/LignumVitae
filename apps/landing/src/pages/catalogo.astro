@@ -88,7 +88,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
         </details>
       </aside>
 
-      <div class="min-w-0">
+      <div class="catalog-results min-w-0">
         <nav aria-label="Categorías del catálogo" class="category-nav sticky top-16 z-10 bg-canvas md:top-20">
           <div class="category-chips flex gap-2 overflow-x-auto py-2">
             {categories.map((category) => <button
@@ -132,6 +132,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
   @media (min-width: 768px) {
     :global(html:has(.category-nav)) { scroll-padding-top: 10rem; }
   }
+  .catalog-results { overflow-anchor: none; }
   .category-chips { scrollbar-width: none; }
   .category-chips::-webkit-scrollbar { display: none; }
   .category-chip[aria-pressed="true"] {
@@ -151,6 +152,20 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
   const cards = Array.from(document.querySelectorAll<HTMLElement>('.product-card'));
   const emptyState = document.querySelector<HTMLElement>('#catalog-empty');
   const clearButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-clear-filters]'));
+  const results = document.querySelector<HTMLElement>('.catalog-results');
+
+  const keepResultsInView = (source: HTMLElement) => {
+    requestAnimationFrame(() => {
+      if (!results) return;
+      const resultsRect = results.getBoundingClientRect();
+      // En una columna, conserva la vista del usuario sobre los filtros.
+      if (source instanceof HTMLInputElement && source.closest('.filters-panel') && source.getBoundingClientRect().top < resultsRect.top) return;
+      const scrollPaddingTop = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+      if (resultsRect.top < scrollPaddingTop) {
+        window.scrollTo({ top: window.scrollY + resultsRect.top - scrollPaddingTop, behavior: 'auto' });
+      }
+    });
+  };
 
   const selected = (checkboxes: HTMLInputElement[]) => checkboxes.filter((c) => c.checked).map((c) => c.value);
 
@@ -204,9 +219,10 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     if (emptyState) emptyState.hidden = !anyFilter || visibleCount > 0;
   };
 
-  categoryCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
-  candleCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
-  packagingCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', applyFilters));
+  [...categoryCheckboxes, ...candleCheckboxes, ...packagingCheckboxes].forEach((checkbox) => checkbox.addEventListener('change', () => {
+    applyFilters();
+    keepResultsInView(checkbox);
+  }));
 
   chips.forEach((chip) => {
     chip.addEventListener('click', () => {
@@ -217,7 +233,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
       const onlyThisSelected = selected(categoryCheckboxes).length === 1 && selected(categoryCheckboxes)[0] === slug;
       categoryCheckboxes.forEach((checkbox) => { checkbox.checked = !onlyThisSelected && checkbox.value === slug; });
       applyFilters();
-      document.getElementById(slug)?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      keepResultsInView(chip);
     });
   });
 
@@ -226,6 +242,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     candleCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     packagingCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     applyFilters();
+    keepResultsInView(button);
   }));
 
   // Deep link /catalogo#slug: index.astro y producto/[slug].astro enlazan asi

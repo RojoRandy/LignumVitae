@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, AlertTriangle, EyeOff, TrendingUp } from 'lucide-react';
+import { Plus, AlertTriangle, EyeOff, TrendingUp, SlidersHorizontal, Star, Image as ImageIcon, LayoutGrid, Sparkles } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
+import { useSettings } from '@/hooks/use-settings';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { httpDelete, httpPatch, httpGet, httpPost } from '@/lib/http';
 import { staticUrl } from '@/lib/api';
@@ -15,19 +16,37 @@ import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/select';
+import { NumberInput } from '@/components/ui/number-input';
 import { Tooltip } from '@/components/ui/tooltip';
+import { Field } from '@/components/ui/field';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 export default function ProductsPage() {
   const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [candleId, setCandleId] = useState<string | undefined>();
+  const [highlight, setHighlight] = useState<string | undefined>();
+  const [sortBy, setSortBy] = useState('name');
+  const [minMarginPct, setMinMarginPct] = useState<number | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = [categoryId, candleId, highlight, sortBy !== 'name', minMarginPct !== null].filter(Boolean).length;
+  const { data: settings } = useSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', { page, search, onlyActive, categoryId, candleId }],
-    queryFn: () => httpGet<Paginated<ProductDto>>('/products', { page, search, onlyActive, categoryId: categoryId ? Number(categoryId) : undefined, candleId: candleId ? Number(candleId) : undefined, limit: 20 }),
+    queryKey: ['products', { page, search, onlyActive, categoryId, candleId, highlight, sortBy, minMarginPct }],
+    queryFn: () => httpGet<Paginated<ProductDto>>('/products', {
+      page, search, onlyActive,
+      categoryId: categoryId ? Number(categoryId) : undefined,
+      candleId: candleId ? Number(candleId) : undefined,
+      highlight: highlight || undefined,
+      sortBy,
+      minRetailMarginPct: minMarginPct !== null && sortBy !== 'wholesaleMargin' ? minMarginPct : undefined,
+      minWholesaleMarginPct: minMarginPct !== null && sortBy === 'wholesaleMargin' ? minMarginPct : undefined,
+      limit: 20,
+    }),
   });
 
   const { data: categories } = useQuery({
@@ -115,6 +134,10 @@ export default function ProductsPage() {
     if (ok) deletePermanentlyMutation.mutate(product.id);
   };
 
+  function marginVariant(value: string) {
+    return settings ? (Number(value) < Number(settings.minMarginPct) ? 'danger' : 'success') : 'neutral';
+  }
+
   const columns: ColumnDef<ProductDto, unknown>[] = [
     {
       header: 'Producto',
@@ -180,6 +203,25 @@ export default function ProductsPage() {
       ),
     },
     {
+      header: 'Margen',
+      cell: ({ row }) => (
+        <div className="flex flex-col items-start gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-micro text-text-muted">Men.</span>
+            <Badge variant={marginVariant(row.original.retailMarginPct)}>
+              {Number(row.original.retailMarginPct).toFixed(1)}%
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-micro text-text-muted">May.</span>
+            <Badge variant={marginVariant(row.original.wholesaleMarginPct)}>
+              {Number(row.original.wholesaleMarginPct).toFixed(1)}%
+            </Badge>
+          </div>
+        </div>
+      ),
+    },
+    {
       header: 'Estado',
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1.5">
@@ -192,6 +234,26 @@ export default function ProductsPage() {
           {!row.original.isVisibleOnLanding && (
             <Badge variant="neutral">
               <EyeOff className="size-3" /> Oculto
+            </Badge>
+          )}
+          {row.original.isFeatured && (
+            <Badge variant="accent">
+              <Star className="size-3" /> Destacado
+            </Badge>
+          )}
+          {row.original.images?.some((image) => image.showInHero) && (
+            <Badge variant="neutral">
+              <ImageIcon className="size-3" /> Portada
+            </Badge>
+          )}
+          {row.original.images?.some((image) => image.showInGallery) && (
+            <Badge variant="neutral">
+              <LayoutGrid className="size-3" /> Galeria
+            </Badge>
+          )}
+          {row.original.newUntil !== null && new Date(row.original.newUntil) > new Date() && (
+            <Badge variant="success">
+              <Sparkles className="size-3" /> Nuevo
             </Badge>
           )}
         </div>
@@ -239,39 +301,113 @@ export default function ProductsPage() {
         }
       />
 
-      <PageToolbar
-        search={{ value: search, onChange: setSearch, placeholder: 'Buscar productos...' }}
-        filters={
-          <>
-            <div className="w-full sm:w-64">
-              <Select
-                options={categoryOptions}
-                value={categoryId}
-                onChange={(value) => {
-                  setCategoryId(value);
-                  setPage(1);
-                }}
-                placeholder="Todas las categorias"
-                clearable
-              />
-            </div>
-            <div className="w-full sm:w-64">
-              <Select
-                options={candleOptions}
-                value={candleId}
-                onChange={(value) => {
-                  setCandleId(value);
-                  setPage(1);
-                }}
-                placeholder="Todas las velas/moldes"
-                clearable
-                searchable
-              />
-            </div>
-          </>
-        }
-        showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
-      />
+      <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <PageToolbar
+          search={{ value: search, onChange: setSearch, placeholder: 'Buscar productos...' }}
+          showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+          actions={
+            <SheetTrigger asChild>
+              <Button variant="secondary">
+                <SlidersHorizontal className="size-4" aria-hidden="true" />
+                {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : 'Filtros'}
+              </Button>
+            </SheetTrigger>
+          }
+        />
+        <SheetContent side="right" className="flex flex-col gap-4" aria-describedby={undefined}>
+          <SheetTitle className="text-body font-semibold text-text">Filtros</SheetTitle>
+          <Field label="Categoria" htmlFor="products-category">
+            <Select
+              id="products-category"
+              options={categoryOptions}
+              value={categoryId ?? ''}
+              onChange={(value) => {
+                setCategoryId(value);
+                setPage(1);
+              }}
+              placeholder="Todas las categorias"
+              clearable
+            />
+          </Field>
+          <Field label="Vela / molde" htmlFor="products-candle">
+            <Select
+              id="products-candle"
+              options={candleOptions}
+              value={candleId ?? ''}
+              onChange={(value) => {
+                setCandleId(value);
+                setPage(1);
+              }}
+              placeholder="Todas las velas/moldes"
+              clearable
+              searchable
+            />
+          </Field>
+          <Field label="Mostrar" htmlFor="products-highlight">
+            <Select
+              id="products-highlight"
+              options={[
+                { value: 'featured', label: 'Destacados' },
+                { value: 'hero', label: 'En portada' },
+                { value: 'gallery', label: 'En galeria' },
+                { value: 'new', label: 'Nuevos' },
+              ]}
+              value={highlight ?? ''}
+              onChange={(value) => {
+                setHighlight(value);
+                setPage(1);
+              }}
+              placeholder="Todos"
+              clearable
+            />
+          </Field>
+          <Field label="Ordenar" htmlFor="products-sort">
+            <Select
+              id="products-sort"
+              options={[
+                { value: 'name', label: 'Ordenar por nombre' },
+                { value: 'retailMargin', label: 'Mayor margen menudeo' },
+                { value: 'wholesaleMargin', label: 'Mayor margen mayoreo' },
+              ]}
+              value={sortBy}
+              onChange={(value) => {
+                setSortBy(value);
+                setPage(1);
+              }}
+            />
+          </Field>
+          <Field
+            label={sortBy === 'wholesaleMargin' ? 'Margen minimo mayoreo' : 'Margen minimo menudeo'}
+            htmlFor="products-min-margin"
+          >
+            <NumberInput
+              id="products-min-margin"
+              value={minMarginPct}
+              onChange={(value) => {
+                setMinMarginPct(value);
+                setPage(1);
+              }}
+              unit="%"
+              min={0}
+              step={1}
+              placeholder="Margen min."
+            />
+          </Field>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setCategoryId(undefined);
+              setCandleId(undefined);
+              setHighlight(undefined);
+              setSortBy('name');
+              setMinMarginPct(null);
+              setPage(1);
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        </SheetContent>
+      </Sheet>
 
       <DataTable
         columns={columns}

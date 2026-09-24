@@ -44,6 +44,7 @@ const [settings, categories] = await Promise.all([
   getJson<Category[]>('/public/catalog'),
 ]);
 const featured = categories.flatMap((category) => category.products).filter((product) => product.isFeatured).slice(0, 8);
+const newProducts = categories.flatMap((category) => category.products).filter((product) => product.isNew).slice(0, 8);
 
 // Secciones decorativas: si fallan, la home sigue funcionando (con su
 // respaldo estatico o simplemente sin la seccion), no tumban la pagina.
@@ -127,6 +128,16 @@ const steps = [
       })}
     </div> : <p class="mt-8 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
   </section>
+
+  {newProducts.length > 0 && <section class="site-container py-16 lg:py-24" aria-labelledby="novedades-title">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h2 id="novedades-title" class="text-heading-lg text-brand">Novedades</h2>
+      <a href="/catalogo" class="button button-outline">Ver todo el catálogo</a>
+    </div>
+    <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
+      {newProducts.map((product) => <ProductCard product={product} />)}
+    </div>
+  </section>}
 
   <section class="site-container py-16 lg:py-24" aria-labelledby="destacados-title">
     <div class="flex flex-wrap items-center justify-between gap-4">

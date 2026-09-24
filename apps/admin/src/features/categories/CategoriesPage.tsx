@@ -7,7 +7,9 @@ import { useTableParams } from '@/hooks/use-table-params';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { httpDelete, httpPatch, httpPost, httpGet } from '@/lib/http';
-import type { CandleCategoryDto, Paginated } from '@/lib/types';
+import { staticUrl } from '@/lib/api';
+import { cn } from '@/lib/cn';
+import type { CandleCategoryDto, Paginated, ProductDto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
@@ -17,6 +19,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Field } from '@/components/ui/field';
 import { ColorInput } from '@/components/ui/color-input';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FormError, PageToolbar } from '@/components/ui/page';
 
 export default function CategoriesPage() {
@@ -27,11 +30,21 @@ export default function CategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CandleCategoryDto | null>(null);
   const [colorHex, setColorHex] = useState('#7A5C3E');
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['categories', { page, search, onlyActive }],
     queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { page, search, onlyActive, limit: 20 }),
   });
+
+  const { data: coverProducts, isLoading: coverImagesLoading } = useQuery({
+    queryKey: ['products', { categoryId: editing?.id, forCover: true }],
+    queryFn: () => httpGet<Paginated<ProductDto>>('/products', { categoryId: editing!.id, limit: 100 }),
+    enabled: dialogOpen && !!editing,
+  });
+  const coverImages = coverProducts?.items.flatMap((product) =>
+    (product.images ?? []).map((image) => ({ ...image, productName: product.name })),
+  ) ?? [];
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['categories'] });
 
@@ -66,6 +79,7 @@ export default function CategoriesPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setCoverImageUrl(null);
     setColorHex('#7A5C3E');
     clear();
     setDialogOpen(true);
@@ -73,6 +87,7 @@ export default function CategoriesPage() {
 
   const openEdit = (category: CandleCategoryDto) => {
     setEditing(category);
+    setCoverImageUrl(category.coverImageUrl);
     setColorHex(category.colorHex);
     clear();
     setDialogOpen(true);
@@ -87,6 +102,7 @@ export default function CategoriesPage() {
       description: form.get('description') || undefined,
       isVisibleOnLanding: form.get('isVisibleOnLanding') === 'on',
       sortOrder: Number(form.get('sortOrder') || 0),
+      ...(editing ? { coverImageUrl } : {}),
     });
   };
 
@@ -190,6 +206,39 @@ export default function CategoriesPage() {
               <span className="text-body-sm text-text">Visible en la landing</span>
               <Switch name="isVisibleOnLanding" defaultChecked={editing?.isVisibleOnLanding ?? true} />
             </div>
+            {editing && (
+              <Field label="Imagen en el home" hint="Se muestra en la tarjeta de la categoria en la pagina principal">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    aria-label="Imagen automatica"
+                    aria-pressed={coverImageUrl === null}
+                    className={cn('size-16 rounded-input bg-surface-sunken text-caption', coverImageUrl === null && 'ring-2 ring-accent ring-offset-2')}
+                    onClick={() => setCoverImageUrl(null)}
+                  >
+                    Automatica
+                  </button>
+                  {coverImagesLoading ? (
+                    Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="size-16" />)
+                  ) : coverImages.length > 0 ? (
+                    coverImages.map((image) => (
+                      <button
+                        key={image.id}
+                        type="button"
+                        aria-label={`Usar foto de ${image.productName}`}
+                        aria-pressed={coverImageUrl === image.url}
+                        className={cn('rounded-input', coverImageUrl === image.url && 'ring-2 ring-accent ring-offset-2')}
+                        onClick={() => setCoverImageUrl(image.url)}
+                      >
+                        <img src={staticUrl(image.url)} alt={image.productName} className="size-16 object-cover rounded-input" />
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-caption text-text-muted">Sube fotos a los productos de esta categoria para elegir una.</p>
+                  )}
+                </div>
+              </Field>
+            )}
             <FormError>{formError}</FormError>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setDialogOpen(false)}>

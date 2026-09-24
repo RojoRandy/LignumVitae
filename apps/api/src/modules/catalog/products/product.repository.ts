@@ -104,6 +104,14 @@ export class ProductRepository {
     return this.prisma.productImage.update({ where: { id: imageId }, data });
   }
 
+  clearCategoryCovers(urls: string[]) {
+    if (urls.length === 0) return;
+    return this.prisma.candleCategory.updateMany({
+      where: { coverImageUrl: { in: urls } },
+      data: { coverImageUrl: null },
+    });
+  }
+
   removeImage(imageId: number) {
     return this.prisma.productImage.delete({ where: { id: imageId } });
   }

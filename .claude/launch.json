@@ -1,7 +1,35 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "api", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lignumvitae/api", "start:dev"], "port": 3000 },
-    { "name": "landing", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lignumvitae/landing", "dev"], "port": 4321 }
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@lignumvitae/api",
+        "start:dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@lignumvitae/landing",
+        "dev"
+      ],
+      "port": 4321
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@lignumvitae/admin",
+        "dev"
+      ],
+      "port": 5173
+    }
   ]
 }
