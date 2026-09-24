@@ -66,16 +66,16 @@ export const CostPreviewPanel = ({ input, overrides }: {
               const marginPct = isManual
                 ? validateMinMargin(override, data.breakdown.unitTotalCost, 0).marginPct
                 : price.marginPct;
-              const markupBadge = <Badge variant="accent">Markup {price.markupPct}%</Badge>;
+              const markupBadge = <Badge variant="accent" className="whitespace-nowrap">Markup {price.markupPct}%</Badge>;
 
               return (
                 <div key={level} className="rounded-input bg-surface-sunken p-3">
-                  <div className="mb-1 flex items-center justify-between">
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-1">
                     <span className="text-caption font-semibold uppercase text-text-muted">
                       {level === 'retail' ? 'Menudeo' : 'Mayoreo'}
                     </span>
                     {isManual ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         {markupBadge}
                         <Badge variant="neutral">Manual</Badge>
                       </div>
