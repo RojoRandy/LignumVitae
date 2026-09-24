@@ -29,7 +29,7 @@ import { CostPreviewPanel } from './components/cost-preview-panel';
 import { PriceOverrideCard } from './components/price-override-card';
 import { ProductImagesCard } from './components/product-images-card';
 import { DuplicateWithPackaging } from './components/duplicate-with-packaging';
-import type { PreviewCostInput } from './use-product-cost-preview';
+import { useProductCostPreview, type PreviewCostInput } from './use-product-cost-preview';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
 
 type FormValues = {
@@ -111,6 +111,9 @@ export default function ProductWizardPage() {
   const { supplies } = useSupplyOptions();
   const [excludedSupplyIds, setExcludedSupplyIds] = useState<number[]>([]);
   const [additionalSupplies, setAdditionalSupplies] = useState<SupplyTemplateRow[]>([]);
+  // Etiquetado con el id: al duplicar se navega a otro producto sin desmontar
+  // la pagina, y el precio tecleado del anterior no debe pasar al nuevo.
+  const [overrideDraft, setOverrideDraft] = useState<{ productId: string; retail: number | null; wholesale: number | null } | null>(null);
 
   const { data: existing, isLoading, error } = useQuery({
     queryKey: ['products', id],
@@ -300,6 +303,7 @@ export default function ProductWizardPage() {
     }),
     [kind, candleId, packagingTypeId, cardTypeId, extraSetupMinutes, extraPackMinutes, assemblyMinutes, components, validAdditionalSupplies, excludedSupplyIds],
   );
+  const { data: costPreview } = useProductCostPreview(previewInput);
 
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -384,6 +388,11 @@ export default function ProductWizardPage() {
       </div>
     );
   }
+
+  const overrides = (overrideDraft?.productId === id ? overrideDraft : null) ?? (existing ? {
+    retail: existing.retailPriceOverride != null ? Number(existing.retailPriceOverride) : null,
+    wholesale: existing.wholesalePriceOverride != null ? Number(existing.wholesalePriceOverride) : null,
+  } : undefined);
 
   return (
     <div className="flex flex-col gap-4">
@@ -624,7 +633,14 @@ export default function ProductWizardPage() {
             </div>
           </Card>
 
-          {isEditing && existing && <PriceOverrideCard product={existing} />}
+          {isEditing && existing && (
+            <PriceOverrideCard
+              key={existing.id}
+              product={existing}
+              liveUnitTotalCost={costPreview?.breakdown.unitTotalCost}
+              onPricesChange={(prices) => setOverrideDraft({ productId: existing.id.toString(), ...prices })}
+            />
+          )}
           {isEditing && existing && <ProductImagesCard product={existing} />}
 
           <FormError>{formError}</FormError>
@@ -652,7 +668,7 @@ export default function ProductWizardPage() {
         </form>
 
         <div className="lg:col-span-1">
-          <CostPreviewPanel input={previewInput} />
+          <CostPreviewPanel input={previewInput} overrides={overrides} />
         </div>
       </div>
     </div>

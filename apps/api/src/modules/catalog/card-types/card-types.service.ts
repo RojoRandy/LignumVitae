@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { CardTypeRepository } from './card-type.repository';
 import { slugify } from '../../../common/utils/slug';
@@ -8,7 +9,10 @@ import { CreateCardTypeDto, UpdateCardTypeDto } from './dto/create-card-type.dto
 
 @Injectable()
 export class CardTypesService {
-  constructor(private readonly repository: CardTypeRepository) {}
+  constructor(
+    private readonly repository: CardTypeRepository,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   async findAll(query: PaginationQueryDto) {
     const { page = 1, limit = 50, search, onlyActive = true } = query;
@@ -61,6 +65,10 @@ export class CardTypesService {
         supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unitId: t.unitId, note: t.note, cardTypeId: id })),
       );
     }
+    // Sin recalculo, el costo guardado de los productos queda obsoleto y el margen
+    // del precio manual no cuadra con el panel "Costo y precio".
+    const { RecalculateAllProductsUseCase } = await import('../products/usecases/recalculate-all-products.usecase');
+    await this.moduleRef.get(RecalculateAllProductsUseCase, { strict: false }).execute();
     return this.findById(id);
   }
 

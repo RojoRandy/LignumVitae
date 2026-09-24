@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { CandleRepository } from './candle.repository';
 import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
@@ -8,7 +9,10 @@ import { CreateCandleDto, UpdateCandleDto } from './dto/create-candle.dto';
 
 @Injectable()
 export class CandlesService {
-  constructor(private readonly candleRepository: CandleRepository) {}
+  constructor(
+    private readonly candleRepository: CandleRepository,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   async findAll(query: PaginationQueryDto & { categoryId?: number }) {
     const { page = 1, limit = 50, search, onlyActive = true, categoryId } = query;
@@ -72,6 +76,10 @@ export class CandlesService {
         supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unitId: t.unitId, note: t.note })),
       );
     }
+    // Sin recalculo, el costo guardado de los productos queda obsoleto y el margen
+    // del precio manual no cuadra con el panel "Costo y precio".
+    const { RecalculateAllProductsUseCase } = await import('../products/usecases/recalculate-all-products.usecase');
+    await this.moduleRef.get(RecalculateAllProductsUseCase, { strict: false }).execute();
     return this.findById(id);
   }
 

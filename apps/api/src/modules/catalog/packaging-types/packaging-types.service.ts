@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { slugify } from '../../../common/utils/slug';
 import { PackagingTypeRepository } from './packaging-type.repository';
@@ -8,7 +9,10 @@ import { CreatePackagingTypeDto, UpdatePackagingTypeDto } from './dto/create-pac
 
 @Injectable()
 export class PackagingTypesService {
-  constructor(private readonly repository: PackagingTypeRepository) {}
+  constructor(
+    private readonly repository: PackagingTypeRepository,
+    private readonly moduleRef: ModuleRef,
+  ) {}
 
   async findAll(query: PaginationQueryDto) {
     const { page = 1, limit = 50, search, onlyActive = true } = query;
@@ -62,6 +66,10 @@ export class PackagingTypesService {
         supplyTemplate.map((t) => ({ supplyId: t.supplyId, quantity: t.quantity, unitId: t.unitId, note: t.note, packagingTypeId: id })),
       );
     }
+    // Sin recalculo, el costo guardado de los productos queda obsoleto y el margen
+    // del precio manual no cuadra con el panel "Costo y precio".
+    const { RecalculateAllProductsUseCase } = await import('../products/usecases/recalculate-all-products.usecase');
+    await this.moduleRef.get(RecalculateAllProductsUseCase, { strict: false }).execute();
     return this.findById(id);
   }
 
