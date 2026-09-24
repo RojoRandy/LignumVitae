@@ -16,6 +16,24 @@ const build = ({ before, after }: { before: unknown; after: unknown }) => {
   return { service, repository, execute: useCase.execute };
 };
 
+it('incluye legalName en la config publica sin exponer dailyWage ni waxSupplyId', async () => {
+  const { service } = build({
+    before: {
+      legalName: 'Lignum Vitae SA de CV',
+      dailyWage: 300,
+      waxSupplyId: 1,
+      depositPct: { toNumber: () => 50 },
+    },
+    after: {},
+  });
+
+  const result = await service.getPublic();
+
+  expect(result.legalName).toBe('Lignum Vitae SA de CV');
+  expect(result).not.toHaveProperty('dailyWage');
+  expect(result).not.toHaveProperty('waxSupplyId');
+});
+
 it('recalcula una vez cuando cambia retailMarkupPct', async () => {
   const { service, execute } = build({
     before: { retailMarkupPct: 50 },

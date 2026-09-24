@@ -63,14 +63,15 @@ export class SettingsService {
   }
 
   /**
-   * Lista blanca de campos publicos. Se omiten a proposito: legalName (RFC
-   * implicito), prefijos de folio, y todas las politicas de costeo internas
+   * Lista blanca de campos publicos. Se omiten a proposito: prefijos de
+   * folio, y todas las politicas de costeo internas
    * (markups, gastos indirectos, piso de margen).
    */
   async getPublic() {
     const s = await this.get();
     return {
       brandName: s.brandName,
+      legalName: s.legalName,
       logoUrl: s.logoUrl,
       phone: s.phone,
       whatsapp: s.whatsapp,

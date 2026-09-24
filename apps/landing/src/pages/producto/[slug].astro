@@ -1,6 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { ApiError, getJson, imageUrl } from '../../lib/api';
+import { breadcrumbJsonLd, jsonLdScript } from '../../lib/seo';
 
 interface Product {
   id: string;
@@ -35,9 +36,15 @@ const settings = product ? await getJson<PublicSettings>('/public/settings') : n
 // se muestra: no es motivo para tumbar la ficha completa del producto.
 const fragrances = product?.allowsFragrance ? await getJson<Fragrance[]>('/public/fragrances').catch(() => []) : [];
 const images = product?.images ?? [];
+const origin = Astro.site!.origin;
 ---
 
-<Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'}>
+<Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'} image={images[0] ? imageUrl(images[0].url) : undefined}>
+  {product && <script slot="head" type="application/ld+json" set:html={jsonLdScript(breadcrumbJsonLd([
+    { name: 'Inicio', url: origin + '/' },
+    { name: 'Catálogo', url: origin + '/catalogo' },
+    { name: product.name, url: origin + '/producto/' + encodeURIComponent(product.slug) },
+  ]))} />}
   {product && settings ? <section class="site-container py-16 lg:py-24" aria-labelledby="product-title">
     <div class="grid gap-8 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
       <div class="min-w-0" data-carousel>

@@ -67,8 +67,7 @@ const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
 const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}` : null;
 ---
 
-<Layout title={quotation ? `Cotización ${quotation.folio} · Lignum Vitae` : 'Cotización no encontrada · Lignum Vitae'} description="Tu cotización de Lignum Vitae.">
-  <meta slot="head" name="robots" content="noindex" />
+<Layout title={quotation ? `Cotización ${quotation.folio} · Lignum Vitae` : 'Cotización no encontrada · Lignum Vitae'} description="Tu cotización de Lignum Vitae." noindex>
   <section class="site-container py-16 lg:py-24">
     {quotation ? <article class="mx-auto max-w-[720px] rounded-card bg-surface p-6 shadow-card md:p-8" aria-labelledby="quotation-title">
       <header class="flex flex-wrap items-start justify-between gap-4">

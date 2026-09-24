@@ -1,0 +1,24 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { wantsMarkdown, notFoundMarkdown } from '../lib/seo';
+
+if (wantsMarkdown(Astro.request.headers.get('accept'))) {
+  return new Response(notFoundMarkdown(Astro.site!.origin), {
+    status: 404,
+    headers: { 'Content-Type': 'text/markdown; charset=utf-8', Vary: 'Accept' },
+  });
+}
+Astro.response.status = 404;
+Astro.response.headers.set('Vary', 'Accept');
+---
+
+<Layout title="Página no encontrada · Lignum Vitae" description="La página que buscas no existe o cambió de dirección." noindex>
+  <section class="site-container py-16 lg:py-24">
+    <h1 class="text-display-lg text-brand">Página no encontrada</h1>
+    <p class="mt-4 text-body-lg text-text-muted">La página que buscas no existe o cambió de dirección. Puedes volver al inicio o explorar nuestro catálogo.</p>
+    <div class="mt-8 flex flex-col gap-4 md:flex-row md:flex-wrap">
+      <a href="/" class="button bg-action text-surface hover:bg-action-hover">Ir al inicio</a>
+      <a href="/catalogo" class="button button-outline">Ver catálogo</a>
+    </div>
+  </section>
+</Layout>

@@ -1,0 +1,29 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getJson } from '../lib/api';
+
+interface PublicSettings {
+  brandName: string;
+  city: string;
+  state: string;
+  minLeadTimeDays: number;
+  depositPct: number;
+}
+
+const settings = await getJson<PublicSettings>('/public/settings');
+---
+
+<Layout title="Nosotros · Lignum Vitae" description={`Creamos velas de recuerdo hechas a mano en ${settings.city}, con detalles personalizados para acompañar tus celebraciones.`}>
+  <section class="site-container py-16 lg:py-24">
+    <p class="text-micro text-text-muted">{settings.brandName} · Mi pequeño paraíso</p>
+    <h1 class="mt-4 text-display-lg text-brand">Nosotros</h1>
+    <!-- TODO dueña: reemplazar con su historia -->
+    <p class="mt-6 max-w-prose text-body-lg text-text">En {settings.brandName} creamos velas de recuerdo hechas a mano desde {settings.city}, {settings.state}, con detalles personalizados para acompañar tus celebraciones. Queremos que cada pieza sea una forma de compartir cariño y guardar un momento especial en nuestro pequeño paraíso.</p>
+    <p class="mt-4 max-w-prose text-body text-text">Preparamos recuerdos para XV años, bautizos, primeras comuniones, bodas y esas fechas especiales que quieres recordar. Nuestras velas llevan listón y tarjeta personalizada, un detalle para compartir con tus invitados y agradecerles que sean parte de tu celebración.</p>
+    <p class="mt-4 max-w-prose text-body text-text">Cada pedido se prepara a mano, por eso te pedimos al menos {settings.minLeadTimeDays} días de anticipación para dedicar tiempo a los detalles de tus velas. Tu pedido se confirma con el {settings.depositPct}% de anticipo y las entregas se realizan solo en {settings.city}. Planea con tiempo y elige un recuerdo para ese día tan especial.</p>
+    <div class="mt-8 flex flex-col gap-4 md:flex-row md:flex-wrap">
+      <a href="/catalogo" class="button bg-action text-surface hover:bg-action-hover">Ver catálogo</a>
+      <a href="/contacto" class="button button-outline">Contacto</a>
+    </div>
+  </section>
+</Layout>

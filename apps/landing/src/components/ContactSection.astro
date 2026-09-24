@@ -1,0 +1,48 @@
+---
+interface Props {
+  settings: {
+    city: string;
+    state: string;
+    whatsapp: string | null;
+    phone: string | null;
+    email: string | null;
+    businessHours: string | null;
+    instagramUrl: string | null;
+    facebookUrl: string | null;
+    tiktokUrl: string | null;
+  };
+}
+
+const { settings } = Astro.props;
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits
+  ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
+  : null;
+const socialLinks = [
+  { href: settings.instagramUrl, label: 'Instagram' },
+  { href: settings.facebookUrl, label: 'Facebook' },
+  { href: settings.tiktokUrl, label: 'TikTok' },
+].filter((link) => link.href);
+---
+
+  <section id="contacto" class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="contacto-title">
+    <div class="site-container grid gap-8 md:grid-cols-2 lg:gap-16">
+      <div class="min-w-0">
+        <h2 id="contacto-title" class="text-heading-lg text-text">Hablemos de tu celebración</h2>
+        <p class="mt-4 text-body-lg">Cuéntanos qué tienes en mente. Te ayudamos a elegir un recuerdo para ese día especial.</p>
+        <p class="mt-4 text-body">{settings.city}, {settings.state}</p>
+        <p class="mt-2 text-body">Entregas solo en {settings.city}.</p>
+      </div>
+      <div class="min-w-0 rounded-card bg-surface p-6">
+        <address class="flex flex-col items-start gap-2 not-italic">
+          {whatsappUrl && <a href={whatsappUrl} class="button button-outline">Escríbenos por WhatsApp</a>}
+          {settings.phone && <a href={`tel:${settings.phone}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.phone}</a>}
+          {settings.email && <a href={`mailto:${settings.email}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.email}</a>}
+        </address>
+        {settings.businessHours && <><h3 class="mt-6 text-heading-sm text-text">Horario de atención</h3><p class="mt-2 whitespace-pre-line text-body [overflow-wrap:anywhere]">{settings.businessHours}</p></>}
+        {socialLinks.length > 0 && <nav aria-label="Síguenos en redes sociales" class="mt-6 flex flex-wrap gap-x-6">
+          {socialLinks.map(({ href, label }) => <a href={href!} class="flex min-h-11 items-center text-body text-action hover:underline">{label}</a>)}
+        </nav>}
+      </div>
+    </div>
+  </section>

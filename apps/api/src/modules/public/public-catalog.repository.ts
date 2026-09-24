@@ -32,6 +32,7 @@ export const publicCatalogSelect = {
       description: true,
       isFeatured: true,
       newUntil: true,
+      updatedAt: true,
       allowsFragrance: true,
       images: { orderBy: imageOrder, take: 1, select: { url: true, alt: true } },
       // El molde de un producto: SIMPLE lo trae directo, BOUQUET lo arma desde
