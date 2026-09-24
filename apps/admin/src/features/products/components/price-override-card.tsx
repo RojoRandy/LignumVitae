@@ -12,22 +12,20 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { ProductDto } from '@/lib/types';
 
-// Fija un precio de menudeo/mayoreo distinto al sugerido para ESTE producto
-// (una promocion, un cliente frecuente...). Solo tiene sentido una vez que
-// el producto ya existe: valida contra product.unitTotalCost, que solo se
-// conoce despues del primer guardado. La API (setPriceOverride en
-// products.service.ts) es la que de verdad manda: aqui el margen se
-// recalcula en vivo con la misma formula (validateMinMargin) nada mas para
-// que la persona vea el rechazo ANTES de intentar guardar, no en vez de
-// validar del lado del servidor.
-export const PriceOverrideCard = ({ product }: { product: ProductDto }) => {
+// Fija precios manuales y calcula el margen con el costo en vivo cuando se recibe.
+// El servidor sigue validando contra el costo guardado del producto.
+export const PriceOverrideCard = ({ product, liveUnitTotalCost, onPricesChange }: {
+  product: ProductDto;
+  liveUnitTotalCost?: number;
+  onPricesChange?: (prices: { retail: number | null; wholesale: number | null }) => void;
+}) => {
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const [retail, setRetail] = useState<number | null>(product.retailPriceOverride ? Number(product.retailPriceOverride) : null);
   const [wholesale, setWholesale] = useState<number | null>(product.wholesalePriceOverride ? Number(product.wholesalePriceOverride) : null);
   const [fieldErrors, setFieldErrors] = useState<{ retailPriceOverride?: string; wholesalePriceOverride?: string }>({});
 
-  const unitTotalCost = Number(product.unitTotalCost);
+  const unitTotalCost = liveUnitTotalCost ?? Number(product.unitTotalCost);
   const minMarginPct = settings ? Number(settings.minMarginPct) : 0;
 
   const saveMutation = useMutation({
@@ -66,10 +64,16 @@ export const PriceOverrideCard = ({ product }: { product: ProductDto }) => {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Menudeo" htmlFor="retailPriceOverride" error={fieldErrors.retailPriceOverride} hint={`Sugerido: ${formatMoney(product.retailListPrice)}`}>
-          <NumberInput id="retailPriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={retail} onChange={setRetail} />
+          <NumberInput id="retailPriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={retail} onChange={(value) => {
+            setRetail(value);
+            onPricesChange?.({ retail: value, wholesale });
+          }} />
         </Field>
         <Field label="Mayoreo" htmlFor="wholesalePriceOverride" error={fieldErrors.wholesalePriceOverride} hint={`Sugerido: ${formatMoney(product.wholesaleListPrice)}`}>
-          <NumberInput id="wholesalePriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={wholesale} onChange={setWholesale} />
+          <NumberInput id="wholesalePriceOverride" step={0.01} min={0} unit="$" unitPosition="prefix" value={wholesale} onChange={(value) => {
+            setWholesale(value);
+            onPricesChange?.({ retail, wholesale: value });
+          }} />
         </Field>
       </div>
       {(retailCheck || wholesaleCheck) && (
@@ -81,6 +85,9 @@ export const PriceOverrideCard = ({ product }: { product: ProductDto }) => {
             <Badge variant={wholesaleCheck.ok ? 'success' : 'danger'}>Margen mayoreo: {formatPercent(wholesaleCheck.marginPct)}</Badge>
           )}
         </div>
+      )}
+      {liveUnitTotalCost !== undefined && Math.round(liveUnitTotalCost * 100) !== Math.round(Number(product.unitTotalCost) * 100) && (
+        <p className="text-caption text-warning-fg">El costo cambió y aún no se guarda. Guarda el producto antes del precio manual.</p>
       )}
       <Button type="button" variant="secondary" size="sm" onClick={() => saveMutation.mutate()} loading={saveMutation.isPending} className="self-start">
         Guardar precio manual
