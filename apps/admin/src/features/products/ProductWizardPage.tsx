@@ -111,7 +111,9 @@ export default function ProductWizardPage() {
   const { supplies } = useSupplyOptions();
   const [excludedSupplyIds, setExcludedSupplyIds] = useState<number[]>([]);
   const [additionalSupplies, setAdditionalSupplies] = useState<SupplyTemplateRow[]>([]);
-  const [overrideDraft, setOverrideDraft] = useState<{ retail: number | null; wholesale: number | null } | null>(null);
+  // Etiquetado con el id: al duplicar se navega a otro producto sin desmontar
+  // la pagina, y el precio tecleado del anterior no debe pasar al nuevo.
+  const [overrideDraft, setOverrideDraft] = useState<{ productId: string; retail: number | null; wholesale: number | null } | null>(null);
 
   const { data: existing, isLoading, error } = useQuery({
     queryKey: ['products', id],
@@ -387,7 +389,7 @@ export default function ProductWizardPage() {
     );
   }
 
-  const overrides = overrideDraft ?? (existing ? {
+  const overrides = (overrideDraft?.productId === id ? overrideDraft : null) ?? (existing ? {
     retail: existing.retailPriceOverride != null ? Number(existing.retailPriceOverride) : null,
     wholesale: existing.wholesalePriceOverride != null ? Number(existing.wholesalePriceOverride) : null,
   } : undefined);
@@ -633,9 +635,10 @@ export default function ProductWizardPage() {
 
           {isEditing && existing && (
             <PriceOverrideCard
+              key={existing.id}
               product={existing}
               liveUnitTotalCost={costPreview?.breakdown.unitTotalCost}
-              onPricesChange={setOverrideDraft}
+              onPricesChange={(prices) => setOverrideDraft({ productId: existing.id.toString(), ...prices })}
             />
           )}
           {isEditing && existing && <ProductImagesCard product={existing} />}
