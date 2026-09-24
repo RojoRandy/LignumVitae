@@ -23,6 +23,7 @@ const build = ({ product, supplyTypeId = 3 }: { product: unknown; supplyTypeId?:
     deletePermanently: jest.fn(),
     addImage: jest.fn(),
     findImage: jest.fn().mockResolvedValue({ url: '/static/test.jpg' }),
+    clearCategoryCovers: jest.fn(),
     removeImage: jest.fn(),
     findById: jest.fn().mockResolvedValue(product),
     replaceSupplies,
@@ -44,6 +45,32 @@ const build = ({ product, supplyTypeId = 3 }: { product: unknown; supplyTypeId?:
 // applySuppliesFromTemplatesAndManual es privado a proposito: se llega a el por
 // reapplyTemplates, que es la puerta publica mas corta.
 const reapply = (service: ProductsService) => service.reapplyTemplates(1);
+
+it('convierte newUntil a Date al actualizar el producto', async () => {
+  const { service, repository } = build({ product: { id: 1 } });
+
+  await service.update(1, { newUntil: '2026-10-01T00:00:00.000Z' });
+
+  expect(repository.update).toHaveBeenCalledWith(1, { newUntil: new Date('2026-10-01T00:00:00.000Z') });
+  expect(repository.update.mock.calls[0][1].newUntil).toBeInstanceOf(Date);
+});
+
+it('permite quitar newUntil con null al actualizar el producto', async () => {
+  const { service, repository } = build({ product: { id: 1, newUntil: new Date('2026-10-01T00:00:00.000Z') } });
+
+  await service.update(1, { newUntil: null });
+
+  expect(repository.update).toHaveBeenCalledWith(1, { newUntil: null });
+});
+
+it('omite la llave newUntil cuando no viene en la actualizacion', async () => {
+  const { service, repository } = build({ product: { id: 1, newUntil: new Date('2026-10-01T00:00:00.000Z') } });
+
+  await service.update(1, { description: 'Descripcion actualizada' });
+
+  expect(repository.update).toHaveBeenCalledWith(1, { description: 'Descripcion actualizada' });
+  expect(repository.update.mock.calls[0][1]).not.toHaveProperty('newUntil');
+});
 
 it('un ramo hereda los insumos de cada vela y suma las repetidas', async () => {
   const { service, replaceSupplies } = build({
@@ -144,6 +171,15 @@ it('borra el objeto antes de borrar la fila de la imagen', async () => {
 });
 
 
+it('limpia las portadas de categoria antes de borrar la fila de la imagen', async () => {
+  const { service, storage, repository } = build({ product: {} });
+  await service.removeImage(2);
+  expect(repository.clearCategoryCovers).toHaveBeenCalledWith(['/static/test.jpg']);
+  expect(repository.removeImage).toHaveBeenCalledWith(2);
+  expect(storage.remove.mock.invocationCallOrder[0]).toBeLessThan(repository.clearCategoryCovers.mock.invocationCallOrder[0]);
+  expect(repository.clearCategoryCovers.mock.invocationCallOrder[0]).toBeLessThan(repository.removeImage.mock.invocationCallOrder[0]);
+});
+
 it('rechaza eliminar permanentemente un producto activo', async () => {
   const { service, storage, repository } = build({ product: { isActive: true, images: [] } });
   await expect(service.deletePermanently(1)).rejects.toMatchObject({
@@ -187,6 +223,16 @@ it('borra todas las imagenes de storage antes de eliminar el producto sin depend
 });
 
 
+it('limpia las portadas de categoria antes de eliminar el producto inactivo sin dependientes', async () => {
+  const product = { id: 1, isActive: false, images: [{ url: '/static/one.jpg' }, { url: '/static/two.jpg' }] };
+  const { service, storage, repository } = build({ product });
+  await service.deletePermanently(1);
+  expect(repository.clearCategoryCovers).toHaveBeenCalledWith(['/static/one.jpg', '/static/two.jpg']);
+  expect(repository.deletePermanently).toHaveBeenCalledWith(1);
+  expect(storage.remove.mock.invocationCallOrder[1]).toBeLessThan(repository.clearCategoryCovers.mock.invocationCallOrder[0]);
+  expect(repository.clearCategoryCovers.mock.invocationCallOrder[0]).toBeLessThan(repository.deletePermanently.mock.invocationCallOrder[0]);
+});
+
 it.each([true, false])('combina la vela directa o del ramo con los demas filtros (onlyActive=%s)', async (onlyActive) => {
   const { service, repository } = build({ product: {} });
 
@@ -207,4 +253,62 @@ it.each([true, false])('combina la vela directa o del ramo con los demas filtros
   const unfilteredWhere = onlyActive ? { isActive: true } : {};
   expect(repository.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: unfilteredWhere }));
   expect(repository.count).toHaveBeenLastCalledWith(unfilteredWhere);
+});
+
+
+it.each([
+  { highlight: 'featured' as const, filter: { isFeatured: true } },
+  { highlight: 'hero' as const, filter: { images: { some: { showInHero: true } } } },
+  { highlight: 'gallery' as const, filter: { images: { some: { showInGallery: true } } } },
+  { highlight: 'new' as const, filter: { newUntil: { gt: expect.any(Date) } } },
+])('combina highlight=$highlight con la vela directa o del ramo', async ({ highlight, filter }) => {
+  const { service, repository } = build({ product: {} });
+
+  await service.findAll({ candleId: 7, highlight });
+
+  const where = {
+    isActive: true,
+    OR: [{ candleId: 7 }, { components: { some: { candleId: 7 } } }],
+    ...filter,
+  };
+  expect(repository.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+  expect(repository.count).toHaveBeenCalledWith(where);
+});
+
+it.each([
+  { sortBy: 'retailMargin' as const, orderBy: [{ retailMarginPct: 'desc' }, { name: 'asc' }] },
+  { sortBy: 'wholesaleMargin' as const, orderBy: [{ wholesaleMarginPct: 'desc' }, { name: 'asc' }] },
+  { sortBy: 'name' as const, orderBy: { name: 'asc' } },
+  { sortBy: undefined, orderBy: { name: 'asc' } },
+])('ordena los productos por $sortBy y conserva la paginacion', async ({ sortBy, orderBy }) => {
+  const { service, repository } = build({ product: {} });
+
+  await service.findAll({ sortBy, page: 2, limit: 10 });
+
+  expect(repository.findMany).toHaveBeenCalledWith({ where: { isActive: true }, orderBy, skip: 10, take: 10 });
+});
+
+it.each([
+  { minRetailMarginPct: 25.5 },
+  { minRetailMarginPct: 0 },
+  { minWholesaleMarginPct: 15.5 },
+  { minWholesaleMarginPct: 0 },
+  { minRetailMarginPct: 25.5, minWholesaleMarginPct: 15.5 },
+])('combina los margenes minimos %j con los demas filtros', async (margins) => {
+  const { service, repository } = build({ product: {} });
+
+  await service.findAll({ candleId: 7, categoryId: 2, kind: 'BOUQUET', needsReview: false, search: 'rosa', ...margins });
+
+  const where = {
+    isActive: true,
+    categoryId: 2,
+    OR: [{ candleId: 7 }, { components: { some: { candleId: 7 } } }],
+    kind: 'BOUQUET',
+    needsReview: false,
+    name: { contains: 'rosa', mode: 'insensitive' },
+    ...(margins.minRetailMarginPct !== undefined ? { retailMarginPct: { gte: margins.minRetailMarginPct } } : {}),
+    ...(margins.minWholesaleMarginPct !== undefined ? { wholesaleMarginPct: { gte: margins.minWholesaleMarginPct } } : {}),
+  };
+  expect(repository.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+  expect(repository.count).toHaveBeenCalledWith(where);
 });

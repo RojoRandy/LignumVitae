@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -106,6 +107,12 @@ export class CreateProductDto {
   @Type(() => Boolean)
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Fecha ISO hasta la que el producto sale en Novedades; null lo quita' })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsDateString()
+  newUntil?: string | null;
 
   @ApiPropertyOptional({
     type: [ProductComponentItemDto],

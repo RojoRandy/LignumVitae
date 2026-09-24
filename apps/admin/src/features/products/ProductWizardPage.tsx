@@ -3,13 +3,13 @@
 // y ajustas minutos extra si hace falta. El panel de la derecha muestra el
 // costo desglosandose en vivo contra /products/preview-cost, sin guardar
 // nada hasta que se pulsa Guardar.
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { httpGet, httpPatch, httpPost } from '@/lib/http';
-import { formatMoney } from '@/lib/format';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import type { CandleCategoryDto, CandleDto, CardTypeDto, Paginated, PackagingTypeDto, ProductDto, SupplyTemplateItemDto } from '@/lib/types';
@@ -24,13 +24,65 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FormError, PageHeader } from '@/components/ui/page';
+import { FormError, PageHeader, PageState } from '@/components/ui/page';
 import { CostPreviewPanel } from './components/cost-preview-panel';
 import { PriceOverrideCard } from './components/price-override-card';
 import { ProductImagesCard } from './components/product-images-card';
 import { DuplicateWithPackaging } from './components/duplicate-with-packaging';
 import type { PreviewCostInput } from './use-product-cost-preview';
 import { SupplyTemplateEditor, type SupplyTemplateRow } from '@/components/domain/supply-template-editor';
+
+type FormValues = {
+  kind: 'SIMPLE' | 'BOUQUET';
+  name: string;
+  categoryId?: string;
+  description: string;
+  candleId?: string;
+  packagingTypeId?: string;
+  cardTypeId?: string;
+  components: { candleId: number | null; quantity: number | null }[];
+  extraSetupMinutes: number;
+  extraPackMinutes: number;
+  assemblyMinutes: number;
+  allowsFragrance: boolean;
+  isVisibleOnLanding: boolean;
+  isFeatured: boolean;
+  newUntil: string | null;
+  excludedSupplyIds: number[];
+  additionalSupplies: SupplyTemplateRow[];
+};
+
+function getFormValues(product?: ProductDto): FormValues {
+  return {
+    kind: product?.kind ?? 'SIMPLE',
+    name: product?.name ?? '',
+    categoryId: product ? String(product.categoryId) : undefined,
+    description: product?.description ?? '',
+    candleId: product?.candleId ? String(product.candleId) : undefined,
+    packagingTypeId: product?.packagingTypeId ? String(product.packagingTypeId) : undefined,
+    cardTypeId: product?.cardTypeId ? String(product.cardTypeId) : undefined,
+    components: (product?.components ?? []).map((c) => ({ candleId: c.candleId, quantity: c.quantity })),
+    extraSetupMinutes: product?.extraSetupMinutes ?? 0,
+    extraPackMinutes: product?.extraPackMinutes ?? 0,
+    assemblyMinutes: product?.assemblyMinutes ?? 0,
+    allowsFragrance: product?.allowsFragrance ?? true,
+    isVisibleOnLanding: product?.isVisibleOnLanding ?? true,
+    isFeatured: product?.isFeatured ?? false,
+    newUntil: product?.newUntil ?? null,
+    excludedSupplyIds: product?.excludedSupplyIds ?? [],
+    additionalSupplies: (product?.supplies ?? [])
+      .filter((sup) => sup.source === 'MANUAL')
+      .map((sup) => ({ supplyId: sup.supplyId, quantity: Number(sup.quantity), unitId: sup.unitId })),
+  };
+}
+
+function removeDraft(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // El almacenamiento puede no estar disponible en modo privado.
+  }
+}
 
 export default function ProductWizardPage() {
   const { id } = useParams();
@@ -53,39 +105,108 @@ export default function ProductWizardPage() {
   const [allowsFragrance, setAllowsFragrance] = useState(true);
   const [isVisibleOnLanding, setIsVisibleOnLanding] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [newUntil, setNewUntil] = useState<string | null>(null);
+  const [newDays, setNewDays] = useState<number | null>(null);
+  const isNew = newUntil !== null && new Date(newUntil) > new Date();
   const { supplies } = useSupplyOptions();
   const [excludedSupplyIds, setExcludedSupplyIds] = useState<number[]>([]);
   const [additionalSupplies, setAdditionalSupplies] = useState<SupplyTemplateRow[]>([]);
 
-  const { data: existing } = useQuery({
+  const { data: existing, isLoading, error } = useQuery({
     queryKey: ['products', id],
     queryFn: () => httpGet<ProductDto>(`/products/${id}`),
     enabled: isEditing,
   });
 
+  const draftKey = `product-draft:${id ?? 'nuevo'}`;
+  const hydratedId = useRef<string | null>(null);
+  const baseline = useRef('');
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
+  const [recoveredDraft, setRecoveredDraft] = useState(false);
+  const serializedForm = JSON.stringify({
+    kind, name, categoryId, description, candleId, packagingTypeId, cardTypeId, components, extraSetupMinutes, extraPackMinutes, assemblyMinutes, allowsFragrance, isVisibleOnLanding, isFeatured, newUntil, excludedSupplyIds, additionalSupplies,
+  });
+
+  const applyForm = useCallback((values: FormValues) => {
+    setKind(values.kind);
+    setName(values.name);
+    setCategoryId(values.categoryId);
+    setDescription(values.description);
+    setCandleId(values.candleId);
+    setPackagingTypeId(values.packagingTypeId);
+    setCardTypeId(values.cardTypeId);
+    setComponents(values.components);
+    setExtraSetupMinutes(values.extraSetupMinutes);
+    setExtraPackMinutes(values.extraPackMinutes);
+    setAssemblyMinutes(values.assemblyMinutes);
+    setAllowsFragrance(values.allowsFragrance);
+    setIsVisibleOnLanding(values.isVisibleOnLanding);
+    setIsFeatured(values.isFeatured);
+    setNewUntil(values.newUntil);
+    const remainingDays = values.newUntil === null ? 0 : (new Date(values.newUntil).getTime() - Date.now()) / 86_400_000;
+    setNewDays(remainingDays > 0 ? Math.ceil(remainingDays) : null);
+    setExcludedSupplyIds(values.excludedSupplyIds);
+    setAdditionalSupplies(values.additionalSupplies);
+  }, []);
+
   useEffect(() => {
-    if (!existing) return;
-    setKind(existing.kind);
-    setName(existing.name);
-    setCategoryId(String(existing.categoryId));
-    setDescription(existing.description ?? '');
-    setCandleId(existing.candleId ? String(existing.candleId) : undefined);
-    setPackagingTypeId(existing.packagingTypeId ? String(existing.packagingTypeId) : undefined);
-    setCardTypeId(existing.cardTypeId ? String(existing.cardTypeId) : undefined);
-    setComponents((existing.components ?? []).map((c) => ({ candleId: c.candleId, quantity: c.quantity })));
-    setExtraSetupMinutes(existing.extraSetupMinutes);
-    setExtraPackMinutes(existing.extraPackMinutes);
-    setAssemblyMinutes(existing.assemblyMinutes);
-    setAllowsFragrance(existing.allowsFragrance);
-    setIsVisibleOnLanding(existing.isVisibleOnLanding);
-    setIsFeatured(existing.isFeatured);
-    setExcludedSupplyIds(existing.excludedSupplyIds ?? []);
-    setAdditionalSupplies(
-      (existing.supplies ?? [])
-        .filter((sup) => sup.source === 'MANUAL')
-        .map((sup) => ({ supplyId: sup.supplyId, quantity: Number(sup.quantity), unitId: sup.unitId })),
-    );
-  }, [existing]);
+    if (hydratedId.current === draftKey || (id && !existing)) return;
+    const values = getFormValues(id ? existing : undefined);
+    baseline.current = JSON.stringify(values);
+    let draft: FormValues | null = null;
+    try {
+      const stored = sessionStorage.getItem(draftKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Ignora borradores incompletos o con tipos incompatibles.
+        if (parsed && Object.entries(values).every(([key, value]) => {
+          const candidate = parsed[key];
+          if (key === 'newUntil') return candidate === null || typeof candidate === 'string';
+          if (Array.isArray(value)) return Array.isArray(candidate);
+          if (value === undefined) return candidate === undefined || typeof candidate === 'string';
+          return typeof candidate === typeof value;
+        }) && (parsed.kind === 'SIMPLE' || parsed.kind === 'BOUQUET')
+          && parsed.components.every((row: FormValues['components'][number]) => row
+            && (row.candleId === null || typeof row.candleId === 'number')
+            && (row.quantity === null || typeof row.quantity === 'number'))
+          && parsed.excludedSupplyIds.every((supplyId: number) => typeof supplyId === 'number')
+          && parsed.additionalSupplies.every((row: SupplyTemplateRow) => row
+            && (row.supplyId === null || typeof row.supplyId === 'number')
+            && (row.quantity === null || typeof row.quantity === 'number')
+            && (row.unitId === null || typeof row.unitId === 'number'))) {
+          draft = parsed;
+        }
+      }
+    } catch {
+      // Un borrador ilegible no debe impedir abrir el formulario.
+    }
+    applyForm(draft ?? values);
+    setRecoveredDraft(draft !== null && JSON.stringify(draft) !== baseline.current);
+    hydratedId.current = draftKey;
+    setHydratedKey(draftKey);
+  }, [id, existing, draftKey, applyForm]);
+
+  useEffect(() => {
+    // Espera al render que ya contiene los valores hidratados de este producto.
+    if (hydratedKey !== draftKey) return;
+    if (serializedForm === baseline.current) {
+      removeDraft(draftKey);
+      return;
+    }
+    try {
+      sessionStorage.setItem(draftKey, serializedForm);
+    } catch {
+      // El formulario sigue funcionando aunque no se pueda guardar el borrador.
+    }
+  }, [draftKey, hydratedKey, serializedForm]);
+
+  const discardDraft = () => {
+    removeDraft(draftKey);
+    const values = getFormValues(id ? existing : undefined);
+    baseline.current = JSON.stringify(values);
+    applyForm(values);
+    setRecoveredDraft(false);
+  };
 
   const { data: categories } = useQuery({
     queryKey: ['categories', 'all'],
@@ -184,6 +305,9 @@ export default function ProductWizardPage() {
     mutationFn: (body: Record<string, unknown>) =>
       isEditing ? httpPatch<ProductDto>(`/products/${id}`, body) : httpPost<ProductDto>('/products', body),
     onSuccess: (product) => {
+      removeDraft(draftKey);
+      baseline.current = serializedForm;
+      setRecoveredDraft(false);
       queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success(isEditing ? 'Producto actualizado' : 'Producto creado');
       navigate(`/productos/${product.id}/editar`, { replace: true });
@@ -236,6 +360,7 @@ export default function ProductWizardPage() {
       allowsFragrance,
       isVisibleOnLanding,
       isFeatured,
+      newUntil,
       components: kind === 'BOUQUET' ? components.filter((c) => c.candleId).map((c) => ({ candleId: c.candleId, quantity: c.quantity ?? 1 })) : undefined,
       additionalSupplies: validAdditionalSupplies,
       excludedSupplyIds,
@@ -247,6 +372,19 @@ export default function ProductWizardPage() {
     setComponents((prev) => prev.map((c, i) => (i === index ? { ...c, ...patch } : c)));
   const removeComponent = (index: number) => setComponents((prev) => prev.filter((_, i) => i !== index));
 
+  if (isEditing && (isLoading || (error && !existing))) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader
+          backTo="/productos"
+          title={isEditing ? 'Editar producto' : 'Nuevo producto'}
+          description="Combina una vela con su empaque para armar el modelo que se cotiza."
+        />
+        {isLoading ? <PageState isLoading /> : <PageState error={error} />}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -257,6 +395,14 @@ export default function ProductWizardPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 lg:col-span-2">
+          {recoveredDraft && hydratedKey === draftKey && (
+            <div role="status" className="flex items-center justify-between gap-2 rounded-lg bg-surface-sunken p-3 text-body-sm text-text-muted">
+              <span>Recuperamos cambios sin guardar</span>
+              <Button type="button" variant="ghost" size="sm" onClick={discardDraft}>
+                Descartar
+              </Button>
+            </div>
+          )}
           <Card className="p-4">
             <Tabs value={kind} onValueChange={(v) => setKind(v as 'SIMPLE' | 'BOUQUET')}>
               <TabsList>
@@ -436,6 +582,45 @@ export default function ProductWizardPage() {
                 </div>
                 <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
               </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-body-sm font-medium text-text">Producto nuevo</p>
+                  <p className="text-caption text-text-muted">Sale en Novedades de la landing por los dias que elijas</p>
+                </div>
+                <Switch
+                  aria-label="Producto nuevo"
+                  checked={isNew}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setNewUntil(new Date(Date.now() + 30 * 86_400_000).toISOString());
+                      setNewDays(30);
+                    } else {
+                      setNewUntil(null);
+                    }
+                  }}
+                />
+              </div>
+              {isNew && (
+                <Field label="Dias" htmlFor="newDays">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <NumberInput
+                      id="newDays"
+                      min={1}
+                      step={1}
+                      unit="dias"
+                      className="w-32"
+                      value={newDays}
+                      onChange={(days) => {
+                        setNewDays(days);
+                        if (days !== null && days >= 1) {
+                          setNewUntil(new Date(Date.now() + days * 86_400_000).toISOString());
+                        }
+                      }}
+                    />
+                    <span className="text-caption text-text-muted">Hasta {formatDateTime(newUntil)}</span>
+                  </div>
+                </Field>
+              )}
             </div>
           </Card>
 
@@ -453,7 +638,10 @@ export default function ProductWizardPage() {
               />
             )}
             <div className="ml-auto flex gap-2">
-              <Button type="button" variant="secondary" onClick={() => navigate('/productos')}>
+              <Button type="button" variant="secondary" onClick={() => {
+                removeDraft(draftKey);
+                navigate('/productos');
+              }}>
                 Cancelar
               </Button>
               <Button type="submit" loading={saveMutation.isPending}>

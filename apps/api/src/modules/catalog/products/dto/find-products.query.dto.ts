@@ -1,10 +1,32 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsInt, IsNumber, IsOptional } from 'class-validator';
 import { ProductKind } from '@prisma/client';
 import { PaginationQueryDto } from '../../../../common/dto/pagination.dto';
 
 export class FindProductsQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['featured', 'hero', 'gallery', 'new'] })
+  @IsOptional()
+  @IsIn(['featured', 'hero', 'gallery', 'new'])
+  highlight?: 'featured' | 'hero' | 'gallery' | 'new';
+
+  @ApiPropertyOptional({ enum: ['name', 'retailMargin', 'wholesaleMargin'], default: 'name' })
+  @IsOptional()
+  @IsIn(['name', 'retailMargin', 'wholesaleMargin'])
+  sortBy?: 'name' | 'retailMargin' | 'wholesaleMargin';
+
+  @ApiPropertyOptional({ description: 'Margen minimo de venta al menudeo en porcentaje' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  minRetailMarginPct?: number;
+
+  @ApiPropertyOptional({ description: 'Margen minimo de venta al mayoreo en porcentaje' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  minWholesaleMarginPct?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)

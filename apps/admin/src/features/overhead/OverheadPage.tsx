@@ -10,6 +10,7 @@ import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useState } from 'react';
 
@@ -105,7 +106,9 @@ export default function OverheadPage() {
       </Card>
 
       <div className="flex flex-col gap-3">
-        {isLoading ? null : !periods?.length ? (
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-card" />)
+        ) : !periods?.length ? (
           <EmptyState
             icon={<CalendarClock className="size-8" />}
             title="Sin meses cerrados"

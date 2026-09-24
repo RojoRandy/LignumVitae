@@ -236,6 +236,8 @@ export interface ProductDto {
   wholesaleListPrice: string;
   retailPriceOverride: string | null;
   wholesalePriceOverride: string | null;
+  retailMarginPct: string;
+  wholesaleMarginPct: string;
   costingBasis: ProductCostingBasisJson | null;
   costingComputedAt: string | null;
   needsReview: boolean;
@@ -243,6 +245,7 @@ export interface ProductDto {
   reviewNote: string | null;
   isVisibleOnLanding: boolean;
   isFeatured: boolean;
+  newUntil: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

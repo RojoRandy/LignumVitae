@@ -2,19 +2,22 @@
 // esto solo aplana la imagen de portada y omite categorias vacias.
 import type { PublicCatalogCategory, PublicProduct, LandingImage, PublicFragrance, PublicTestimonial } from '../public-catalog.repository';
 
-export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) =>
-  categories
+export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) => {
+  const now = new Date();
+  return categories
     .filter((category) => category.products.length > 0)
     .map(({ products, ...category }) => ({
       ...category,
-      products: products.map(({ images, candle, components, ...product }) => ({
+      products: products.map(({ images, candle, components, newUntil, ...product }) => ({
         ...product,
+        isNew: newUntil !== null && newUntil > now,
         image: images[0] ?? null,
         // Un ramo (BOUQUET) no tiene `candle` propio: sus moldes vienen de
         // sus componentes. Misma forma de arreglo para ambos casos.
         candles: candle ? [candle] : components.map((c) => c.candle),
       })),
     }));
+};
 
 // Frontera de seguridad del detalle de producto: el select trae `supplies`
 // SOLO para derivar quoteFields. El BOM crudo nunca debe salir de aqui.

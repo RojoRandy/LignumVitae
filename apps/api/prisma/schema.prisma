@@ -312,6 +312,11 @@ model Product {
   retailPriceOverride    Decimal? @map("retail_price_override") @db.Decimal(12, 2)
   wholesalePriceOverride Decimal? @map("wholesale_price_override") @db.Decimal(12, 2)
 
+  /// Margen % sobre el precio efectivo (override o lista). Lo escribe un trigger
+  /// de Postgres (catalog.products_set_margin); la app nunca lo manda.
+  retailMarginPct    Decimal @default(0) @map("retail_margin_pct") @db.Decimal(7, 2)
+  wholesaleMarginPct Decimal @default(0) @map("wholesale_margin_pct") @db.Decimal(7, 2)
+
   /// Tasas con las que se calculo el costeo cacheado, para poder explicarlo
   /// en el admin sin tener que volver a correr el motor.
   costingBasis      Json?     @map("costing_basis")
@@ -323,6 +328,8 @@ model Product {
 
   isVisibleOnLanding Boolean  @default(true) @map("is_visible_on_landing")
   isFeatured         Boolean  @default(false) @map("is_featured")
+  /// Hasta cuando sale en "Novedades" de la landing. null = no es nuevo.
+  newUntil DateTime? @map("new_until")
   isActive           Boolean  @default(true) @map("is_active")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
@@ -340,6 +347,9 @@ model Product {
   @@index([candleId])
   @@index([categoryId])
   @@index([isVisibleOnLanding, isActive])
+  @@index([newUntil])
+  @@index([retailMarginPct])
+  @@index([wholesaleMarginPct])
   @@map("products")
   @@schema("catalog")
 }

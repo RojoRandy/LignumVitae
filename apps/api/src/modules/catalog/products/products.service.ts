@@ -9,11 +9,12 @@ import { CandleRepository } from '../candles/candle.repository';
 import { PackagingTypeRepository } from '../packaging-types/packaging-type.repository';
 import { CardTypeRepository } from '../card-types/card-type.repository';
 import { ProductRepository } from './product.repository';
-import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
+import { buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
 import { CatalogErrors } from '../../../common/errors/catalog.errors';
 import { InventoryErrors } from '../../../common/errors/inventory.errors';
 import { slugify } from '../../../common/utils/slug';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
+import { FindProductsQueryDto } from './dto/find-products.query.dto';
 import { RecalculateProductCostingUseCase } from './usecases/recalculate-product-costing.usecase';
 import { SettingsService } from '../../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
@@ -32,8 +33,9 @@ export class ProductsService {
     private readonly storageService: StorageService,
   ) {}
 
-  async findAll(query: PaginationQueryDto & { categoryId?: number; candleId?: number; kind?: ProductKind; needsReview?: boolean }) {
-    const { page = 1, limit = 20, search, onlyActive = true, categoryId, candleId, kind, needsReview } = query;
+  async findAll(query: FindProductsQueryDto) {
+    const { page = 1, limit = 20, search, onlyActive = true, categoryId, candleId, kind, needsReview,
+      sortBy, minRetailMarginPct, minWholesaleMarginPct, highlight } = query;
     const where: Prisma.ProductWhereInput = {
       ...(onlyActive ? { isActive: true } : {}),
       ...(categoryId ? { categoryId } : {}),
@@ -41,9 +43,19 @@ export class ProductsService {
       ...(kind ? { kind } : {}),
       ...(needsReview !== undefined ? { needsReview } : {}),
       ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+      ...(minRetailMarginPct !== undefined ? { retailMarginPct: { gte: minRetailMarginPct } } : {}),
+      ...(minWholesaleMarginPct !== undefined ? { wholesaleMarginPct: { gte: minWholesaleMarginPct } } : {}),
+      ...(highlight === 'featured' ? { isFeatured: true }
+        : highlight === 'hero' ? { images: { some: { showInHero: true } } }
+          : highlight === 'gallery' ? { images: { some: { showInGallery: true } } }
+            : highlight === 'new' ? { newUntil: { gt: new Date() } } : {}),
     };
+    const orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] =
+      sortBy === 'retailMargin' ? [{ retailMarginPct: 'desc' }, { name: 'asc' }]
+        : sortBy === 'wholesaleMargin' ? [{ wholesaleMarginPct: 'desc' }, { name: 'asc' }]
+          : { name: 'asc' };
     const [items, total] = await Promise.all([
-      this.productRepository.findMany({ where, orderBy: { name: 'asc' }, ...paginate(page, limit) }),
+      this.productRepository.findMany({ where, orderBy, ...paginate(page, limit) }),
       this.productRepository.count(where),
     ]);
     return buildPaginatedResult(items, total, page, limit);
@@ -95,6 +107,7 @@ export class ProductsService {
       allowsFragrance: dto.allowsFragrance ?? true,
       isVisibleOnLanding: dto.isVisibleOnLanding ?? true,
       isFeatured: dto.isFeatured ?? false,
+      newUntil: dto.newUntil ? new Date(dto.newUntil) : null,
     });
 
     if (dto.kind === ProductKind.BOUQUET && dto.components) {
@@ -129,6 +142,7 @@ export class ProductsService {
     if (dto.allowsFragrance !== undefined) data.allowsFragrance = dto.allowsFragrance;
     if (dto.isVisibleOnLanding !== undefined) data.isVisibleOnLanding = dto.isVisibleOnLanding;
     if (dto.isFeatured !== undefined) data.isFeatured = dto.isFeatured;
+    if (dto.newUntil !== undefined) data.newUntil = dto.newUntil ? new Date(dto.newUntil) : null;
 
     await this.productRepository.update(id, data);
 
@@ -249,6 +263,7 @@ export class ProductsService {
     for (const image of product.images) {
       await this.storageService.remove(image.url);
     }
+    await this.productRepository.clearCategoryCovers(product.images.map((i) => i.url));
     return this.productRepository.deletePermanently(id);
   }
 
@@ -263,7 +278,10 @@ export class ProductsService {
 
   async removeImage(imageId: number) {
     const image = await this.productRepository.findImage(imageId);
-    if (image) await this.storageService.remove(image.url);
+    if (image) {
+      await this.storageService.remove(image.url);
+      await this.productRepository.clearCategoryCovers([image.url]);
+    }
     return this.productRepository.removeImage(imageId);
   }
 
