@@ -12,8 +12,18 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { ProductDto } from '@/lib/types';
 
-// Fija precios manuales y calcula el margen con el costo en vivo cuando se recibe.
-// El servidor sigue validando contra el costo guardado del producto.
+// Fija un precio de menudeo/mayoreo distinto al sugerido para ESTE producto
+// (una promocion, un cliente frecuente...). Solo tiene sentido una vez que
+// el producto ya existe: valida contra product.unitTotalCost, que solo se
+// conoce despues del primer guardado. La API (setPriceOverride en
+// products.service.ts) es la que de verdad manda: aqui el margen se
+// recalcula en vivo con la misma formula (validateMinMargin) nada mas para
+// que la persona vea el rechazo ANTES de intentar guardar, no en vez de
+// validar del lado del servidor.
+//
+// Si llega liveUnitTotalCost (el costo del formulario, el mismo del panel
+// "Costo y precio"), el margen se calcula con ese para que los dos cuadren;
+// si difiere del guardado se avisa, porque la API valida con el guardado.
 export const PriceOverrideCard = ({ product, liveUnitTotalCost, onPricesChange }: {
   product: ProductDto;
   liveUnitTotalCost?: number;
