@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ContactSection from '../components/ContactSection.astro';
+import { getJson } from '../lib/api';
+
+interface PublicSettings {
+  city: string;
+  state: string;
+  whatsapp: string | null;
+  phone: string | null;
+  email: string | null;
+  businessHours: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+  minLeadTimeDays: number;
+  depositPct: number;
+}
+
+const settings = await getJson<PublicSettings>('/public/settings');
+---
+
+<Layout title="Contacto · Lignum Vitae" description={`Escríbenos por WhatsApp para pedir tus velas personalizadas. Entregas solo en ${settings.city}, ${settings.state}.`}>
+  <section class="site-container py-16 lg:py-24">
+    <h1 class="text-display-lg text-brand">Contacto</h1>
+    <p class="mt-6 max-w-prose text-body-lg text-text">Queremos ayudarte a elegir las velas de recuerdo para tu celebración. Puedes explorar el <a href="/catalogo" class="text-action underline">catálogo</a>, conocer las opciones disponibles y <a href="/cotizar" class="text-action underline">armar tu cotización</a> con los productos que más te gusten. También puedes escribirnos por WhatsApp para contarnos qué tienes en mente y resolver tus dudas antes de hacer tu pedido.</p>
+    <p class="mt-4 max-w-prose text-body text-text">Las entregas se realizan solo en {settings.city}, {settings.state}, y el envío tiene un costo adicional. Te pedimos solicitar tus velas con al menos {settings.minLeadTimeDays} días de anticipación para preparar los detalles de tu celebración. Los pedidos se confirman con el {settings.depositPct}% de anticipo y puedes pagar por transferencia o en efectivo.</p>
+    <p class="mt-4 max-w-prose text-body text-text">Abajo encontrarás nuestros medios de contacto para conversar sobre tu pedido y elegir un recuerdo especial para compartir con tus invitados.{settings.businessHours && <span class="whitespace-pre-line"> Nuestro horario de atención: {settings.businessHours}.</span>}</p>
+  </section>
+
+  <ContactSection settings={settings} />
+</Layout>

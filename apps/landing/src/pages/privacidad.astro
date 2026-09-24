@@ -1,0 +1,71 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getJson } from '../lib/api';
+
+interface PublicSettings {
+  brandName: string;
+  legalName: string;
+  city: string;
+  state: string;
+  email: string | null;
+  whatsapp: string | null;
+}
+
+const settings = await getJson<PublicSettings>('/public/settings');
+const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
+const whatsappUrl = whatsappDigits
+  ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
+  : null;
+---
+
+<!-- BORRADOR: revisión legal pendiente antes de publicar -->
+<Layout title="Aviso de privacidad · Lignum Vitae" description="Conoce qué datos recabamos para cotizar tus velas, cómo los usamos y cómo ejercer tus derechos sobre ellos.">
+  <section class="site-container py-16 lg:py-24">
+    <div class="max-w-prose">
+      <h1 class="text-display-lg text-brand">Aviso de privacidad</h1>
+      <p class="mt-4 text-body-sm text-text-muted">Última actualización: 24 de septiembre de 2026</p>
+
+      <h2 class="mt-10 text-heading text-brand">Responsable</h2>
+      <p class="mt-4 text-body text-text">{settings.legalName} (nombre comercial {settings.brandName}), con domicilio en {settings.city}, {settings.state}, México, es responsable del tratamiento de tus datos personales.</p>
+      <p class="mt-4 text-body text-text">
+        {settings.email ? <>Puedes escribirnos a <a href={`mailto:${settings.email}`} class="text-action underline [overflow-wrap:anywhere]">{settings.email}</a>{whatsappUrl && <> o por <a href={whatsappUrl} class="text-action underline">WhatsApp</a></>}.</> : <>Puedes contactarnos por {whatsappUrl ? <a href={whatsappUrl} class="text-action underline">WhatsApp</a> : 'WhatsApp'}.</>}
+      </p>
+
+      <h2 class="mt-10 text-heading text-brand">Datos que recabamos</h2>
+      <p class="mt-4 text-body text-text">Cuando envías el formulario de cotización, recibimos los siguientes datos:</p>
+      <ul class="mt-4 list-disc pl-6 text-body text-text">
+        <li>Nombre completo.</li>
+        <li>Número de WhatsApp.</li>
+        <li>Fecha del evento.</li>
+        <li>Notas opcionales que quieras compartir sobre tu pedido.</li>
+        <li>Productos solicitados, cantidades, colores, campos de personalización (como nombres o fechas para la tarjeta) y si llevan aroma, incluido el aroma elegido.</li>
+      </ul>
+      <p class="mt-4 text-body text-text">No solicitamos datos personales sensibles ni datos financieros por este sitio.</p>
+
+      <h2 class="mt-10 text-heading text-brand">Para qué los usamos</h2>
+      <p class="mt-4 text-body text-text">Usamos tus datos únicamente para estas finalidades primarias, necesarias para atender tu solicitud y tu pedido:</p>
+      <ul class="mt-4 list-disc pl-6 text-body text-text">
+        <li>Preparar y enviarte la cotización.</li>
+        <li>Comunicarnos contigo por WhatsApp sobre el pedido.</li>
+        <li>Coordinar la producción, la entrega y los pagos.</li>
+      </ul>
+      <p class="mt-4 text-body text-text">No usamos tus datos para finalidades secundarias ni para enviarte publicidad.</p>
+
+      <h2 class="mt-10 text-heading text-brand">Con quién los compartimos</h2>
+      <p class="mt-4 text-body text-text">No vendemos ni transferimos tus datos personales a terceros. Solo utilizamos proveedores de hospedaje e infraestructura, como Railway para el hospedaje, AWS S3 para el almacenamiento de imágenes y Cloudflare para la red. Estos proveedores procesan datos por cuenta nuestra para operar el sitio; ese tratamiento corresponde a remisiones, no a transferencias.</p>
+
+      <h2 class="mt-10 text-heading text-brand">Almacenamiento en tu navegador</h2>
+      <p class="mt-4 text-body text-text">La lista de cotización se guarda en tu navegador mediante localStorage para conservar los productos y sus opciones. Esa lista no sale de tu equipo hasta que envías la solicitud de cotización. Puedes borrarla al vaciar la lista o al eliminar los datos de este sitio desde la configuración de tu navegador.</p>
+      <p class="mt-4 text-body text-text">No usamos cookies de seguimiento ni herramientas de analítica.</p>
+
+      <h2 class="mt-10 text-heading text-brand">Derechos ARCO y revocación del consentimiento</h2>
+      <p class="mt-4 text-body text-text">Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición (ARCO): conocer los datos que tenemos sobre ti, corregirlos, solicitar su eliminación u oponerte a su uso. También puedes solicitar la revocación de tu consentimiento para el tratamiento de tus datos personales.</p>
+      <p class="mt-4 text-body text-text">
+        Para ejercer estos derechos o revocar tu consentimiento, {settings.email ? <>escríbenos a <a href={`mailto:${settings.email}`} class="text-action underline [overflow-wrap:anywhere]">{settings.email}</a></> : <>contáctanos por {whatsappUrl ? <a href={whatsappUrl} class="text-action underline">WhatsApp</a> : 'WhatsApp'}</>}, indicando tu nombre, el número de WhatsApp que usaste para la cotización y qué solicitas. Te responderemos en un plazo de 20 días hábiles a partir de la recepción de tu solicitud.
+      </p>
+
+      <h2 class="mt-10 text-heading text-brand">Cambios a este aviso</h2>
+      <p class="mt-4 text-body text-text">Si modificamos este aviso, publicaremos los cambios en esta misma página y actualizaremos la fecha indicada al inicio para que puedas consultar la versión más reciente.</p>
+    </div>
+  </section>
+</Layout>

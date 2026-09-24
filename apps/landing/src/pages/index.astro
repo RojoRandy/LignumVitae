@@ -1,7 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import ContactSection from '../components/ContactSection.astro';
 import ProductCard, { type Product } from '../components/ProductCard.astro';
 import { getJson, imageUrl } from '../lib/api';
+import { wantsMarkdown, siteMarkdown } from '../lib/seo';
 
 interface PublicSettings {
   brandName: string;
@@ -43,6 +45,13 @@ const [settings, categories] = await Promise.all([
   getJson<PublicSettings>('/public/settings'),
   getJson<Category[]>('/public/catalog'),
 ]);
+if (wantsMarkdown(Astro.request.headers.get('accept'))) {
+  return new Response(siteMarkdown(settings, categories, Astro.site!.origin), {
+    headers: { 'Content-Type': 'text/markdown; charset=utf-8', Vary: 'Accept' },
+  });
+}
+Astro.response.headers.set('Vary', 'Accept');
+
 const featured = categories.flatMap((category) => category.products).filter((product) => product.isFeatured).slice(0, 8);
 const newProducts = categories.flatMap((category) => category.products).filter((product) => product.isNew).slice(0, 8);
 
@@ -59,11 +68,6 @@ const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
 const whatsappUrl = whatsappDigits
   ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
   : null;
-const socialLinks = [
-  { href: settings.instagramUrl, label: 'Instagram' },
-  { href: settings.facebookUrl, label: 'Facebook' },
-  { href: settings.tiktokUrl, label: 'TikTok' },
-].filter((link) => link.href);
 const steps = [
   { title: 'Planea con tiempo', text: `Mínimo ${settings.minLeadTimeDays} días de anticipación.`, icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z' },
   { title: 'Confirma tu pedido', text: `Confirma con el ${settings.depositPct}% de anticipo.`, icon: 'M12 2v20m5-15H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6' },
@@ -210,27 +214,7 @@ const steps = [
     </div>
   </section>}
 
-  <section id="contacto" class="bg-canvas-deep py-16 text-text lg:py-24" aria-labelledby="contacto-title">
-    <div class="site-container grid gap-8 md:grid-cols-2 lg:gap-16">
-      <div class="min-w-0">
-        <h2 id="contacto-title" class="text-heading-lg text-text">Hablemos de tu celebración</h2>
-        <p class="mt-4 text-body-lg">Cuéntanos qué tienes en mente. Te ayudamos a elegir un recuerdo para ese día especial.</p>
-        <p class="mt-4 text-body">{settings.city}, {settings.state}</p>
-        <p class="mt-2 text-body">Entregas solo en {settings.city}.</p>
-      </div>
-      <div class="min-w-0 rounded-card bg-surface p-6">
-        <address class="flex flex-col items-start gap-2 not-italic">
-          {whatsappUrl && <a href={whatsappUrl} class="button button-outline">Escríbenos por WhatsApp</a>}
-          {settings.phone && <a href={`tel:${settings.phone}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.phone}</a>}
-          {settings.email && <a href={`mailto:${settings.email}`} class="flex min-h-11 max-w-full items-center text-body text-action hover:underline [overflow-wrap:anywhere]">{settings.email}</a>}
-        </address>
-        {settings.businessHours && <><h3 class="mt-6 text-heading-sm text-text">Horario de atención</h3><p class="mt-2 whitespace-pre-line text-body [overflow-wrap:anywhere]">{settings.businessHours}</p></>}
-        {socialLinks.length > 0 && <nav aria-label="Síguenos en redes sociales" class="mt-6 flex flex-wrap gap-x-6">
-          {socialLinks.map(({ href, label }) => <a href={href!} class="flex min-h-11 items-center text-body text-action hover:underline">{label}</a>)}
-        </nav>}
-      </div>
-    </div>
-  </section>
+  <ContactSection settings={settings} />
 </Layout>
 
 <script>

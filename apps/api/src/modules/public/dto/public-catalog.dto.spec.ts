@@ -18,6 +18,7 @@ it('marca solo novedades vigentes y omite newUntil en la respuesta publica', () 
       description: null,
       isFeatured: false,
       newUntil,
+      updatedAt: new Date(now),
       allowsFragrance: true,
       images: [],
       candle: null,
@@ -31,5 +32,6 @@ it('marca solo novedades vigentes y omite newUntil en la respuesta publica', () 
   expect(result.products.map((product) => product.isNew)).toEqual([true, false, false]);
   for (const product of result.products) {
     expect(product).not.toHaveProperty('newUntil');
+    expect(product.updatedAt).toEqual(new Date(now));
   }
 });

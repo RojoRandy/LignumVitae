@@ -20,7 +20,7 @@ const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
 const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}` : null;
 ---
 
-<Layout title="Mi cotización · Lignum Vitae" description="Revisa tus productos y solicita tu cotización.">
+<Layout title="Mi cotización · Lignum Vitae" description="Revisa tus productos y solicita tu cotización." noindex>
   <section class="site-container py-16 lg:py-24" aria-labelledby="cotizar-title">
     <h1 id="cotizar-title" class="text-display-lg text-brand">Mi cotización</h1>
 
