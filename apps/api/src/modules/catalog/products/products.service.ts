@@ -196,7 +196,8 @@ export class ProductsService {
    * se compara contra el piso de margen de Configuracion.
    */
   async setPriceOverride(id: number, dto: SetPriceOverrideDto) {
-    const product = await this.findById(id);
+    // Recostea antes de validar para usar el mismo costo del panel y no un costo guardado viejo.
+    const product = await this.recalculateProductCostingUseCase.execute(id);
     const settings = await this.settingsService.get();
     const unitTotalCost = product.unitTotalCost.toNumber();
     const minMarginPct = settings.minMarginPct.toNumber();

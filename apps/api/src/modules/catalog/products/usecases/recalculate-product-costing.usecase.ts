@@ -70,6 +70,7 @@ export class RecalculateProductCostingUseCase implements UseCase<number, Product
       retailMarkupPct: settings.retailMarkupPct.toNumber(),
       wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
       roundingMultiple: settings.roundingMultiple.toNumber(),
+      minMarginPct: settings.minMarginPct.toNumber(),
     });
 
     await this.productRepository.updateCosting(productId, {
@@ -97,6 +98,7 @@ export class RecalculateProductCostingUseCase implements UseCase<number, Product
         retailMarkupPct: settings.retailMarkupPct.toNumber(),
         wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
         roundingMultiple: settings.roundingMultiple.toNumber(),
+        minMarginPct: settings.minMarginPct.toNumber(),
         // resolvedSupplies queda fuera: es plano BOM-por-linea para congelar
         // en una cotizacion, no algo que costingBasis necesite mostrar.
         breakdown: { ...breakdownForBasis },

@@ -85,6 +85,7 @@ export const CostPreviewPanel = ({ input, overrides }: {
                     {formatMoney(isManual ? override : price.suggestedPrice)}
                   </p>
                   <p className="text-caption text-text-muted">Margen {formatPercent(marginPct)}</p>
+                  {!isManual && price.floorApplied && (<p className="text-caption text-text-faint">Subido al margen minimo</p>)}
                   {isManual && (
                     <p className="text-caption text-text-faint">Sugerido {formatMoney(price.suggestedPrice)}</p>
                   )}

@@ -22,8 +22,8 @@ export interface PreviewCostInput {
 export interface PreviewCostResult {
   breakdown: ProductCostBreakdownJson;
   prices: {
-    retail: { rawPrice: number; suggestedPrice: number; markupPct: number; marginPct: number };
-    wholesale: { rawPrice: number; suggestedPrice: number; markupPct: number; marginPct: number };
+    retail: { rawPrice: number; suggestedPrice: number; markupPct: number; marginPct: number; floorApplied: boolean };
+    wholesale: { rawPrice: number; suggestedPrice: number; markupPct: number; marginPct: number; floorApplied: boolean };
   };
 }
 

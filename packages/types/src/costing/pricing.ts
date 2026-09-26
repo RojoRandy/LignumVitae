@@ -33,13 +33,16 @@ export interface PricingPolicy {
   retailMarkupPct: number;
   wholesaleMarkupPct: number;
   roundingMultiple: number;
+  minMarginPct?: number;
 }
 
 export interface TierPrice {
   /** costo x (1 + markup/100), SIN redondear. */
   rawPrice: number;
-  /** rawPrice redondeado siempre HACIA ARRIBA al multiplo. */
+  /** Precio con piso de margen, redondeado siempre HACIA ARRIBA al multiplo. */
   suggestedPrice: number;
+  /** Indica si el piso de margen elevo el precio sugerido final. */
+  floorApplied: boolean;
   markupPct: number;
   /** Margen sobre el precio YA redondeado, para que la UI no muestre dos numeros que no cuadran. */
   marginPct: number;
@@ -50,12 +53,22 @@ export interface SuggestedPrices {
   wholesale: TierPrice;
 }
 
-const buildTierPrice = (unitTotalCost: number, markupPct: number, roundingMultiple: number): TierPrice => {
+const buildTierPrice = (
+  unitTotalCost: number,
+  markupPct: number,
+  roundingMultiple: number,
+  minMarginPct?: number,
+): TierPrice => {
   // [Excel: Z = Y*1.5+1  (menudeo, con el "+1" de aroma escondido)
   //         AC = Y*1.4     (mayoreo, sin el "+1")]
   // Aqui no hay "+1": el aroma es un renglon explicito de la cotizacion.
   const rawPrice = money(unitTotalCost).times(money(1).plus(money(markupPct).dividedBy(100)));
-  const suggestedPrice = ceilToMultiple(rawPrice, roundingMultiple);
+  const markupPrice = ceilToMultiple(rawPrice, roundingMultiple);
+  let suggestedPrice = markupPrice;
+  if (minMarginPct !== undefined && money(minMarginPct).greaterThan(0) && money(minMarginPct).lessThan(100)) {
+    const floorPrice = money(unitTotalCost).dividedBy(money(1).minus(money(minMarginPct).dividedBy(100)));
+    suggestedPrice = ceilToMultiple(floorPrice.greaterThan(rawPrice) ? floorPrice : rawPrice, roundingMultiple);
+  }
   const marginPct = suggestedPrice.greaterThan(0)
     ? round2(suggestedPrice.minus(unitTotalCost).dividedBy(suggestedPrice).times(100))
     : money(0);
@@ -63,14 +76,15 @@ const buildTierPrice = (unitTotalCost: number, markupPct: number, roundingMultip
   return {
     rawPrice: round2(rawPrice).toNumber(),
     suggestedPrice: suggestedPrice.toNumber(),
+    floorApplied: suggestedPrice.greaterThan(markupPrice),
     markupPct,
     marginPct: marginPct.toNumber(),
   };
 };
 
 export const suggestPrices = (unitTotalCost: number, policy: PricingPolicy): SuggestedPrices => ({
-  retail: buildTierPrice(unitTotalCost, policy.retailMarkupPct, policy.roundingMultiple),
-  wholesale: buildTierPrice(unitTotalCost, policy.wholesaleMarkupPct, policy.roundingMultiple),
+  retail: buildTierPrice(unitTotalCost, policy.retailMarkupPct, policy.roundingMultiple, policy.minMarginPct),
+  wholesale: buildTierPrice(unitTotalCost, policy.wholesaleMarkupPct, policy.roundingMultiple, policy.minMarginPct),
 });
 
 export interface MinMarginCheck {

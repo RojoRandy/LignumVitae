@@ -92,6 +92,7 @@ export class PreviewProductCostingUseCase implements UseCase<PreviewProductCostD
       retailMarkupPct: settings.retailMarkupPct.toNumber(),
       wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
       roundingMultiple: settings.roundingMultiple.toNumber(),
+      minMarginPct: settings.minMarginPct.toNumber(),
     });
 
     return { breakdown, prices };

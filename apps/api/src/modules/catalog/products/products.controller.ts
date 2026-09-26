@@ -11,6 +11,7 @@ import { UpdateProductImageDto } from './dto/update-product-image.dto';
 import { PreviewProductCostDto } from './dto/preview-product-cost.dto';
 import { FindProductsQueryDto } from './dto/find-products.query.dto';
 import { PreviewProductCostingUseCase } from './usecases/preview-product-costing.usecase';
+import { RecalculateAllProductsUseCase } from './usecases/recalculate-all-products.usecase';
 
 @ApiTags('Catalog')
 @Auth()
@@ -19,6 +20,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly previewProductCostingUseCase: PreviewProductCostingUseCase,
+    private readonly recalculateAllProductsUseCase: RecalculateAllProductsUseCase,
   ) {}
 
   // Sin @Auth adicional: hereda el @Auth() de la clase (cualquier
@@ -32,6 +34,13 @@ export class ProductsController {
   @Post('apply-suggested-prices')
   applySuggestedPrices() {
     return this.productsService.applySuggestedPrices();
+  }
+
+  // Recalcula costo y precio sugerido de todo el catalogo a peticion para reparar costos viejos.
+  @Auth(UserRoles.admin, UserRoles.super_user)
+  @Post('recalculate-all')
+  recalculateAll() {
+    return this.recalculateAllProductsUseCase.execute();
   }
 
   @Get()
