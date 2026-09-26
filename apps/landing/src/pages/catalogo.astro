@@ -110,8 +110,9 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
         </button>
       </header>
       <div data-filters-slot class="flex-1 overflow-y-auto p-4 [&>#catalog-filters]:flex"></div>
-      <footer class="border-t border-border p-4">
-        <button type="button" data-filters-close data-filters-results class="button w-full bg-action text-surface hover:bg-action-hover">Ver productos</button>
+      <footer class="flex gap-3 border-t border-border p-4">
+        <button type="button" data-clear-all disabled class="button button-outline shrink-0 disabled:cursor-not-allowed disabled:opacity-50">Limpiar</button>
+        <button type="button" data-filters-close data-filters-results class="button flex-1 bg-action text-surface hover:bg-action-hover">Ver productos</button>
       </footer>
     </dialog>
     </>
@@ -126,6 +127,8 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     :global(html:has(.catalog-results)) { scroll-padding-top: 6rem; }
   }
   .catalog-results { overflow-anchor: none; }
+  /* En el modal, "Limpiar" del footer reemplaza al enlace del panel. */
+  [data-filters-slot] [data-clear-filters] { display: none; }
 </style>
 
 <script>
@@ -147,6 +150,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
   const filtersSlot = filtersDialog?.querySelector<HTMLElement>('[data-filters-slot]');
   const filtersHome = document.querySelector<HTMLElement>('.filters-panel');
   const resultsButton = document.querySelector<HTMLElement>('[data-filters-results]');
+  const clearAllButton = document.querySelector<HTMLButtonElement>('[data-clear-all]');
 
   filtersToggle?.addEventListener('click', () => {
     if (!filtersDialog || !filtersSlot || !filtersBody) return;
@@ -226,6 +230,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     if (resultsButton) resultsButton.textContent = resultsLabel(visibleCount);
 
     clearButtons.forEach((button) => { button.hidden = !anyFilter; });
+    if (clearAllButton) clearAllButton.disabled = !anyFilter;
     if (emptyState) emptyState.hidden = !anyFilter || visibleCount > 0;
   };
 
@@ -236,7 +241,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     keepResultsInView(checkbox);
   }));
 
-  clearButtons.forEach((button) => button.addEventListener('click', () => {
+  [...clearButtons, ...(clearAllButton ? [clearAllButton] : [])].forEach((button) => button.addEventListener('click', () => {
     if (searchInput) searchInput.value = '';
     categoryCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     candleCheckboxes.forEach((checkbox) => { checkbox.checked = false; });

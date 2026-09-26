@@ -293,6 +293,33 @@ test.describe('móvil', () => {
     await expect(page.getByRole('button', { name: 'Filtros (1)', exact: true })).toBeVisible();
   });
 
+  test('Limpiar en el modal quita todos los filtros y queda a la izquierda de Ver productos', async ({ page }) => {
+    await page.goto('/catalogo');
+    const total = await page.locator('.product-card').count();
+
+    await page.locator('[data-filters-toggle]').click();
+    const dialog = page.getByRole('dialog', { name: 'Filtros' });
+    const clearAll = dialog.getByRole('button', { name: 'Limpiar', exact: true });
+    const resultsButton = dialog.locator('[data-filters-results]');
+    await expect(clearAll).toBeDisabled();
+    const clearBox = (await clearAll.boundingBox())!;
+    const resultsBox = (await resultsButton.boundingBox())!;
+    expect(clearBox.x + clearBox.width).toBeLessThanOrEqual(resultsBox.x);
+    expect(Math.abs((clearBox.y + clearBox.height / 2) - (resultsBox.y + resultsBox.height / 2))).toBeLessThanOrEqual(4);
+    await expect(dialog.locator('[data-clear-filters]')).toBeHidden();
+
+    await dialog.locator('input[data-filter-category]').first().check();
+    await dialog.locator('input[data-filter-candle]:visible').first().check();
+    await expect(clearAll).toBeEnabled();
+
+    await clearAll.click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('input[type="checkbox"]:checked')).toHaveCount(0);
+    await expect(resultsButton).toHaveText(`Ver ${total} productos`);
+    await expect(clearAll).toBeDisabled();
+    await expect(page.locator('[data-filters-count]')).toBeHidden();
+  });
+
   test('Escape y la X cierran el modal', async ({ page }) => {
     await page.goto('/catalogo');
 
