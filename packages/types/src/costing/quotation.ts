@@ -33,9 +33,17 @@ export interface QuotationTotalsInput {
   discountValue: number;
   depositPct: number;
   roundingMultiple: number;
+  /**
+   * true (default, historico): todas las piezas se suman para decidir
+   * menudeo/mayoreo. false: cada renglon decide con su propia cantidad, para
+   * cotizar productos por separado dentro de la misma cotizacion.
+   */
+  accumulatePieces?: boolean;
 }
 
 export interface QuotationLineTotals {
+  /** Bracket que le toco a ESTE renglon (igual en todos si se acumula). */
+  priceTier: PriceTier;
   unitListPrice: number;
   unitPrice: number;
   /** unitPrice - unitListPrice - aroma. Alimenta el reporte de fuga de margen. */
@@ -70,11 +78,21 @@ const applyAdjustment = (base: number, type: AdjustmentType, value: number) => {
 
 export const calculateQuotationTotals = (input: QuotationTotalsInput): QuotationTotals => {
   const totalQuantity = input.items.reduce((acc, item) => acc + item.quantity, 0);
-  // El bracket se resuelve UNA vez para TODO el pedido, no por renglon.
-  const priceTier = resolvePriceTier(totalQuantity, input.wholesaleThresholdQty);
+  // Por default el bracket se resuelve UNA vez para TODO el pedido; sin
+  // acumular, cada renglon lo resuelve con su propia cantidad.
+  const accumulate = input.accumulatePieces ?? true;
+  const orderTier = resolvePriceTier(totalQuantity, input.wholesaleThresholdQty);
+  const lineTiers = input.items.map((item) =>
+    accumulate ? orderTier : resolvePriceTier(item.quantity, input.wholesaleThresholdQty),
+  );
+  // Sin acumular, el encabezado solo es mayoreo si TODOS los renglones lo son.
+  const priceTier: PriceTier = accumulate
+    ? orderTier
+    : lineTiers.every((t) => t === 'WHOLESALE') ? 'WHOLESALE' : 'RETAIL';
 
-  const items: QuotationLineTotals[] = input.items.map((item) => {
-    const unitListPrice = priceTier === 'WHOLESALE' ? item.wholesalePrice : item.retailPrice;
+  const items: QuotationLineTotals[] = input.items.map((item, i) => {
+    const lineTier = lineTiers[i];
+    const unitListPrice = lineTier === 'WHOLESALE' ? item.wholesalePrice : item.retailPrice;
     const base = item.unitPriceOverride ?? unitListPrice;
     const fragranceCharge = item.withFragrance ? input.fragranceSurcharge : 0;
     const unitPrice = round2(money(base).plus(fragranceCharge));
@@ -87,6 +105,7 @@ export const calculateQuotationTotals = (input: QuotationTotalsInput): Quotation
     const lineMargin = lineTotal.minus(lineCost);
 
     return {
+      priceTier: lineTier,
       unitListPrice: round2(unitListPrice).toNumber(),
       unitPrice: unitPrice.toNumber(),
       priceVariance: priceVariance.toNumber(),

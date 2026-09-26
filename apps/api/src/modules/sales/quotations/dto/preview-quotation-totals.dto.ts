@@ -21,4 +21,8 @@ export class PreviewQuotationTotalsDto {
   discountType?: AdjustmentType;
   @ApiPropertyOptional({ default: 0 }) @IsOptional() @Type(() => Number) @IsNumber() @Min(0) discountValue?: number;
   @ApiPropertyOptional({ default: 0 }) @IsOptional() @Type(() => Number) @IsNumber() @Min(0) shippingCost?: number;
+  @ApiPropertyOptional({ default: true, description: 'false = cada renglon decide menudeo/mayoreo con su propia cantidad' })
+  @IsOptional()
+  @IsBoolean()
+  accumulatePieces?: boolean;
 }

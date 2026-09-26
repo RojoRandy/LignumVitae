@@ -3,14 +3,13 @@ import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, Matches } from 'c
 
 export class CreateCustomerDto {
   @ApiProperty() @IsString() @IsNotEmpty() fullName: string;
-  // Hasta aqui el telefono no se validaba en NINGUNA capa y "asdf" entraba
-  // tal cual. Diez digitos, sin espacios ni guiones: es el formato con el
-  // que se marca en Mexico y el unico que se captura en este negocio.
-  @ApiProperty({ example: '3312345678' })
+  // El telefono es opcional porque hay clientes que no lo dan.
+  // Si se captura, deben ser 10 digitos, sin espacios ni guiones.
+  @ApiPropertyOptional({ example: '3312345678' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^\d{10}$/, { message: 'El telefono debe tener exactamente 10 digitos' })
-  phone: string;
+  phone?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() address?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;

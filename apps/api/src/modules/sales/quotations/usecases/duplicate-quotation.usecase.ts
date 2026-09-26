@@ -53,6 +53,7 @@ export class DuplicateQuotationUseCase implements UseCase<DuplicateQuotationArgs
       discountType: source.discountType,
       discountValue: source.discountValue.toNumber(),
       shippingCost: source.shippingCost.toNumber(),
+      accumulatePieces: source.accumulatePieces,
       items,
     };
 

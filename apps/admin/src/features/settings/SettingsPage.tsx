@@ -86,6 +86,7 @@ export default function SettingsPage() {
           <TabsTrigger value="costeo">Costeo</TabsTrigger>
           <TabsTrigger value="precios">Precios</TabsTrigger>
           <TabsTrigger value="textos">Textos</TabsTrigger>
+          <TabsTrigger value="cobro">Cobro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="identidad">
@@ -281,6 +282,24 @@ export default function SettingsPage() {
             </Field>
             <Field label="Politica de pedidos" htmlFor="orderPolicyText">
               <Textarea id="orderPolicyText" rows={3} value={form.orderPolicyText ?? ''} onChange={(e) => set('orderPolicyText', e.target.value)} />
+            </Field>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="cobro">
+          <Card className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+            <p className="text-body-sm text-text-muted sm:col-span-2">Cuenta para transferencias. Sale en la cotización y el PDF.</p>
+            <Field label="Banco" htmlFor="bankName">
+              <Input id="bankName" maxLength={80} value={form.bankName ?? ''} onChange={(e) => set('bankName', e.target.value)} />
+            </Field>
+            <Field label="Beneficiario" htmlFor="bankAccountHolder">
+              <Input id="bankAccountHolder" maxLength={80} value={form.bankAccountHolder ?? ''} onChange={(e) => set('bankAccountHolder', e.target.value)} />
+            </Field>
+            <Field label="CLABE" htmlFor="bankClabe" hint="18 dígitos">
+              <Input id="bankClabe" inputMode="numeric" maxLength={18} pattern="\d{18}" title="18 dígitos, sin espacios" value={form.bankClabe ?? ''} onChange={(e) => set('bankClabe', e.target.value)} />
+            </Field>
+            <Field label="Número de tarjeta" htmlFor="bankCardNumber" hint="16 dígitos">
+              <Input id="bankCardNumber" inputMode="numeric" maxLength={16} pattern="\d{16}" title="16 dígitos, sin espacios" value={form.bankCardNumber ?? ''} onChange={(e) => set('bankCardNumber', e.target.value)} />
             </Field>
           </Card>
         </TabsContent>

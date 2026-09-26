@@ -38,6 +38,34 @@ const build = (markedRows: number) => {
 
 const dto = { customerId: 1, quoteRequestId: 7, items: [{ productId: 1, quantity: 1 }] };
 
+it('acepta una fecha de evento de mañana (pedido express)', async () => {
+  const { useCase } = build(1);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  await expect(useCase.execute({
+    dto: { customerId: 1, eventDate: tomorrow.toISOString().slice(0, 10), items: [{ productId: 1, quantity: 1 }] },
+  })).resolves.toEqual({ id: 10 });
+});
+
+it('persiste accumulatePieces=false y lo pasa al costeo', async () => {
+  const { useCase, tx } = build(1);
+  const items = [{ productId: 1, quantity: 1 }];
+
+  await useCase.execute({ dto: { customerId: 1, accumulatePieces: false, items } });
+
+  expect(useCase.computePricing).toHaveBeenCalledWith(items, expect.objectContaining({ accumulatePieces: false }), expect.anything());
+  expect(tx.quotation.create).toHaveBeenCalledWith({ data: expect.objectContaining({ accumulatePieces: false }) });
+});
+
+it('sin la bandera guarda accumulatePieces=true (comportamiento historico)', async () => {
+  const { useCase, tx } = build(1);
+
+  await useCase.execute({ dto: { customerId: 1, items: [{ productId: 1, quantity: 1 }] } });
+
+  expect(tx.quotation.create).toHaveBeenCalledWith({ data: expect.objectContaining({ accumulatePieces: true }) });
+});
+
 it('marca la solicitud CONVERTED con la cotizacion nueva, dentro de la transaccion', async () => {
   const { useCase, tx, quoteRequestRepository } = build(1);
 

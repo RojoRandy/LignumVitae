@@ -822,7 +822,7 @@ enum QuoteRequestStatus {
 model Customer {
   id        Int      @id @default(autoincrement())
   fullName  String   @map("full_name")
-  phone     String
+  phone     String?
   whatsapp  String?
   email     String?
   address   String?
@@ -878,7 +878,7 @@ model Quotation {
 
   issuedAt   DateTime  @default(now()) @map("issued_at")
   validUntil DateTime  @map("valid_until")
-  /// Fecha del evento. Se valida contra Settings.minLeadTimeDays.
+  /// Fecha del evento. Sin minimo de anticipacion: se aceptan pedidos express.
   eventDate  DateTime? @map("event_date") @db.Date
 
   // --- BASE DE COSTEO CONGELADA. Se COPIA de Settings al crear y jamas se
@@ -896,6 +896,8 @@ model Quotation {
   depositPct            Decimal @map("deposit_pct") @db.Decimal(5, 2)
 
   // --- Resultado. Todo lo calcula el servidor con calculateQuotationTotals.
+  /// true = suma todas las piezas para decidir menudeo/mayoreo (historico); false = cada renglon decide su bracket con su propia cantidad.
+  accumulatePieces Boolean @default(true) @map("accumulate_pieces")
   priceTier       PriceTier      @map("price_tier")
   totalQuantity   Int            @map("total_quantity")
   totalWaxGrams   Decimal        @map("total_wax_grams") @db.Decimal(14, 3)
@@ -1251,6 +1253,13 @@ model Settings {
   quotationTerms      String @default("") @map("quotation_terms")
   quotationFooterNote String @default("") @map("quotation_footer_note")
   orderPolicyText     String @default("") @map("order_policy_text")
+
+  // --- Cuenta para transferencias
+  /// Cuenta vigente en la cotizacion publica y el PDF; no se congela en la cotizacion.
+  bankName          String @default("") @map("bank_name")
+  bankAccountHolder String @default("") @map("bank_account_holder")
+  bankClabe         String @default("") @map("bank_clabe")
+  bankCardNumber    String @default("") @map("bank_card_number")
 
   // --- Folios
   quotationFolioPrefix String @default("COT") @map("quotation_folio_prefix")

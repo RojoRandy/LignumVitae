@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { OverheadRateMode } from '@prisma/client';
 
 export class UpdateSettingsDto {
@@ -65,6 +65,14 @@ export class UpdateSettingsDto {
   @ApiPropertyOptional() @IsOptional() @IsString() quotationTerms?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() quotationFooterNote?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() orderPolicyText?: string;
+
+  // --- Cuenta para transferencias. Vacio = borrar el dato.
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) bankName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) bankAccountHolder?: string;
+  @ApiPropertyOptional({ description: 'CLABE de 18 digitos o vacio' })
+  @IsOptional() @IsString() @Matches(/^(\d{18})?$/, { message: 'La CLABE debe tener exactamente 18 digitos' }) bankClabe?: string;
+  @ApiPropertyOptional({ description: 'Tarjeta de 16 digitos o vacio' })
+  @IsOptional() @IsString() @Matches(/^(\d{16})?$/, { message: 'La tarjeta debe tener exactamente 16 digitos' }) bankCardNumber?: string;
 
   // --- Folios
   @ApiPropertyOptional() @IsOptional() @IsString() @Matches(/^[A-Z]{2,6}$/) quotationFolioPrefix?: string;

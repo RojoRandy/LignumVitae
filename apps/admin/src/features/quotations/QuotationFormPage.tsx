@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -47,6 +48,9 @@ export default function QuotationFormPage() {
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountType, setDiscountType] = useState<AdjustmentTypeValue>('PERCENTAGE');
   const [discountValue, setDiscountValue] = useState<number | null>(0);
+  // Marcada por default: es el comportamiento historico (todo el pedido suma
+  // para decidir menudeo/mayoreo).
+  const [accumulatePieces, setAccumulatePieces] = useState(true);
   const [shippingCost, setShippingCost] = useState<number | null>(0);
   const [rows, setRows] = useState<QuotationLineItemRow[]>([]);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
@@ -83,6 +87,7 @@ export default function QuotationFormPage() {
     setDiscountType(existing.discountType);
     setDiscountValue(Number(existing.discountValue));
     setShippingCost(Number(existing.shippingCost));
+    setAccumulatePieces(existing.accumulatePieces);
     setRows(
       (existing.items ?? []).map((item) => ({
         productId: item.productId,
@@ -184,10 +189,11 @@ export default function QuotationFormPage() {
         discountType,
         discountValue: discountValue ?? 0,
         shippingCost: shippingCost ?? 0,
+        accumulatePieces,
       },
       previewIndexByRow,
     };
-  }, [rows, discountEnabled, discountType, discountValue, shippingCost]);
+  }, [rows, discountEnabled, discountType, discountValue, shippingCost, accumulatePieces]);
 
   const {
     data: preview,
@@ -226,6 +232,7 @@ export default function QuotationFormPage() {
       discountType,
       discountValue: discountValue ?? 0,
       shippingCost: shippingCost ?? 0,
+      accumulatePieces,
       items: previewInput.items,
       quoteRequestId: fromRequest?.id,
     });
@@ -301,7 +308,7 @@ export default function QuotationFormPage() {
               <Field
                 label="Fecha del evento"
                 hint="Opcional"
-                tooltip="Si la capturas, el pedido resultante hereda esta fecha como su entrega comprometida. Debe respetar el minimo de dias de anticipacion de Configuracion."
+                tooltip="Si la capturas, el pedido hereda esta fecha como entrega comprometida. Acepta pedidos express."
               >
                 <DatePicker value={eventDate} onChange={setEventDate} placeholder="Sin fecha de evento" />
               </Field>
@@ -321,12 +328,20 @@ export default function QuotationFormPage() {
               previews={rows.map((_row, rowIndex) => {
                 const idx = previewIndexByRow[rowIndex];
                 const item = idx === undefined ? undefined : preview?.totals.items[idx];
-                return item ? { unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
+                return item ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
               })}
             />
           </Card>
 
           <Card className="flex flex-col gap-4 p-4">
+            <label className="flex items-start gap-3">
+              <Checkbox className="mt-0.5" checked={accumulatePieces} onCheckedChange={(checked) => setAccumulatePieces(checked === true)} />
+              <span>
+                <span className="block text-body-sm font-medium text-text">Acumular piezas</span>
+                <span className="block text-caption text-text-muted">Suma todas las piezas para decidir menudeo o mayoreo. Desmárcala para cotizar cada renglón por su cantidad.</span>
+              </span>
+            </label>
+            <Separator />
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-body-sm font-medium text-text">Descuento</p>

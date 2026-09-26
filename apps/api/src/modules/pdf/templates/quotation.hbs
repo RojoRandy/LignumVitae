@@ -3,37 +3,54 @@
 <head>
 <meta charset="utf-8" />
 <style>
+  /* Paleta de marca: valores de packages/tailwind-preset/brand.json, mismo
+     criterio que apps/admin/src/styles/tokens.css. Ningun otro hex en esta plantilla. */
+  :root {
+    --accent: #3D6660;         /* teal-700 */
+    --ink: #26302A;            /* ink */
+    --muted: #5C6E63;          /* moss-600 */
+    --surface-sunken: #F7F4EC; /* cream-50 */
+    --border-strong: #B2CBAE;  /* sage-300 */
+    --border: #E9E3D3;         /* cream-100 */
+  }
   * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #2b2620; margin: 0; padding: 0; font-size: 12px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 32px 16px; border-bottom: 2px solid #7a5c3e; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--ink); margin: 0; padding: 0; font-size: 12px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 32px 16px; border-bottom: 2px solid var(--accent); }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand img { height: 48px; }
-  .brand-name { font-size: 22px; font-weight: 700; color: #7a5c3e; }
-  .contact { font-size: 11px; color: #6b645a; margin-top: 4px; }
+  .brand img { height: 64px; width: 64px; }
+  .brand-name { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .contact { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .doc-info { text-align: right; }
   .doc-title { font-size: 18px; font-weight: 700; }
-  .folio { font-size: 13px; color: #6b645a; }
-  .dates { font-size: 11px; color: #6b645a; margin-top: 4px; }
+  .folio { font-size: 13px; color: var(--muted); }
+  .dates { font-size: 11px; color: var(--muted); margin-top: 4px; }
   .section { padding: 16px 32px; }
-  .customer-box { background: #f7f4ef; border-radius: 8px; padding: 12px 16px; }
+  .customer-box { background: var(--surface-sunken); border-radius: 8px; padding: 12px 16px; }
   .customer-box .name { font-weight: 700; font-size: 14px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b645a; padding: 6px 8px; border-bottom: 1px solid #d8d1c5; }
-  td { padding: 8px; border-bottom: 1px solid #ece7dc; font-size: 11px; vertical-align: top; }
+  th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border-strong); }
+  td { padding: 8px; border-bottom: 1px solid var(--border); font-size: 11px; vertical-align: top; }
   .num { text-align: right; white-space: nowrap; }
-  .detail { color: #6b645a; font-size: 10px; }
+  .detail { color: var(--muted); font-size: 10px; }
   .totals { width: 280px; margin-left: auto; margin-top: 12px; }
   .totals .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
-  .totals .total-row { font-weight: 700; font-size: 15px; border-top: 2px solid #2b2620; padding-top: 8px; margin-top: 4px; }
-  .totals .deposit-row { color: #7a5c3e; font-weight: 700; }
-  .terms { margin-top: 24px; font-size: 10px; color: #6b645a; white-space: pre-line; }
-  .footer { padding: 16px 32px 32px; font-size: 10px; color: #999; text-align: center; }
+  .totals .total-row { font-weight: 700; font-size: 15px; border-top: 2px solid var(--ink); padding-top: 8px; margin-top: 4px; }
+  .totals .deposit-row { color: var(--accent); font-weight: 700; }
+  .product { display: flex; align-items: center; gap: 8px; }
+  .product img { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  .bank { width: 280px; margin-left: auto; margin-top: 16px; background: var(--surface-sunken); border-radius: 8px; padding: 10px 14px; font-size: 11px; }
+  .bank .title { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .bank .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .bank .label { color: var(--muted); }
+  .bank .value { font-weight: 600; letter-spacing: 0.02em; }
+  .terms { margin-top: 24px; font-size: 10px; color: var(--muted); white-space: pre-line; }
+  .footer { padding: 16px 32px 32px; font-size: 10px; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
   <div class="header">
     <div class="brand">
-      {{#if logoUrl}}<img src="{{logoUrl}}" alt="{{brandName}}" />{{/if}}
+      <img src="{{logoSrc}}" alt="{{brandName}}" />
       <div>
         <div class="brand-name">{{brandName}}</div>
         <div class="contact">{{phone}}{{#if whatsapp}} &middot; WhatsApp {{whatsapp}}{{/if}}{{#if email}} &middot; {{email}}{{/if}}</div>
@@ -67,7 +84,7 @@
       <tbody>
         {{#each items}}
         <tr>
-          <td>{{product.name}}</td>
+          <td><div class="product">{{#if imageUrl}}<img src="{{imageUrl}}" alt="" />{{/if}}<span>{{product.name}}</span></div></td>
           <td class="detail">
             {{#if candleColor}}Color: {{candleColor}}<br />{{/if}}
             {{#if ribbonColor}}Liston: {{ribbonColor}}<br />{{/if}}
@@ -90,6 +107,16 @@
       <div class="row total-row"><span>Total</span><span>{{money total}}</span></div>
       <div class="row deposit-row"><span>Anticipo requerido</span><span>{{money depositAmount}}</span></div>
     </div>
+
+    {{#if bankAccount}}
+    <div class="bank">
+      <div class="title">Datos para transferencia</div>
+      {{#if bankAccount.bankName}}<div class="row"><span class="label">Banco</span><span class="value">{{bankAccount.bankName}}</span></div>{{/if}}
+      {{#if bankAccount.accountHolder}}<div class="row"><span class="label">Beneficiario</span><span class="value">{{bankAccount.accountHolder}}</span></div>{{/if}}
+      {{#if bankAccount.clabe}}<div class="row"><span class="label">CLABE</span><span class="value">{{bankAccount.clabe}}</span></div>{{/if}}
+      {{#if bankAccount.cardNumber}}<div class="row"><span class="label">Tarjeta</span><span class="value">{{bankAccount.cardNumber}}</span></div>{{/if}}
+    </div>
+    {{/if}}
 
     {{#if terms}}<div class="terms">{{terms}}</div>{{/if}}
     {{#if notes}}<div class="terms">{{notes}}</div>{{/if}}

@@ -100,7 +100,12 @@ export default function OrderDetailPage() {
       <PageHeader
         backTo="/pedidos"
         title={order.folio}
-        badge={<Badge variant={order.status === 'CANCELLED' ? 'danger' : order.status === 'DELIVERED' ? 'success' : 'info'}>{STATUS_LABEL[order.status]}</Badge>}
+        badge={
+          <>
+            <Badge variant={order.status === 'CANCELLED' ? 'danger' : order.status === 'DELIVERED' ? 'success' : 'info'}>{STATUS_LABEL[order.status]}</Badge>
+            {order.customer && !order.customer.phone && <Badge variant="warning">Sin teléfono registrado</Badge>}
+          </>
+        }
         description={
           <>
             {order.customer?.fullName}

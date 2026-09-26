@@ -30,6 +30,53 @@
         "dev"
       ],
       "port": 5173
+    },
+    {
+      "name": "api-alt",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3100",
+        "CORS_ORIGINS=http://localhost:5273,http://localhost:4421",
+        "PUBLIC_SITE_URL=http://localhost:4421",
+        "pnpm",
+        "--filter",
+        "@lignumvitae/api",
+        "start:dev"
+      ],
+      "port": 3100
+    },
+    {
+      "name": "landing-alt",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PUBLIC_API_URL=http://localhost:3100/api",
+        "pnpm",
+        "--filter",
+        "@lignumvitae/landing",
+        "exec",
+        "astro",
+        "dev",
+        "--port",
+        "4421"
+      ],
+      "port": 4421
+    },
+    {
+      "name": "admin-alt",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_API_URL=http://localhost:3100/api",
+        "VITE_PUBLIC_SITE_URL=http://localhost:4421",
+        "pnpm",
+        "--filter",
+        "@lignumvitae/admin",
+        "exec",
+        "vite",
+        "--port",
+        "5273",
+        "--strictPort"
+      ],
+      "port": 5273
     }
   ]
 }

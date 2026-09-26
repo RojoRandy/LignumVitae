@@ -2,7 +2,7 @@
 // Link que la duena manda por WhatsApp o en el PDF: {PUBLIC_SITE_URL}/cotizacion/:token.
 // Abrirla la marca como VISTA en el admin (lo hace el API).
 import Layout from '../../layouts/Layout.astro';
-import { ApiError, getJson } from '../../lib/api';
+import { ApiError, getJson, imageUrl } from '../../lib/api';
 
 type QuotationStatus = 'DRAFT' | 'SENT' | 'VIEWED' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
 
@@ -15,6 +15,7 @@ interface PublicQuotation {
   customer: { fullName: string };
   items: {
     productName: string;
+    imageUrl: string | null;
     quantity: number;
     candleColor: string | null;
     ribbonColor: string | null;
@@ -33,6 +34,7 @@ interface PublicQuotation {
   depositAmount: string;
   terms: string | null;
   notes: string | null;
+  bankAccount: { bankName: string; accountHolder: string; clabe: string; cardNumber: string } | null;
 }
 
 interface PublicSettings {
@@ -48,7 +50,7 @@ const quotation = await getJson<PublicQuotation>(`/public/quotations/${encodeURI
 const settings = await getJson<PublicSettings>('/public/settings');
 
 const STATUS_LABEL: Record<QuotationStatus, string> = {
-  DRAFT: 'En preparación',
+  DRAFT: 'Pendiente de respuesta',
   SENT: 'Pendiente de respuesta',
   VIEWED: 'Pendiente de respuesta',
   ACCEPTED: 'Aceptada',
@@ -62,7 +64,7 @@ const formatMoney = (value: string) => money.format(Number(value));
 const formatDay = (value: string, timeZone = 'America/Mexico_City') =>
   new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone }).format(new Date(value));
 
-const canRespond = quotation !== null && (quotation.status === 'SENT' || quotation.status === 'VIEWED');
+const canRespond = quotation !== null && ['DRAFT', 'SENT', 'VIEWED'].includes(quotation.status);
 const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
 const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}` : null;
 ---
@@ -96,14 +98,19 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         <tbody>
           {quotation.items.map((item) => <tr class="border-b border-border align-top">
             <td class="py-4 pr-4 [overflow-wrap:anywhere]">
-              <p class="font-medium">{item.quantity} × {item.productName}</p>
-              <p class="mt-1 text-caption text-text-muted">{[
-                item.candleColor && `Vela: ${item.candleColor}`,
-                item.ribbonColor && `Listón: ${item.ribbonColor}`,
-                ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`),
-                item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null,
-                item.personalizationText,
-              ].filter(Boolean).join(' · ')}</p>
+              <div class="flex items-start gap-3">
+                {item.imageUrl && <img src={imageUrl(item.imageUrl)} alt={item.productName} width="56" height="56" loading="lazy" class="size-14 shrink-0 rounded-input object-cover" />}
+                <div>
+                  <p class="font-medium">{item.quantity} × {item.productName}</p>
+                  <p class="mt-1 text-caption text-text-muted">{[
+                    item.candleColor && `Vela: ${item.candleColor}`,
+                    item.ribbonColor && `Listón: ${item.ribbonColor}`,
+                    ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`),
+                    item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null,
+                    item.personalizationText,
+                  ].filter(Boolean).join(' · ')}</p>
+                </div>
+              </div>
             </td>
             <td class="py-4 text-right whitespace-nowrap">{formatMoney(item.unitPrice)}</td>
             <td class="py-4 pl-4 text-right whitespace-nowrap">{formatMoney(item.lineTotal)}</td>
@@ -118,6 +125,16 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         <div class="flex items-baseline justify-between border-t border-border pt-2"><dt class="font-medium">Total</dt><dd class="text-heading-lg text-brand">{formatMoney(quotation.total)}</dd></div>
         <div class="flex justify-between rounded-input bg-surface-tint p-3 font-medium"><dt>Anticipo para confirmar</dt><dd>{formatMoney(quotation.depositAmount)}</dd></div>
       </dl>
+
+      {quotation.bankAccount && <section class="mt-6 ml-auto max-w-xs rounded-input border border-border p-4 text-body-sm" aria-labelledby="bank-title">
+        <h2 id="bank-title" class="font-medium">Datos para transferencia</h2>
+        <dl class="mt-2 flex flex-col gap-1">
+          {quotation.bankAccount.bankName && <div class="flex justify-between gap-4"><dt class="text-text-muted">Banco</dt><dd>{quotation.bankAccount.bankName}</dd></div>}
+          {quotation.bankAccount.accountHolder && <div class="flex justify-between gap-4"><dt class="text-text-muted">Beneficiario</dt><dd class="text-right">{quotation.bankAccount.accountHolder}</dd></div>}
+          {quotation.bankAccount.clabe && <div class="flex justify-between gap-4"><dt class="text-text-muted">CLABE</dt><dd class="select-all font-medium tabular-nums tracking-wide">{quotation.bankAccount.clabe}</dd></div>}
+          {quotation.bankAccount.cardNumber && <div class="flex justify-between gap-4"><dt class="text-text-muted">Tarjeta</dt><dd class="select-all font-medium tabular-nums tracking-wide">{quotation.bankAccount.cardNumber}</dd></div>}
+        </dl>
+      </section>}
 
       {quotation.notes && <div class="mt-8"><h2 class="text-heading-sm">Notas</h2><p class="mt-2 whitespace-pre-line text-body-sm">{quotation.notes}</p></div>}
       {quotation.terms && <div class="mt-6"><h2 class="text-heading-sm">Términos</h2><p class="mt-2 whitespace-pre-line text-body-sm text-text-muted">{quotation.terms}</p></div>}

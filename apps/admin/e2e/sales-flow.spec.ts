@@ -7,7 +7,9 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { loginAsAdmin } from './helpers/auth';
 
-const API_URL = 'http://localhost:3000/api';
+const uid = () => `${Math.random().toString(36).slice(2, 8)}-${Date.now()}`;
+
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3000/api';
 const USERNAME = process.env.SEED_ADMIN_USERNAME ?? 'admin';
 const PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!';
 
@@ -24,28 +26,28 @@ const seedCatalogProduct = async (request: APIRequestContext, token: string) => 
   const auth = { Authorization: `Bearer ${token}` };
   const categoryRes = await request.post(`${API_URL}/categories`, {
     headers: auth,
-    data: { name: `E2E Cat ${Date.now()}`, colorHex: '#8A9A5B' },
+    data: { name: `E2E Cat ${uid()}`, colorHex: '#8A9A5B' },
   });
   const category = (await categoryRes.json()).data;
 
   const candleRes = await request.post(`${API_URL}/candles`, {
     headers: auth,
-    data: { name: `E2E Candle ${Date.now()}`, categoryId: category.id, grams: 100 },
+    data: { name: `E2E Candle ${uid()}`, categoryId: category.id, grams: 100 },
   });
   const candle = (await candleRes.json()).data;
 
   const productRes = await request.post(`${API_URL}/products`, {
     headers: auth,
-    data: { name: `E2E Product ${Date.now()}`, categoryId: category.id, kind: 'SIMPLE', candleId: candle.id },
+    data: { name: `${uid()} E2E Product`, categoryId: category.id, kind: 'SIMPLE', candleId: candle.id },
   });
   return (await productRes.json()).data;
 };
 
-const seedSentQuotation = async (request: APIRequestContext, token: string) => {
+const seedQuotation = async (request: APIRequestContext, token: string, status: 'DRAFT' | 'SENT') => {
   const auth = { Authorization: `Bearer ${token}` };
   const customerRes = await request.post(`${API_URL}/customers`, {
     headers: auth,
-    data: { fullName: `E2E Sales ${Date.now()}`, phone: '5551234567' },
+    data: { fullName: `E2E Sales ${uid()}`, phone: '5551234567' },
   });
   const customer = (await customerRes.json()).data;
 
@@ -57,7 +59,9 @@ const seedSentQuotation = async (request: APIRequestContext, token: string) => {
   });
   const quotation = (await quotationRes.json()).data;
 
-  await request.post(`${API_URL}/quotations/${quotation.id}/send`, { headers: auth });
+  if (status === 'SENT') {
+    await request.post(`${API_URL}/quotations/${quotation.id}/send`, { headers: auth });
+  }
 
   return { customer, quotation };
 };
@@ -66,7 +70,7 @@ test('crea una cotizacion, agrega un renglon y ve el total calculado', async ({ 
   const token = await apiLogin(request);
   await request.post(`${API_URL}/customers`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { fullName: `E2E Form ${Date.now()}`, phone: '5559876543' },
+    data: { fullName: `E2E Form ${uid()}`, phone: '5559876543' },
   });
   await seedCatalogProduct(request, token);
 
@@ -92,14 +96,14 @@ test('crea una cotizacion, agrega un renglon y ve el total calculado', async ({ 
 
 test('acepta una cotizacion enviada y registra un abono que confirma el pedido', async ({ page, request }) => {
   const token = await apiLogin(request);
-  const { quotation } = await seedSentQuotation(request, token);
+  const { quotation } = await seedQuotation(request, token, 'SENT');
 
   await loginAsAdmin(page);
   await page.goto(`/cotizaciones/${quotation.id}`);
   await expect(page.getByText('Enviada')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Aceptar y crear pedido' }).click();
-  await page.getByRole('button', { name: 'Aceptar y crear pedido' }).last().click();
+  await page.getByRole('button', { name: 'Convertir a pedido' }).click();
+  await page.getByRole('button', { name: 'Convertir a pedido' }).last().click();
 
   await expect(page).toHaveURL(/\/pedidos\/\d+$/);
   // El estado ya no es un <Select> disfrazado de boton: es un Badge de
@@ -115,4 +119,19 @@ test('acepta una cotizacion enviada y registra un abono que confirma el pedido',
 
   await expect(page.getByText('Confirmado')).toBeVisible();
   await expect(page.getByText('Anticipo cubierto')).toBeVisible();
+});
+
+test('convierte a pedido una cotizacion en borrador', async ({ page, request }) => {
+  const token = await apiLogin(request);
+  const { quotation } = await seedQuotation(request, token, 'DRAFT');
+
+  await loginAsAdmin(page);
+  await page.goto(`/cotizaciones/${quotation.id}`);
+  await expect(page.getByText('Borrador', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enviar', exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Convertir a pedido' }).click();
+  await page.getByRole('button', { name: 'Convertir a pedido' }).last().click();
+
+  await expect(page).toHaveURL(/\/pedidos\/\d+$/);
 });

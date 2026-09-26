@@ -64,7 +64,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
    *  mismos errores (producto invalido, piso de margen) que execute(). */
   async computePricing(
     items: (CreateQuotationDto | PreviewQuotationTotalsDto)['items'],
-    adjustments: Pick<CreateQuotationDto, 'discountEnabled' | 'discountType' | 'discountValue' | 'shippingCost'>,
+    adjustments: Pick<CreateQuotationDto, 'discountEnabled' | 'discountType' | 'discountValue' | 'shippingCost' | 'accumulatePieces'>,
     settings: Awaited<ReturnType<SettingsService['get']>>,
   ): Promise<QuotationPricingResult> {
     const closedPeriod = await this.overheadRepository.findMostRecentClosed();
@@ -132,6 +132,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       discountValue: adjustments.discountValue ?? 0,
       depositPct: settings.depositPct.toNumber(),
       roundingMultiple: settings.roundingMultiple.toNumber(),
+      accumulatePieces: adjustments.accumulatePieces ?? true,
     });
 
     // El piso de margen se valida sobre el precio YA calculado (con aroma
@@ -167,18 +168,6 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
 
     const settings = await this.settingsService.get();
 
-    if (dto.eventDate) {
-      const minEventDate = new Date();
-      minEventDate.setDate(minEventDate.getDate() + settings.minLeadTimeDays);
-      if (new Date(dto.eventDate) < minEventDate) {
-        throw SalesErrors.Exceptions.LEAD_TIME_TOO_SHORT({
-          eventDate: dto.eventDate,
-          minEventDate: minEventDate.toISOString().slice(0, 10),
-          minLeadTimeDays: settings.minLeadTimeDays,
-        });
-      }
-    }
-
     const { totals, costings, defaultWaxUnitCost, laborRatePerMinute, overheadRatePerMinute, totalWaxGrams } = await this.computePricing(
       dto.items,
       dto,
@@ -198,6 +187,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       fragranceSurcharge: settings.fragranceSurcharge,
       roundingMultiple: settings.roundingMultiple,
       depositPct: settings.depositPct,
+      accumulatePieces: dto.accumulatePieces ?? true,
       priceTier: totals.priceTier,
       totalQuantity: totals.totalQuantity,
       totalWaxGrams,

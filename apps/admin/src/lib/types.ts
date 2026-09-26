@@ -267,7 +267,7 @@ export type AdjustmentTypeValue = 'PERCENTAGE' | 'FIXED';
 export interface CustomerDto {
   id: number;
   fullName: string;
-  phone: string;
+  phone: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
@@ -308,7 +308,7 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   fragranceSupply?: { id: number; name: string } | null;
   personalizationText: string | null;
   setupMinutesOverride: number | null;
-  product?: { id: number; name: string };
+  product?: { id: number; name: string; images?: { url: string; alt: string | null }[] };
 }
 
 export interface QuotationDto {
@@ -320,6 +320,7 @@ export interface QuotationDto {
   issuedAt: string;
   validUntil: string;
   eventDate: string | null;
+  accumulatePieces: boolean;
   priceTier: PriceTierValue;
   totalQuantity: number;
   totalWaxGrams: string;
@@ -434,7 +435,7 @@ export interface TestimonialDto {
 export interface QuotationTotalsPreview {
   priceTier: PriceTierValue;
   totalQuantity: number;
-  items: { unitListPrice: number; unitPrice: number; priceVariance: number; lineTotal: number; lineCost: number; lineMargin: number }[];
+  items: { priceTier: PriceTierValue; unitListPrice: number; unitPrice: number; priceVariance: number; lineTotal: number; lineCost: number; lineMargin: number }[];
   subtotal: number;
   discountAmount: number;
   shippingCost: number;
@@ -595,6 +596,10 @@ export interface SettingsDto {
   quotationTerms: string;
   quotationFooterNote: string;
   orderPolicyText: string;
+  bankName: string;
+  bankAccountHolder: string;
+  bankClabe: string;
+  bankCardNumber: string;
   quotationFolioPrefix: string;
   orderFolioPrefix: string;
   purchaseFolioPrefix: string;
