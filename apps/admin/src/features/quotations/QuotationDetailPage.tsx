@@ -1,8 +1,9 @@
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Download, FileStack, MoreHorizontal, Pencil, RotateCcw, Send, Trash2, X } from 'lucide-react';
+import { Copy, Download, FileStack, MoreHorizontal, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
 import { downloadPdf, errorMessage, httpDelete, httpGet, httpPost } from '@/lib/http';
+import { staticUrl } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
 import { formatDate, formatMoney, formatPercent } from '@/lib/format';
@@ -27,6 +28,13 @@ const STATUS_TONE: Record<QuotationStatus, 'neutral' | 'info' | 'success' | 'dan
   DRAFT: 'neutral', SENT: 'info', VIEWED: 'info', ACCEPTED: 'success', REJECTED: 'danger', EXPIRED: 'warning',
 };
 
+/** Como se cotizaron los precios: se muestra en el detalle y se confirma
+ *  antes de convertir, para que nadie cree el pedido sin saberlo. */
+const pricingSummary = (q: QuotationDto) =>
+  q.accumulatePieces
+    ? `Acumuladas · ${q.priceTier === 'WHOLESALE' ? 'Mayoreo' : 'Menudeo'}`
+    : 'Precio por renglón';
+
 const PUBLIC_SITE_URL = import.meta.env.VITE_PUBLIC_SITE_URL ?? 'http://localhost:4321';
 
 export default function QuotationDetailPage() {
@@ -44,12 +52,6 @@ export default function QuotationDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['quotations'] });
     queryClient.invalidateQueries({ queryKey: ['quotations', id] });
   };
-
-  const sendMutation = useMutation({
-    mutationFn: () => httpPost(`/quotations/${id}/send`),
-    onSuccess: () => { invalidate(); toast.success('Cotizacion enviada'); },
-    onError: (error) => toast.error(errorMessage(error)),
-  });
 
   const rejectMutation = useMutation({
     mutationFn: () => httpPost(`/quotations/${id}/reject`),
@@ -129,9 +131,11 @@ export default function QuotationDetailPage() {
 
   const handleAccept = async () => {
     const ok = await confirm({
-      title: '¿Aceptar y crear pedido?',
-      description: 'Esto crea el pedido con el anticipo pendiente de cobrar. No se puede deshacer.',
-      confirmLabel: 'Aceptar y crear pedido',
+      title: '¿Convertir a pedido?',
+      description: quotation!.accumulatePieces
+        ? `Esta cotización acumula piezas: las ${quotation!.totalQuantity} piezas se cotizaron juntas a precio de ${quotation!.priceTier === 'WHOLESALE' ? 'mayoreo' : 'menudeo'}. ¿Crear el pedido con estos precios? No se puede deshacer.`
+        : 'Cada renglón se cotizó por su propia cantidad (menudeo o mayoreo). ¿Crear el pedido con estos precios? No se puede deshacer.',
+      confirmLabel: 'Convertir a pedido',
       variant: 'primary',
     });
     if (ok) acceptMutation.mutate();
@@ -150,8 +154,7 @@ export default function QuotationDetailPage() {
     );
   }
 
-  const canSend = quotation.status === 'DRAFT';
-  const canAcceptReject = quotation.status === 'SENT' || quotation.status === 'VIEWED';
+  const canConvert = quotation.status === 'DRAFT' || quotation.status === 'SENT' || quotation.status === 'VIEWED';
 
   return (
     <div className="flex flex-col gap-4">
@@ -162,22 +165,16 @@ export default function QuotationDetailPage() {
         badge={
           <>
             <Badge variant={STATUS_TONE[quotation.status]}>{STATUS_LABEL[quotation.status]}</Badge>
+            {quotation.customer && !quotation.customer.phone && <Badge variant="warning">Sin teléfono registrado</Badge>}
             {!quotation.isActive && <Badge variant="neutral">Dada de baja</Badge>}
           </>
         }
         actions={
           <>
-            {/* Una sola accion primaria, la que toca segun el estado. Antes
-                eran hasta 7 botones del mismo peso que en movil se
-                envolvian en un muro y no decian por donde seguir. */}
-            {canSend && quotation.isActive && (
-              <Button onClick={() => sendMutation.mutate()} loading={sendMutation.isPending}>
-                <Send className="size-4" /> Enviar
-              </Button>
-            )}
-            {canAcceptReject && quotation.isActive && (
+            {/* Convertir a pedido es la accion primaria para borradores, enviadas y vistas. */}
+            {canConvert && quotation.isActive && !quotation.order && (
               <Button onClick={handleAccept} loading={acceptMutation.isPending}>
-                Aceptar y crear pedido
+                Convertir a pedido
               </Button>
             )}
             {quotation.order && (
@@ -200,15 +197,13 @@ export default function QuotationDetailPage() {
                 <DropdownMenuItem onSelect={() => downloadMutation.mutate(`${quotation.folio}.pdf`)}>
                   <Download className="size-3.5" /> Descargar PDF
                 </DropdownMenuItem>
-                {quotation.status !== 'DRAFT' && (
-                  <DropdownMenuItem onSelect={copyPublicLink}>
-                    <Copy className="size-3.5" /> Copiar enlace
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onSelect={copyPublicLink}>
+                  <Copy className="size-3.5" /> Copiar enlace
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => duplicateMutation.mutate()}>
                   <FileStack className="size-3.5" /> Duplicar
                 </DropdownMenuItem>
-                {canAcceptReject && quotation.isActive && (
+                {canConvert && quotation.isActive && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleReject} className="text-danger-fg">
@@ -247,7 +242,7 @@ export default function QuotationDetailPage() {
             <div><p className="text-caption text-text-muted">Emitida</p><p className="text-body-sm font-medium text-text">{formatDate(quotation.issuedAt)}</p></div>
             <div><p className="text-caption text-text-muted">Vigente hasta</p><p className="text-body-sm font-medium text-text">{formatDate(quotation.validUntil)}</p></div>
             <div><p className="text-caption text-text-muted">Fecha del evento</p><p className="text-body-sm font-medium text-text">{quotation.eventDate ? formatDate(quotation.eventDate) : '—'}</p></div>
-            <div><p className="text-caption text-text-muted">Piezas</p><p className="text-body-sm font-medium text-text">{quotation.totalQuantity}</p></div>
+            <div><p className="text-caption text-text-muted">Piezas</p><p className="text-body-sm font-medium text-text">{quotation.totalQuantity}</p><p className="text-caption text-text-muted">{pricingSummary(quotation)}</p></div>
           </Card>
 
           <Card className="p-4">
@@ -255,13 +250,18 @@ export default function QuotationDetailPage() {
             <div className="flex flex-col divide-y divide-border">
               {(quotation.items ?? []).map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-2.5">
-                  <div>
-                    <p className="text-body-sm font-medium text-text">{item.product?.name}</p>
-                    <p className="text-caption text-text-muted">
-                      {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceSupply?.name ? `: ${item.fragranceSupply.name}` : ''}` : null, item.personalizationText]
-                        .filter(Boolean)
-                        .join(' · ') || '—'}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {item.product?.images?.[0] && (
+                      <img src={staticUrl(item.product.images[0].url)} alt="" className="size-9 shrink-0 rounded-input object-cover" />
+                    )}
+                    <div>
+                      <p className="text-body-sm font-medium text-text">{item.product?.name}</p>
+                      <p className="text-caption text-text-muted">
+                        {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceSupply?.name ? `: ${item.fragranceSupply.name}` : ''}` : null, item.personalizationText]
+                          .filter(Boolean)
+                          .join(' · ') || '—'}
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-body-sm text-text">{item.quantity} × {formatMoney(item.unitPrice)}</p>

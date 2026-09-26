@@ -20,7 +20,9 @@ export interface CreateOrderFromQuotationArgs {
   userId?: number;
 }
 
-const ACCEPTABLE_STATUSES: QuotationStatus[] = ['SENT', 'VIEWED'];
+// Sin paso manual de 'Enviar': el borrador se convierte directamente;
+// SENT/VIEWED quedan para las cotizaciones viejas.
+const ACCEPTABLE_STATUSES: QuotationStatus[] = ['DRAFT', 'SENT', 'VIEWED'];
 
 @Injectable()
 export class CreateOrderFromQuotationUseCase implements UseCase<CreateOrderFromQuotationArgs, OrderWithRelations> {

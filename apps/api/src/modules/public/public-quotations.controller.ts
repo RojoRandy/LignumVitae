@@ -5,6 +5,7 @@ import { Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { QuotationsService } from '../sales/quotations/quotations.service';
 import { OrdersService } from '../sales/orders/orders.service';
+import { SettingsService } from '../settings/settings.service';
 import { toPublicQuotationDto } from './dto/public-quotation.dto';
 
 @ApiTags('Public')
@@ -13,6 +14,7 @@ export class PublicQuotationsController {
   constructor(
     private readonly quotationsService: QuotationsService,
     private readonly ordersService: OrdersService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   @Get(':token')
@@ -21,10 +23,10 @@ export class PublicQuotationsController {
     await this.quotationsService.markViewed(quotation.id, quotation.status);
     // Se relee para reflejar VIEWED si acaba de cambiar.
     const fresh = quotation.status === 'SENT' ? await this.quotationsService.findByPublicToken(token) : quotation;
-    return toPublicQuotationDto(fresh);
+    return toPublicQuotationDto(fresh, await this.settingsService.get());
   }
 
-  // Mismo use case que el boton "Aceptar y crear pedido" del admin: sin
+  // Mismo use case que el boton "Convertir a pedido" del admin: sin
   // userId, createdById del pedido queda null (aceptacion de origen publico).
   @Post(':token/accept')
   async accept(@Param('token') token: string) {

@@ -10,7 +10,7 @@ export const useCustomerOptions = () => {
   });
 
   const customers = data?.items ?? [];
-  const options = customers.map((c) => ({ value: String(c.id), label: c.fullName, hint: c.phone }));
+  const options = customers.map((c) => ({ value: String(c.id), label: c.fullName, hint: c.phone ?? undefined }));
 
   return { customers, options, isLoading };
 };

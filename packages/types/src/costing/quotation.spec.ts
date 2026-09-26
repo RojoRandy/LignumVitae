@@ -130,3 +130,56 @@ describe('calculateQuotationTotals', () => {
     expect(withShipping.total).toBe(withoutShipping.total + 50);
   });
 });
+
+describe('calculateQuotationTotals: acumular piezas', () => {
+  const item = { productId: 1, withFragrance: false, unitTotalCost: 6.44, retailPrice: 10, wholesalePrice: 8 };
+  const base = {
+    wholesaleThresholdQty: 31,
+    fragranceSurcharge: 1,
+    shippingCost: 0,
+    discountEnabled: false,
+    discountType: AdjustmentType.PERCENTAGE,
+    discountValue: 0,
+    depositPct: 40,
+    roundingMultiple: 1,
+  };
+  const items = [
+    { ...item, quantity: 40 },
+    { ...item, productId: 2, quantity: 5 },
+  ];
+
+  it('sin la bandera se comporta igual que accumulatePieces=true (historico)', () => {
+    expect(calculateQuotationTotals({ ...base, items })).toEqual(calculateQuotationTotals({ ...base, items, accumulatePieces: true }));
+  });
+
+  it('acumulando, 40 + 5 piezas van todas a mayoreo', () => {
+    const totals = calculateQuotationTotals({ ...base, items, accumulatePieces: true });
+    expect(totals.priceTier).toBe(PriceTier.WHOLESALE);
+    expect(totals.items.map((i) => [i.priceTier, i.unitListPrice])).toEqual([
+      [PriceTier.WHOLESALE, 8],
+      [PriceTier.WHOLESALE, 8],
+    ]);
+  });
+
+  it('sin acumular, cada renglon decide con su cantidad: 40 a mayoreo, 5 a menudeo', () => {
+    const totals = calculateQuotationTotals({ ...base, items, accumulatePieces: false });
+    expect(totals.items.map((i) => [i.priceTier, i.unitListPrice, i.lineTotal])).toEqual([
+      [PriceTier.WHOLESALE, 8, 320],
+      [PriceTier.RETAIL, 10, 50],
+    ]);
+    expect(totals.subtotal).toBe(370);
+    // Mezcla de brackets: el encabezado no puede decir mayoreo.
+    expect(totals.priceTier).toBe(PriceTier.RETAIL);
+  });
+
+  it('sin acumular y todos los renglones sobre el umbral, el encabezado es mayoreo', () => {
+    const totals = calculateQuotationTotals({ ...base, items: [{ ...item, quantity: 31 }, { ...item, quantity: 35 }], accumulatePieces: false });
+    expect(totals.priceTier).toBe(PriceTier.WHOLESALE);
+  });
+
+  it('sin acumular y todo menudeo, el encabezado es menudeo', () => {
+    const totals = calculateQuotationTotals({ ...base, items: [{ ...item, quantity: 20 }, { ...item, quantity: 20 }], accumulatePieces: false });
+    expect(totals.priceTier).toBe(PriceTier.RETAIL);
+    expect(totals.items.every((i) => i.unitListPrice === 10)).toBe(true);
+  });
+});

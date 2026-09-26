@@ -27,6 +27,7 @@ export interface PreviewQuotationTotalsInput {
   discountType?: AdjustmentTypeValue;
   discountValue?: number;
   shippingCost?: number;
+  accumulatePieces?: boolean;
 }
 
 const isReady = (input: PreviewQuotationTotalsInput) => input.items.length > 0 && input.items.every((i) => i.productId && i.quantity > 0);

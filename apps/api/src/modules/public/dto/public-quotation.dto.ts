@@ -1,9 +1,11 @@
 // Lista blanca de lo que sale por el enlace publico: nunca costo ni margen,
 // solo lo que el cliente necesita ver y aceptar. Mismo espiritu que
 // SettingsService.getPublic().
+import type { Settings } from '@prisma/client';
 import type { QuotationWithRelations } from '../../sales/quotations/quotation.repository';
+import { toBankAccount } from '../../settings/settings.service';
 
-export const toPublicQuotationDto = (quotation: QuotationWithRelations) => ({
+export const toPublicQuotationDto = (quotation: QuotationWithRelations, settings: Settings) => ({
   folio: quotation.folio,
   status: quotation.status,
   issuedAt: quotation.issuedAt,
@@ -12,6 +14,7 @@ export const toPublicQuotationDto = (quotation: QuotationWithRelations) => ({
   customer: { fullName: quotation.customer.fullName, phone: quotation.customer.phone },
   items: quotation.items.map((item) => ({
     productName: item.product.name,
+    imageUrl: item.product.images[0]?.url ?? null,
     quantity: item.quantity,
     candleColor: item.candleColor,
     ribbonColor: item.ribbonColor,
@@ -30,4 +33,5 @@ export const toPublicQuotationDto = (quotation: QuotationWithRelations) => ({
   depositAmount: quotation.depositAmount,
   terms: quotation.terms,
   notes: quotation.notes,
+  bankAccount: toBankAccount(settings),
 });

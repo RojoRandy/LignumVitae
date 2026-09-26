@@ -28,6 +28,14 @@ const COSTING_KEYS = [
   'roundingMultiple',
 ] as const;
 
+/** Cuenta para transferencias que sale en la cotizacion publica y el PDF;
+ *  null si no hay ningun dato capturado. No va en getPublic(): solo viaja
+ *  con una cotizacion, no en cada pagina del sitio. */
+export const toBankAccount = (s: Pick<Settings, 'bankName' | 'bankAccountHolder' | 'bankClabe' | 'bankCardNumber'>) =>
+  s.bankName || s.bankAccountHolder || s.bankClabe || s.bankCardNumber
+    ? { bankName: s.bankName, accountHolder: s.bankAccountHolder, clabe: s.bankClabe, cardNumber: s.bankCardNumber }
+    : null;
+
 @Injectable()
 export class SettingsService {
   constructor(

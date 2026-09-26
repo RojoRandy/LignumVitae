@@ -1,5 +1,5 @@
 // Alta corta de cliente sin salir de la cotizacion: el caso real es que la
-// clienta llama, pide precio, y no esta dada de alta. Solo nombre y telefono
+// clienta llama, pide precio, y no esta dada de alta. Solo pide nombre y, si lo hay, telefono
 // -- el resto (correo, direccion, notas) se completa despues en /clientes,
 // que sigue siendo la pantalla del alta completa.
 import { useState } from 'react';
@@ -30,7 +30,7 @@ export const CustomerQuickCreateDialog = ({
   const [phone, setPhone] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: () => httpPost<CustomerDto>('/customers', { fullName, phone }),
+    mutationFn: () => httpPost<CustomerDto>('/customers', { fullName, phone: phone || null }),
     onSuccess: (customer) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast.success('Cliente creado');
@@ -58,7 +58,7 @@ export const CustomerQuickCreateDialog = ({
           <Field label="Nombre completo" htmlFor="quick-fullName" required error={fieldErrors.fullName}>
             <Input id="quick-fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </Field>
-          <Field label="Telefono" htmlFor="quick-phone" required error={fieldErrors.phone} hint="10 digitos">
+          <Field label="Telefono" htmlFor="quick-phone" error={fieldErrors.phone} hint="Opcional · 10 dígitos">
             <Input
               id="quick-phone"
               inputMode="numeric"
@@ -67,7 +67,6 @@ export const CustomerQuickCreateDialog = ({
               title="10 digitos, sin espacios ni guiones"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              required
             />
           </Field>
           <FormError>{formError}</FormError>

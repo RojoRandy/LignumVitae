@@ -5,8 +5,11 @@
 // terminal, Playwright use eso en vez de levantar un segundo proceso.
 import { defineConfig, devices } from '@playwright/test';
 
-const ADMIN_URL = 'http://localhost:5173';
-const API_URL = 'http://localhost:3000/api';
+// Sobrescribibles para correr contra otro juego de servidores (p. ej. un
+// worktree en 3100/5273, ver .claude/launch.json *-alt) sin chocar con el
+// `pnpm dev` de siempre.
+const ADMIN_URL = process.env.E2E_ADMIN_URL ?? 'http://localhost:5173';
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3000/api';
 
 export default defineConfig({
   testDir: './e2e',

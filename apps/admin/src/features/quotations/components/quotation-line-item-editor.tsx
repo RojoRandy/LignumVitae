@@ -14,7 +14,7 @@ import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { formatMoney } from '@/lib/format';
-import type { ItemExtraField } from '@/lib/types';
+import type { ItemExtraField, PriceTierValue } from '@/lib/types';
 
 export interface QuotationLineItemRow {
   productId: number | null;
@@ -47,6 +47,7 @@ export const emptyQuotationLineRow = (): QuotationLineItemRow => ({
 });
 
 interface RowPreview {
+  priceTier: PriceTierValue;
   unitPrice: number;
   lineTotal: number;
   lineMargin: number;
@@ -103,6 +104,11 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                   searchable
                 />
               </div>
+              {preview && (
+                <Badge variant={preview.priceTier === 'WHOLESALE' ? 'accent' : 'neutral'} className="shrink-0">
+                  {preview.priceTier === 'WHOLESALE' ? 'Mayoreo' : 'Menudeo'}
+                </Badge>
+              )}
               {preview && (
                 <Badge variant={preview.lineMargin >= 0 ? 'success' : 'danger'} className="shrink-0">
                   Margen {formatMoney(preview.lineMargin)}
