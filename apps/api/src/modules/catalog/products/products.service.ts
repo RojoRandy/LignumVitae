@@ -87,10 +87,38 @@ export class ProductsService {
       throw CatalogErrors.Exceptions.BOUQUET_REQUIRES_COMPONENTS();
     }
 
-    const sku = await this.generateSku(dto);
     const slug = slugify(dto.name);
 
-    const created = await this.productRepository.create({
+    // generateSku revisa y luego se inserta: dos altas simultaneas con los
+    // mismos 12 caracteres sacan el mismo SKU y la segunda choca con el
+    // @unique. Ese choque se reintenta con el siguiente sufijo (acotado).
+    let created: Awaited<ReturnType<ProductRepository['create']>> | undefined;
+    for (let attempt = 1, fromSuffix = 0; !created; attempt++) {
+      const { sku, suffix } = await this.generateSku(dto, fromSuffix);
+      try {
+        created = await this.createProduct(dto, sku, slug);
+      } catch (error) {
+        const skuTaken = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+          && ((error.meta?.target as string[] | undefined) ?? []).includes('sku');
+        if (!skuTaken || attempt >= 5) throw error;
+        fromSuffix = suffix + 1;
+      }
+    }
+
+    if (dto.kind === ProductKind.BOUQUET && dto.components) {
+      await this.productRepository.replaceComponents(
+        created.id,
+        dto.components.map((c, i) => ({ candleId: c.candleId, quantity: c.quantity, sortOrder: i })),
+      );
+    }
+
+    await this.applySuppliesFromTemplatesAndManual(created.id, dto);
+    await this.recalculateProductCostingUseCase.execute(created.id);
+    return this.findById(created.id);
+  }
+
+  private createProduct(dto: CreateProductDto, sku: string, slug: string) {
+    return this.productRepository.create({
       sku,
       name: dto.name,
       slug,
@@ -109,17 +137,6 @@ export class ProductsService {
       isFeatured: dto.isFeatured ?? false,
       newUntil: dto.newUntil ? new Date(dto.newUntil) : null,
     });
-
-    if (dto.kind === ProductKind.BOUQUET && dto.components) {
-      await this.productRepository.replaceComponents(
-        created.id,
-        dto.components.map((c, i) => ({ candleId: c.candleId, quantity: c.quantity, sortOrder: i })),
-      );
-    }
-
-    await this.applySuppliesFromTemplatesAndManual(created.id, dto);
-    await this.recalculateProductCostingUseCase.execute(created.id);
-    return this.findById(created.id);
   }
 
   async update(id: number, dto: UpdateProductDto) {
@@ -357,10 +374,10 @@ export class ProductsService {
     await this.productRepository.replaceSupplies(productId, [...bySupplyId.values()]);
   }
 
-  private async generateSku(dto: CreateProductDto): Promise<string> {
+  private async generateSku(dto: CreateProductDto, fromSuffix = 0): Promise<{ sku: string; suffix: number }> {
     const base = slugify(dto.name).toUpperCase().replace(/-/g, '');
     const truncated = base.slice(0, 12);
-    let suffix = 0;
+    let suffix = fromSuffix;
     // Comprueba el SKU en si, no el slug: dos nombres distintos pueden
     // compartir los primeros 12 caracteres alfanumericos (p. ej. "Osito
     // Chico Liston" y "Osito Chico con Liston Rosa") y generar el mismo
@@ -369,7 +386,7 @@ export class ProductsService {
     while (true) {
       const candidate = suffix > 0 ? `${truncated}-${suffix}` : truncated;
       const existing = await this.productRepository.findBySku(candidate);
-      if (!existing) return candidate;
+      if (!existing) return { sku: candidate, suffix };
       suffix += 1;
     }
   }
