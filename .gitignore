@@ -36,6 +36,9 @@ coverage/
 apps/admin/playwright-report/
 apps/admin/test-results/
 apps/admin/blob-report/
+apps/landing/playwright-report/
+apps/landing/test-results/
+apps/landing/blob-report/
 .playwright-mcp/
 
 # Claude
