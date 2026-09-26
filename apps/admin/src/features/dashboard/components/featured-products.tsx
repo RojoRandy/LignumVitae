@@ -51,7 +51,7 @@ export const FeaturedProducts = () => {
                   onClick={() => navigate(`/productos/${product.id}/editar`)}
                   className="group flex flex-col overflow-hidden rounded-input border border-border text-left transition-all hover:border-accent/40 hover:shadow-lift"
                 >
-                  <div className="flex aspect-square items-center justify-center bg-surface-sunken">
+                  <div className="flex aspect-square items-center justify-center overflow-hidden bg-surface-sunken">
                     {image ? (
                       <img src={staticUrl(image.url)} alt={product.name} className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (

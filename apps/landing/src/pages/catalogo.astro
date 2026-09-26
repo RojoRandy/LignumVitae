@@ -2,17 +2,17 @@
 import Layout from '../layouts/Layout.astro';
 import ProductCard, { type Product } from '../components/ProductCard.astro';
 import { getJson } from '../lib/api';
+import { flattenCatalog } from '../lib/catalog-filter';
 
 interface Category {
   name: string;
   slug: string;
-  description: string | null;
-  coverImageUrl: string | null;
   products: Product[];
 }
 
 const categories = await getJson<Category[]>('/public/catalog');
-const hasProducts = categories.some((category) => category.products.length > 0);
+const items = flattenCatalog(categories);
+const hasProducts = items.length > 0;
 
 // Solo los moldes que de verdad se usan en el catalogo visible, deduplicados
 // por slug: un mismo molde se repite entre productos y hasta entre los
@@ -41,21 +41,25 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
 ---
 
 <Layout title="Catálogo · Lignum Vitae" description="Explora nuestras velas personalizadas por categoría y molde, y encuentra un recuerdo para tu celebración.">
-  <div class="site-container py-16 lg:py-24">
-    <h1 class="text-display-lg text-brand">Catálogo</h1>
-    <p class="mt-4 text-body-lg text-text-muted">Encuentra las velas que acompañarán tu celebración.</p>
-    {!hasProducts && <p class="mt-8 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
+  <div class="site-container pt-6 pb-4 lg:pt-10 lg:pb-6">
+    <h1 class="text-heading text-brand">Catálogo</h1>
+    {!hasProducts && <p class="mt-4 text-body text-text-muted">Estamos preparando nuestro catálogo. Contáctanos para conocer las opciones disponibles.</p>}
   </div>
 
   {categories.length > 0 && (
-    <div class="site-container grid gap-8 pb-16 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:pb-24">
+    <>
+    <div class="site-container grid gap-6 pb-16 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:pb-24">
       <aside class="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
-        <details class="filters-panel rounded-card border border-border bg-surface lg:border-none lg:bg-transparent" open>
-          <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-body-sm font-medium text-text lg:hidden [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-2 lg:mb-4">
+          <label for="catalog-search" class="sr-only">Buscar por nombre</label>
+          <input id="catalog-search" type="search" data-filter-search placeholder="Buscar vela…" autocomplete="off" class="field-input min-w-0 flex-1" />
+          <button type="button" data-filters-toggle aria-label="Filtros" aria-haspopup="dialog" aria-controls="catalog-filters-dialog" class="relative flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-strong bg-surface text-text lg:hidden">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-            Filtros
-          </summary>
-          <div class="filters-body flex flex-col gap-6 border-t border-border p-4 lg:border-none lg:p-0">
+            <span data-filters-count aria-hidden="true" hidden class="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1 text-micro text-surface [&[hidden]]:hidden"></span>
+          </button>
+        </div>
+        <div class="filters-panel">
+          <div id="catalog-filters" class="filters-body hidden flex-col gap-6 lg:flex">
             <fieldset>
               <legend class="text-body-sm font-medium text-text">Categoría</legend>
               <div class="mt-3 flex flex-col gap-1">
@@ -85,77 +89,88 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
             </fieldset>}
             <button type="button" data-clear-filters class="self-start text-body-sm text-action underline" hidden>Limpiar filtros</button>
           </div>
-        </details>
+        </div>
       </aside>
 
       <div class="catalog-results min-w-0">
-        <nav aria-label="Categorías del catálogo" class="category-nav sticky top-16 z-10 bg-canvas md:top-20">
-          <div class="category-chips flex gap-2 overflow-x-auto py-2">
-            {categories.map((category) => <button
-              type="button"
-              data-category-chip={category.slug}
-              aria-pressed="false"
-              class="category-chip flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border border-border-strong px-6 text-body-sm font-medium text-text hover:bg-action-soft hover:text-brand"
-            >
-              {category.name}
-            </button>)}
-          </div>
-        </nav>
-
-        <p id="catalog-empty" class="mt-8 text-body text-text-muted" hidden>
+        <p id="catalog-empty" class="mt-4 text-body text-text-muted" hidden>
           No hay productos con esos filtros. <button type="button" data-clear-filters class="text-action underline">Limpiar filtros</button>
         </p>
 
-        <div class="mt-8 space-y-16 lg:space-y-24">
-          {categories.map((category) => <section id={category.slug} data-category-section={category.slug} aria-label={category.name}>
-            <h2 class="text-heading-lg text-brand [overflow-wrap:anywhere]">{category.name}</h2>
-            {category.description && <p class="mt-4 whitespace-pre-line text-body-lg text-text-muted [overflow-wrap:anywhere]">{category.description}</p>}
-            {category.products.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:gap-6">
-              {category.products.map((product) => <ProductCard product={product} categorySlug={category.slug} />)}
-            </div> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos las velas de esta categoría.</p>}
-          </section>)}
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-4 lg:gap-6">
+          {items.map(({ product, categorySlug }) => <ProductCard product={product} categorySlug={categorySlug} />)}
         </div>
       </div>
     </div>
+    <dialog id="catalog-filters-dialog" aria-labelledby="catalog-filters-title" class="m-0 h-dvh max-h-none w-full max-w-none bg-canvas p-0 text-text backdrop:bg-ink/60 open:flex open:flex-col">
+      <header class="flex items-center justify-between border-b border-border px-4 py-2">
+        <h2 id="catalog-filters-title" class="text-heading-sm text-brand">Filtros</h2>
+        <button type="button" data-filters-close aria-label="Cerrar" class="button h-11 min-h-11 w-11 p-0 text-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </header>
+      <div data-filters-slot class="flex-1 overflow-y-auto p-4 [&>#catalog-filters]:flex"></div>
+      <footer class="border-t border-border p-4">
+        <button type="button" data-filters-close data-filters-results class="button w-full bg-action text-surface hover:bg-action-hover">Ver productos</button>
+      </footer>
+    </dialog>
+    </>
   )}
 </Layout>
 
 <style>
-  /* <details open>: el panel siempre esta en el DOM con su contenido en flujo
-     normal (necesario para que tenga alto real; forzar visible un <details>
-     CERRADO por CSS no funciona de forma confiable -- el contenido pinta pero
-     no participa en el layout del padre). El disparador se oculta en lg+
-     (clase lg:hidden) para que en escritorio nunca se pueda colapsar. */
-
-  /* Header (64/80px) + chips (60px) + espacio para el foco y el titulo. */
-  :global(html:has(.category-nav)) { scroll-padding-top: 9rem; }
+  :global(html:has(#catalog-filters-dialog[open])) { overflow: hidden; }
+  /* Header (64/80px) + aire para el foco. */
+  :global(html:has(.catalog-results)) { scroll-padding-top: 5rem; }
   @media (min-width: 768px) {
-    :global(html:has(.category-nav)) { scroll-padding-top: 10rem; }
+    :global(html:has(.catalog-results)) { scroll-padding-top: 6rem; }
   }
   .catalog-results { overflow-anchor: none; }
-  .category-chips { scrollbar-width: none; }
-  .category-chips::-webkit-scrollbar { display: none; }
-  .category-chip[aria-pressed="true"] {
-    background: var(--color-action-soft);
-    color: var(--color-brand);
-    text-decoration: underline;
-    text-underline-offset: 4px;
-  }
 </style>
 
 <script>
+  import { activeFilterCount, categoryFromHash, facetVisible, matchesFilters, normalizeText, resultsLabel } from '../lib/catalog-filter';
+
+  const searchInput = document.querySelector<HTMLInputElement>('[data-filter-search]');
   const categoryCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-category]'));
   const candleCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-candle]'));
   const packagingCheckboxes = Array.from(document.querySelectorAll<HTMLInputElement>('[data-filter-packaging]'));
-  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-category-chip]'));
-  const sections = Array.from(document.querySelectorAll<HTMLElement>('[data-category-section]'));
   const cards = Array.from(document.querySelectorAll<HTMLElement>('.product-card'));
   const emptyState = document.querySelector<HTMLElement>('#catalog-empty');
   const clearButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-clear-filters]'));
   const results = document.querySelector<HTMLElement>('.catalog-results');
+  const filtersToggle = document.querySelector<HTMLButtonElement>('[data-filters-toggle]');
+  const filtersBody = document.querySelector<HTMLElement>('#catalog-filters');
+  const filtersCount = document.querySelector<HTMLElement>('[data-filters-count]');
+
+  const filtersDialog = document.querySelector<HTMLDialogElement>('#catalog-filters-dialog');
+  const filtersSlot = filtersDialog?.querySelector<HTMLElement>('[data-filters-slot]');
+  const filtersHome = document.querySelector<HTMLElement>('.filters-panel');
+  const resultsButton = document.querySelector<HTMLElement>('[data-filters-results]');
+
+  filtersToggle?.addEventListener('click', () => {
+    if (!filtersDialog || !filtersSlot || !filtersBody) return;
+    filtersSlot.append(filtersBody);
+    filtersDialog.showModal();
+  });
+
+  document.querySelectorAll('[data-filters-close]').forEach((button) => {
+    button.addEventListener('click', () => filtersDialog?.close());
+  });
+
+  filtersDialog?.addEventListener('close', () => {
+    if (filtersHome && filtersBody) filtersHome.append(filtersBody);
+    if (filtersToggle) keepResultsInView(filtersToggle);
+  });
+
+  const desktop = window.matchMedia('(min-width: 1024px)');
+  desktop.addEventListener('change', () => {
+    if (desktop.matches && filtersDialog?.open) filtersDialog.close();
+  });
 
   const keepResultsInView = (source: HTMLElement) => {
     requestAnimationFrame(() => {
+      if (source.closest('dialog[open]')) return;
       if (!results) return;
       const resultsRect = results.getBoundingClientRect();
       // En una columna, conserva la vista del usuario sobre los filtros.
@@ -170,13 +185,14 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
   const selected = (checkboxes: HTMLInputElement[]) => checkboxes.filter((c) => c.checked).map((c) => c.value);
 
   const applyFilters = () => {
+    const query = searchInput?.value ?? '';
     const categories = selected(categoryCheckboxes);
     [candleCheckboxes, packagingCheckboxes].forEach((checkboxes) => {
       checkboxes.forEach((checkbox) => {
         const label = checkbox.closest('label');
         if (!label) return;
         const categorySlugs = (label.dataset.facetCategories ?? '').split(',');
-        label.hidden = categories.length > 0 && !categorySlugs.some((slug) => categories.includes(slug));
+        label.hidden = !facetVisible(categorySlugs, categories);
         if (label.hidden) checkbox.checked = false;
       });
       const fieldset = checkboxes[0]?.closest('fieldset');
@@ -186,58 +202,42 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
     });
     const candles = selected(candleCheckboxes);
     const packagings = selected(packagingCheckboxes);
-    const anyFilter = categories.length > 0 || candles.length > 0 || packagings.length > 0;
+    const count = activeFilterCount({ categories, candles, packagings });
+    if (filtersCount) {
+      filtersCount.textContent = String(count);
+      filtersCount.hidden = count === 0;
+    }
+    filtersToggle?.setAttribute('aria-label', count > 0 ? `Filtros (${count})` : 'Filtros');
+    const anyFilter = categories.length > 0 || candles.length > 0 || packagings.length > 0 || normalizeText(query) !== '';
 
     let visibleCount = 0;
     cards.forEach((card) => {
       const cardCategory = card.dataset.category ?? '';
       const cardCandles = (card.dataset.candles ?? '').split(',').filter(Boolean);
       const cardPackaging = card.dataset.packaging ?? '';
-      const matchesCategory = categories.length === 0 || categories.includes(cardCategory);
-      const matchesCandle = candles.length === 0 || cardCandles.some((slug) => candles.includes(slug));
-      const matchesPackaging = packagings.length === 0 || packagings.includes(cardPackaging);
-      const visible = matchesCategory && matchesCandle && matchesPackaging;
+      const visible = matchesFilters(
+        { name: card.querySelector('h3')?.textContent ?? '', category: cardCategory, candles: cardCandles, packaging: cardPackaging },
+        { categories, candles, packagings, query },
+      );
       card.hidden = !visible;
       if (visible) visibleCount += 1;
     });
 
-    sections.forEach((section) => {
-      // Sin filtros activos, las secciones se comportan exactamente como
-      // antes (todas visibles, incluida la de "Pronto compartiremos...").
-      if (!anyFilter) {
-        section.hidden = false;
-        return;
-      }
-      const slug = section.dataset.categorySection!;
-      const matchesCategoryFilter = categories.length === 0 || categories.includes(slug);
-      const hasVisibleCard = Array.from(section.querySelectorAll<HTMLElement>('.product-card')).some((c) => !c.hidden);
-      section.hidden = !matchesCategoryFilter || !hasVisibleCard;
-    });
+    if (resultsButton) resultsButton.textContent = resultsLabel(visibleCount);
 
-    chips.forEach((chip) => chip.setAttribute('aria-pressed', String(categories.includes(chip.dataset.categoryChip!))));
     clearButtons.forEach((button) => { button.hidden = !anyFilter; });
     if (emptyState) emptyState.hidden = !anyFilter || visibleCount > 0;
   };
+
+  searchInput?.addEventListener('input', applyFilters);
 
   [...categoryCheckboxes, ...candleCheckboxes, ...packagingCheckboxes].forEach((checkbox) => checkbox.addEventListener('change', () => {
     applyFilters();
     keepResultsInView(checkbox);
   }));
 
-  chips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const slug = chip.dataset.categoryChip!;
-      // Un click en el chip deja SOLO esa categoria marcada (o la limpia, si
-      // ya era la unica marcada) -- es la version filtrable del enlace-ancla
-      // que el chip usaba antes.
-      const onlyThisSelected = selected(categoryCheckboxes).length === 1 && selected(categoryCheckboxes)[0] === slug;
-      categoryCheckboxes.forEach((checkbox) => { checkbox.checked = !onlyThisSelected && checkbox.value === slug; });
-      applyFilters();
-      keepResultsInView(chip);
-    });
-  });
-
   clearButtons.forEach((button) => button.addEventListener('click', () => {
+    if (searchInput) searchInput.value = '';
     categoryCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     candleCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
     packagingCheckboxes.forEach((checkbox) => { checkbox.checked = false; });
@@ -246,13 +246,11 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
   }));
 
   // Deep link /catalogo#slug: index.astro y producto/[slug].astro enlazan asi
-  // a una categoria. Antes era un ancla nativa; ahora preselecciona el
-  // filtro para que el chip y el checkbox reflejen la categoria activa.
-  const initialSlug = decodeURIComponent(location.hash.replace('#', ''));
+  // a una categoria. El hash marca el checkbox de la categoria activa.
+  const initialSlug = categoryFromHash(location.hash, categoryCheckboxes.map((checkbox) => checkbox.value));
   if (initialSlug) {
     const checkbox = categoryCheckboxes.find((c) => c.value === initialSlug);
     if (checkbox) checkbox.checked = true;
   }
   applyFilters();
-  if (initialSlug) document.getElementById(initialSlug)?.scrollIntoView({ block: 'start' });
 </script>
