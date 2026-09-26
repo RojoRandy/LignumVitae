@@ -9,7 +9,8 @@ import { laborRatePerMinute } from '@lignumvitae/types';
 import { SettingsRepository } from './repositories/settings.repository';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
-// Fuera a proposito: minMarginPct solo valida overrides manuales; defaultWastePct
+// minMarginPct entra porque ahora tambien sube el precio sugerido al piso de margen.
+// Fuera a proposito: defaultWastePct
 // solo es el default de alta (cada vela trae su merma); fragranceLoadPct y
 // fragranceSurcharge se cobran por renglon de cotizacion, nunca en catalogo
 // (ambos call sites de catalogo pasan fragrance: null).
@@ -23,6 +24,7 @@ const COSTING_KEYS = [
   'waxSupplyId',
   'retailMarkupPct',
   'wholesaleMarkupPct',
+  'minMarginPct',
   'roundingMultiple',
 ] as const;
 

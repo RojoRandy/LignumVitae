@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, AlertTriangle, EyeOff, TrendingUp, SlidersHorizontal, Star, Image as ImageIcon, LayoutGrid, Sparkles } from 'lucide-react';
+import { Plus, AlertTriangle, EyeOff, TrendingUp, SlidersHorizontal, Star, Image as ImageIcon, LayoutGrid, Sparkles, RefreshCw } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
@@ -104,6 +104,15 @@ export default function ProductsPage() {
     onError: (error) => toast.error((error as Error).message),
   });
 
+  const recalculateAllMutation = useMutation({
+    mutationFn: () => httpPost('/products/recalculate-all', {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Costos recalculados');
+    },
+    onError: (error) => toast.error((error as Error).message),
+  });
+
   const applyAllMutation = useMutation({
     mutationFn: () => httpPost<{ applied: number }>('/products/apply-suggested-prices', {}),
     onSuccess: ({ applied }) => {
@@ -114,6 +123,14 @@ export default function ProductsPage() {
     },
     onError: (error) => toast.error((error as Error).message),
   });
+
+  const handleRecalculateAll = async () => {
+    const ok = await confirm({
+      title: '¿Recalcular costo y precio sugerido de todo el catálogo?',
+      description: 'Usa los insumos, empaques y configuración vigentes. Los precios manuales no se tocan.',
+    });
+    if (ok) recalculateAllMutation.mutate();
+  };
 
   const handleApplyAll = async () => {
     const ok = await confirm({ title: '¿Aplicar el precio sugerido a todos los productos con precio manual desfasado?' });
@@ -291,6 +308,9 @@ export default function ProductsPage() {
         description="La vela + su empaque + su tarjeta. Es lo que se cotiza."
         actions={
           <>
+            <Button variant="secondary" loading={recalculateAllMutation.isPending} onClick={handleRecalculateAll}>
+              <RefreshCw className="size-4" /> Recalcular costos
+            </Button>
             <Button variant="secondary" loading={applyAllMutation.isPending} onClick={handleApplyAll}>
               <TrendingUp className="size-4" /> Aplicar precios sugeridos
             </Button>

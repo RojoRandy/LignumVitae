@@ -13,7 +13,13 @@ const candleTemplate = (supplyId: number, quantity: number) => ({
 
 // El tipo "cera" se decide por id (Settings.waxSupplyTypeId), no por el
 // texto de un slug -- por eso el mock trae un typeId, no un type.slug.
-const build = ({ product, supplyTypeId = 3 }: { product: unknown; supplyTypeId?: number }) => {
+const build = ({ product, supplyTypeId = 3, recalculated, settings = { waxSupplyTypeId: 1 } }: {
+  product: unknown;
+  supplyTypeId?: number;
+  recalculated?: unknown;
+  settings?: { waxSupplyTypeId: number; minMarginPct?: { toNumber: () => number } };
+}) => {
+  const recalculateProductCostingUseCase = { execute: jest.fn().mockResolvedValue(recalculated) };
   const replaceSupplies = jest.fn();
   const storage = { save: jest.fn().mockResolvedValue('/static/test.jpg'), remove: jest.fn() };
   const repository = {
@@ -34,13 +40,44 @@ const build = ({ product, supplyTypeId = 3 }: { product: unknown; supplyTypeId?:
     { findById: jest.fn().mockResolvedValue({ supplyTemplate: [candleTemplate(10, 1)] }) } as never,
     { findById: jest.fn().mockResolvedValue({ supplyTemplate: [candleTemplate(20, 1)] }) } as never,
     { findById: jest.fn().mockResolvedValue({ supplyTemplate: [candleTemplate(30, 1), candleTemplate(40, 1)] }) } as never,
-    { execute: jest.fn() } as never,
-    { get: jest.fn().mockResolvedValue({ waxSupplyTypeId: 1 }) } as never,
+    recalculateProductCostingUseCase as never,
+    { get: jest.fn().mockResolvedValue(settings) } as never,
     { findById: jest.fn().mockResolvedValue({ id: 99, typeId: supplyTypeId }) } as never,
     storage as never,
   );
-  return { service, replaceSupplies, storage, repository };
+  return { service, replaceSupplies, storage, repository, recalculateProductCostingUseCase };
 };
+
+it('valida los precios manuales contra el costo recalculado del panel', async () => {
+  const { service, repository, recalculateProductCostingUseCase } = build({
+    product: { id: 3, unitTotalCost: { toNumber: () => 10.03 } },
+    recalculated: { id: 3, unitTotalCost: { toNumber: () => 7.5894 } },
+    settings: { waxSupplyTypeId: 1, minMarginPct: { toNumber: () => 25 } },
+  });
+  const prices = { retailPriceOverride: 14, wholesalePriceOverride: 12 };
+
+  await expect(service.setPriceOverride(3, prices)).resolves.toMatchObject(prices);
+
+  expect(recalculateProductCostingUseCase.execute).toHaveBeenCalledWith(3);
+  expect(repository.update).toHaveBeenCalledWith(3, prices);
+});
+
+it('rechaza un precio manual por debajo del margen minimo con el costo recalculado', async () => {
+  const { service, repository, recalculateProductCostingUseCase } = build({
+    product: { id: 3, unitTotalCost: { toNumber: () => 10.03 } },
+    recalculated: { id: 3, unitTotalCost: { toNumber: () => 7.5894 } },
+    settings: { waxSupplyTypeId: 1, minMarginPct: { toNumber: () => 25 } },
+  });
+
+  await expect(service.setPriceOverride(3, { wholesalePriceOverride: 10 })).rejects.toMatchObject({
+    response: {
+      code: 'PRICE_BELOW_MIN_MARGIN',
+      data: { field: 'wholesalePriceOverride', price: 10, minMarginPct: 25, minPrice: 10.12 },
+    },
+  });
+  expect(recalculateProductCostingUseCase.execute).toHaveBeenCalledWith(3);
+  expect(repository.update).not.toHaveBeenCalled();
+});
 
 // applySuppliesFromTemplatesAndManual es privado a proposito: se llega a el por
 // reapplyTemplates, que es la puerta publica mas corta.

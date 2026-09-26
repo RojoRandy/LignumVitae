@@ -66,6 +66,37 @@ describe('suggestPrices: sin el "+1" oculto del Excel, siempre redondeado hacia 
   });
 });
 
+describe('suggestPrices: el precio sugerido respeta el piso de margen', () => {
+  it('eleva el precio de mayoreo cuando el markup no alcanza el piso', () => {
+    const prices = suggestPrices(7.5894, {
+      retailMarkupPct: 50,
+      wholesaleMarkupPct: 30,
+      roundingMultiple: 1,
+      minMarginPct: 25,
+    });
+
+    expect(prices.retail.suggestedPrice).toBe(12);
+    expect(prices.retail.floorApplied).toBe(false);
+    expect(prices.wholesale.suggestedPrice).toBe(11);
+    expect(prices.wholesale.floorApplied).toBe(true);
+    expect(prices.wholesale.marginPct).toBeGreaterThanOrEqual(25);
+  });
+
+  it('conserva los precios cuando el markup ya supera el piso', () => {
+    const policy = {
+      retailMarkupPct: 50,
+      wholesaleMarkupPct: 40,
+      roundingMultiple: 1,
+    };
+    const withoutFloor = suggestPrices(7.63, policy);
+    const prices = suggestPrices(7.63, { ...policy, minMarginPct: 25 });
+
+    expect(prices.retail.floorApplied).toBe(false);
+    expect(prices.wholesale.floorApplied).toBe(false);
+    expect(prices).toEqual(withoutFloor);
+  });
+});
+
 describe('correccion #9: validateMinMargin bloquea overrides que rompen el piso', () => {
   it('rechaza un precio de mayoreo que deja menos margen del piso configurado', () => {
     // Osito Chico SOLO: costo 6.44, precio de mayoreo capturado a mano en el

@@ -70,7 +70,7 @@ it('no recalcula al guardar el formulario completo si solo cambia phone', async 
   expect(execute).not.toHaveBeenCalled();
 });
 
-it('no recalcula cuando cambia minMarginPct', async () => {
+it('recalcula una vez cuando cambia minMarginPct', async () => {
   const { service, execute } = build({
     before: { minMarginPct: 20 },
     after: { minMarginPct: 25 },
@@ -78,5 +78,5 @@ it('no recalcula cuando cambia minMarginPct', async () => {
 
   await service.update({ minMarginPct: 25 });
 
-  expect(execute).not.toHaveBeenCalled();
+  expect(execute).toHaveBeenCalledTimes(1);
 });
