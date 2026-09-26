@@ -2,6 +2,7 @@
 // heredaba NADA de sus velas (sus insumos no se cobraban en ningun lado) y un
 // insumo de cera podia colarse como adicional, cobrandose dos veces porque la
 // cera ya se deriva de los gramos de la vela.
+import { Prisma } from '@prisma/client';
 import { ProductsService } from './products.service';
 
 const candleTemplate = (supplyId: number, quantity: number) => ({
@@ -77,6 +78,27 @@ it('rechaza un precio manual por debajo del margen minimo con el costo recalcula
   });
   expect(recalculateProductCostingUseCase.execute).toHaveBeenCalledWith(3);
   expect(repository.update).not.toHaveBeenCalled();
+});
+
+// generateSku revisa y luego inserta: si otra alta simultanea gana el mismo
+// SKU, el @unique truena con P2002 y se reintenta con el siguiente sufijo.
+it('reintenta con el siguiente sufijo si el SKU choca al crear', async () => {
+  const { service, repository } = build({ product: { id: 5, kind: 'SIMPLE', supplies: [] } });
+  const conflict = new Prisma.PrismaClientKnownRequestError('Unique constraint failed on the fields: (`sku`)', {
+    code: 'P2002', clientVersion: 'test', meta: { target: ['sku'] },
+  });
+  Object.assign(repository, {
+    findExistingCombination: jest.fn().mockResolvedValue(null),
+    findBySku: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockRejectedValueOnce(conflict).mockResolvedValueOnce({ id: 5 }),
+  });
+
+  await service.create({ name: 'E2E Product 123', kind: 'SIMPLE', categoryId: 1, candleId: 1 });
+
+  const create = (repository as unknown as { create: jest.Mock }).create;
+  expect(create).toHaveBeenCalledTimes(2);
+  expect(create.mock.calls[0][0].sku).toBe('E2EPRODUCT12');
+  expect(create.mock.calls[1][0].sku).toBe('E2EPRODUCT12-1');
 });
 
 // applySuppliesFromTemplatesAndManual es privado a proposito: se llega a el por
