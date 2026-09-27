@@ -1,5 +1,6 @@
 ---
 import { imageUrl } from '../lib/api';
+import { formatPrice, type ProductPrices } from '../lib/price';
 
 export interface Product {
   name: string;
@@ -9,6 +10,7 @@ export interface Product {
   image: { url: string; alt: string | null } | null;
   candles?: { name: string; slug: string }[];
   packagingType?: { name: string; slug: string } | null;
+  prices?: ProductPrices;
 }
 
 interface Props {
@@ -19,6 +21,11 @@ interface Props {
 
 const { product, categorySlug } = Astro.props;
 const candleSlugs = (product.candles ?? []).map((c) => c.slug).join(',');
+const prices = [
+  { label: 'Menudeo', value: product.prices?.retail ?? null },
+  { label: 'Mayoreo', value: product.prices?.wholesale ?? null },
+];
+const hasPrice = prices.some((price) => price.value !== null);
 ---
 
 <a
@@ -41,7 +48,15 @@ const candleSlugs = (product.candles ?? []).map((c) => c.slug).join(',');
       {product.isFeatured && <span class="rounded-full bg-action-soft px-2 py-1 text-micro text-brand">Destacado</span>}
     </div>}
   </div>
-  <h3 class="p-4 text-heading-sm text-text [overflow-wrap:anywhere]">{product.name}</h3>
+  <div class="p-4">
+    <h3 class="text-heading-sm text-text [overflow-wrap:anywhere]">{product.name}</h3>
+    {hasPrice ? <dl class="mt-2 space-y-1">
+      {prices.map((price) => <div class="flex flex-wrap items-baseline justify-between gap-x-2">
+        <dt class="text-caption text-text-muted">{price.label}</dt>
+        <dd class:list={['text-body-sm tabular-nums', price.value !== null ? 'font-semibold text-brand' : 'text-text-muted']}>{price.value !== null ? formatPrice(price.value) : 'A cotizar'}</dd>
+      </div>)}
+    </dl> : <p class="mt-2 text-body-sm text-text-muted">Precio a cotizar</p>}
+  </div>
 </a>
 
 <style>

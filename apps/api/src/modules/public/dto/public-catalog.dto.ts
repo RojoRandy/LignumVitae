@@ -1,6 +1,32 @@
 // Forma publica del catalogo. El `select` del repositorio ya es lista blanca;
 // esto solo aplana la imagen de portada y omite categorias vacias.
+import type { Prisma } from '@prisma/client';
 import type { PublicCatalogCategory, PublicProduct, LandingImage, PublicFragrance, PublicTestimonial } from '../public-catalog.repository';
+
+interface PriceFields {
+  retailListPrice: Prisma.Decimal;
+  wholesaleListPrice: Prisma.Decimal;
+  retailPriceOverride: Prisma.Decimal | null;
+  wholesalePriceOverride: Prisma.Decimal | null;
+}
+
+// Precio efectivo por pieza: el override gana sobre el de lista, igual que al
+// cotizar (create-quotation.usecase.ts). Un 0 es un producto sin costear aun:
+// sale como null para que la landing no anuncie "$0".
+const effectivePrice = (override: Prisma.Decimal | null, list: Prisma.Decimal) => {
+  const price = (override ?? list).toNumber();
+  return price > 0 ? price : null;
+};
+
+const toPublicPrices = (product: PriceFields) => ({
+  retail: effectivePrice(product.retailPriceOverride, product.retailListPrice),
+  wholesale: effectivePrice(product.wholesalePriceOverride, product.wholesaleListPrice),
+});
+
+const omitPriceFields = <T extends PriceFields>(product: T) => {
+  const { retailListPrice, wholesaleListPrice, retailPriceOverride, wholesalePriceOverride, ...rest } = product;
+  return rest;
+};
 
 export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) => {
   const now = new Date();
@@ -9,7 +35,8 @@ export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) => {
     .map(({ products, ...category }) => ({
       ...category,
       products: products.map(({ images, candle, components, newUntil, ...product }) => ({
-        ...product,
+        ...omitPriceFields(product),
+        prices: toPublicPrices(product),
         isNew: newUntil !== null && newUntil > now,
         image: images[0] ?? null,
         // Un ramo (BOUQUET) no tiene `candle` propio: sus moldes vienen de
@@ -29,7 +56,7 @@ export const toPublicProductDto = (product: PublicProduct) => {
       quoteFields.set(supply.id, { supplyId: supply.id, label: supply.quoteFieldLabel, placeholder: supply.quoteFieldPlaceholder });
     }
   }
-  return { ...rest, quoteFields: [...quoteFields.values()] };
+  return { ...omitPriceFields(rest), prices: toPublicPrices(rest), quoteFields: [...quoteFields.values()] };
 };
 
 export const toLandingImagesDto = (hero: LandingImage[], gallery: LandingImage[]) => ({

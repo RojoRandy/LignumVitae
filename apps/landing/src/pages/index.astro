@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import ContactSection from '../components/ContactSection.astro';
 import ProductCard, { type Product } from '../components/ProductCard.astro';
+import PriceDisclaimer from '../components/PriceDisclaimer.astro';
 import { getJson, imageUrl } from '../lib/api';
 import { wantsMarkdown, siteMarkdown } from '../lib/seo';
 
@@ -18,6 +19,7 @@ interface PublicSettings {
   tiktokUrl: string | null;
   minLeadTimeDays: number;
   depositPct: number;
+  wholesaleThresholdQty?: number;
 }
 
 interface Category {
@@ -141,6 +143,7 @@ const steps = [
     <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
       {newProducts.map((product) => <ProductCard product={product} />)}
     </div>
+    <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} />
   </section>}
 
   <section class="site-container py-16 lg:py-24" aria-labelledby="destacados-title">
@@ -148,9 +151,12 @@ const steps = [
       <h2 id="destacados-title" class="text-heading-lg text-brand">Destacados</h2>
       <a href="/catalogo" class="button button-outline">Ver todo el catálogo</a>
     </div>
-    {featured.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
-      {featured.map((product) => <ProductCard product={product} />)}
-    </div> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos nuestros destacados. Explora las opciones del catálogo.</p>}
+    {featured.length > 0 ? <>
+      <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
+        {featured.map((product) => <ProductCard product={product} />)}
+      </div>
+      <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} />
+    </> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos nuestros destacados. Explora las opciones del catálogo.</p>}
   </section>
 
   <section id="como-funciona" class="band bg-band py-16 text-on-band lg:py-24" aria-labelledby="proceso-title">

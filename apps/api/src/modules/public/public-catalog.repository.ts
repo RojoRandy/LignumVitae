@@ -41,6 +41,12 @@ export const publicCatalogSelect = {
       candle: { select: { name: true, slug: true } },
       components: { select: { candle: { select: { name: true, slug: true } } } },
       packagingType: { select: { name: true, slug: true } },
+      // Solo los cuatro precios (lista y override) para resolver el precio
+      // efectivo en el mapper. Nunca costos ni margenes.
+      retailListPrice: true,
+      wholesaleListPrice: true,
+      retailPriceOverride: true,
+      wholesalePriceOverride: true,
     },
   },
 } satisfies Prisma.CandleCategorySelect;
@@ -58,6 +64,12 @@ export const publicProductSelect = {
   category: { select: { name: true, slug: true } },
   images: { orderBy: imageOrder, select: { url: true, alt: true } },
   supplies: { select: { supply: { select: { id: true, askInQuote: true, quoteFieldLabel: true, quoteFieldPlaceholder: true } } } },
+  // Solo los cuatro precios (lista y override) para resolver el precio
+  // efectivo en el mapper. Nunca costos ni margenes.
+  retailListPrice: true,
+  wholesaleListPrice: true,
+  retailPriceOverride: true,
+  wholesalePriceOverride: true,
 } satisfies Prisma.ProductSelect;
 
 export type PublicCatalogCategory = Prisma.CandleCategoryGetPayload<{ select: typeof publicCatalogSelect }>;
