@@ -1,0 +1,15 @@
+---
+import { PRICE_DISCLAIMER, wholesaleNote } from '../lib/price';
+
+interface Props {
+  /** Settings.wholesaleThresholdQty; si no llega, solo se muestra el aviso. */
+  wholesaleThresholdQty?: number | null;
+  class?: string;
+}
+
+const { wholesaleThresholdQty, class: className } = Astro.props;
+---
+
+<p class:list={['text-caption text-text-muted', className]}>
+  {PRICE_DISCLAIMER} {wholesaleNote(wholesaleThresholdQty)}
+</p>

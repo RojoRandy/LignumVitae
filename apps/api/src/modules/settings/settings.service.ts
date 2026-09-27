@@ -94,6 +94,9 @@ export class SettingsService {
       tiktokUrl: s.tiktokUrl,
       minLeadTimeDays: s.minLeadTimeDays,
       depositPct: s.depositPct.toNumber(),
+      // Piezas a partir de las cuales aplica mayoreo; la landing lo muestra
+      // junto al precio de mayoreo.
+      wholesaleThresholdQty: s.wholesaleThresholdQty,
       quotationTerms: s.quotationTerms,
       orderPolicyText: s.orderPolicyText,
     };
