@@ -20,6 +20,7 @@ interface PublicSettings {
   minLeadTimeDays: number;
   depositPct: number;
   wholesaleThresholdQty?: number;
+  fragranceSurcharge?: number;
 }
 
 interface Category {
@@ -143,7 +144,7 @@ const steps = [
     <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
       {newProducts.map((product) => <ProductCard product={product} />)}
     </div>
-    <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} />
+    <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} fragranceSurcharge={settings.fragranceSurcharge} />
   </section>}
 
   <section class="site-container py-16 lg:py-24" aria-labelledby="destacados-title">
@@ -155,7 +156,7 @@ const steps = [
       <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
         {featured.map((product) => <ProductCard product={product} />)}
       </div>
-      <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} />
+      <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings.wholesaleThresholdQty} fragranceSurcharge={settings.fragranceSurcharge} />
     </> : <p class="mt-8 text-body text-text-muted">Pronto compartiremos nuestros destacados. Explora las opciones del catálogo.</p>}
   </section>
 

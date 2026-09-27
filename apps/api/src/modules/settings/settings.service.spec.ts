@@ -23,6 +23,7 @@ it('incluye legalName en la config publica sin exponer dailyWage ni waxSupplyId'
       dailyWage: 300,
       waxSupplyId: 1,
       depositPct: { toNumber: () => 50 },
+      fragranceSurcharge: { toNumber: () => 1 },
     },
     after: {},
   });
@@ -30,6 +31,7 @@ it('incluye legalName en la config publica sin exponer dailyWage ni waxSupplyId'
   const result = await service.getPublic();
 
   expect(result.legalName).toBe('Lignum Vitae SA de CV');
+  expect(result.fragranceSurcharge).toBe(1);
   expect(result).not.toHaveProperty('dailyWage');
   expect(result).not.toHaveProperty('waxSupplyId');
 });

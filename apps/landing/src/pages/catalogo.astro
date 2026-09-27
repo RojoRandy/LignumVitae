@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import ProductCard, { type Product } from '../components/ProductCard.astro';
 import PriceDisclaimer from '../components/PriceDisclaimer.astro';
 import { getJson } from '../lib/api';
+import type { PriceSettings } from '../lib/price';
 import { flattenCatalog } from '../lib/catalog-filter';
 
 interface Category {
@@ -12,9 +13,9 @@ interface Category {
 }
 
 const categories = await getJson<Category[]>('/public/catalog');
-// Solo para el "mayoreo a partir de N piezas" del aviso de precios: si falla,
+// Solo para el umbral de mayoreo y el cargo por aroma del aviso de precios: si falla,
 // el aviso sale sin ese dato y el catalogo no se cae.
-const settings = await getJson<{ wholesaleThresholdQty?: number }>('/public/settings').catch(() => null);
+const settings = await getJson<PriceSettings>('/public/settings').catch(() => null);
 const items = flattenCatalog(categories);
 const hasProducts = items.length > 0;
 
@@ -104,7 +105,7 @@ const packagingFacets = Array.from(packagingBySlug.values()).sort((a, b) => a.na
         <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-4 lg:gap-6">
           {items.map(({ product, categorySlug }) => <ProductCard product={product} categorySlug={categorySlug} />)}
         </div>
-        {hasProducts && <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings?.wholesaleThresholdQty} />}
+        {hasProducts && <PriceDisclaimer class="mt-6" wholesaleThresholdQty={settings?.wholesaleThresholdQty} fragranceSurcharge={settings?.fragranceSurcharge} />}
       </div>
     </div>
     <dialog id="catalog-filters-dialog" aria-labelledby="catalog-filters-title" class="m-0 h-dvh max-h-none w-full max-w-none bg-canvas p-0 text-text backdrop:bg-ink/60 open:flex open:flex-col">

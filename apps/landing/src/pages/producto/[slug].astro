@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { ApiError, getJson, imageUrl } from '../../lib/api';
 import { breadcrumbJsonLd, jsonLdScript } from '../../lib/seo';
-import { formatPrice, PRICE_DISCLAIMER, type ProductPrices } from '../../lib/price';
+import { formatPrice, fragranceNote, PRICE_DISCLAIMER, type ProductPrices } from '../../lib/price';
 
 interface Product {
   id: string;
@@ -21,6 +21,7 @@ interface PublicSettings {
   city: string;
   minLeadTimeDays: number;
   wholesaleThresholdQty?: number;
+  fragranceSurcharge?: number;
 }
 
 interface Fragrance {
@@ -46,6 +47,7 @@ const prices = [
   { label: 'Mayoreo', value: product?.prices?.wholesale ?? null, hint: threshold && threshold > 1 ? `Desde ${threshold} piezas` : 'Por pieza' },
 ];
 const hasPrice = prices.some((price) => price.value !== null);
+const surcharge = settings?.fragranceSurcharge ?? 0;
 ---
 
 <Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'} image={images[0] ? imageUrl(images[0].url) : undefined}>
@@ -93,7 +95,7 @@ const hasPrice = prices.some((price) => price.value !== null);
               <dd class="text-caption text-text-muted">{price.hint}</dd>
             </div>)}
           </dl>
-          <p class="mt-2 text-caption text-text-muted">{PRICE_DISCLAIMER}</p>
+          <p class="mt-2 text-caption text-text-muted">{[PRICE_DISCLAIMER, product.allowsFragrance && fragranceNote(surcharge)].filter(Boolean).join(' ')}</p>
         </div>}
         <div class="mt-6 flex gap-4 rounded-input border-l-[3px] border-action bg-surface-tint p-4 text-body-sm text-text">
           <svg class="shrink-0 text-action" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v2" /></svg>
@@ -120,6 +122,7 @@ const hasPrice = prices.some((price) => price.value !== null);
           {product.allowsFragrance && fragrances.length > 0 && <div>
             <label class="flex min-h-11 items-center gap-2 text-body">
               <input id="with-fragrance" type="checkbox" name="withFragrance" class="h-5 w-5 accent-action" /> Con aroma
+              {surcharge > 0 && <span class="text-text-muted">(+{formatPrice(surcharge)} por pieza)</span>}
             </label>
             <div id="fragrance-field" class="mt-2" hidden>
               <label for="fragrance" class="sr-only">Aroma</label>
