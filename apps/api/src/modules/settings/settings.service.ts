@@ -97,6 +97,8 @@ export class SettingsService {
       // Piezas a partir de las cuales aplica mayoreo; la landing lo muestra
       // junto al precio de mayoreo.
       wholesaleThresholdQty: s.wholesaleThresholdQty,
+      // Cargo por pieza con aroma; la landing lo avisa y lo suma al estimado.
+      fragranceSurcharge: s.fragranceSurcharge.toNumber(),
       quotationTerms: s.quotationTerms,
       orderPolicyText: s.orderPolicyText,
     };

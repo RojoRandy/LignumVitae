@@ -1,14 +1,27 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getJson } from '../lib/api';
+import { fragranceNote, PRICE_DISCLAIMER, wholesaleNote, type ProductPrices } from '../lib/price';
 
 interface PublicSettings {
   city: string;
   minLeadTimeDays: number;
   whatsapp: string | null;
+  wholesaleThresholdQty?: number;
+  fragranceSurcharge?: number;
 }
 
 const settings = await getJson<PublicSettings>('/public/settings');
+
+// La lista vive en localStorage sin precios: se leen aqui, vigentes, del
+// catalogo publico. Un producto que ya no esta visible no trae precio y su
+// renglon queda "a cotizar". Si el catalogo falla, la pagina sigue sirviendo
+// para pedir la cotizacion, solo que sin estimado.
+const catalog = await getJson<{ products: { id: number; prices?: ProductPrices }[] }[]>('/public/catalog').catch(() => []);
+const pricesById = Object.fromEntries(
+  catalog.flatMap((category) => category.products).map((product) => [String(product.id), product.prices]),
+);
+const priceSettings = { wholesaleThresholdQty: settings.wholesaleThresholdQty, fragranceSurcharge: settings.fragranceSurcharge };
 
 // Misma regla que el API: hoy en la zona del negocio + N dias, como fecha pura.
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date());
@@ -41,7 +54,15 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
     <div id="quote-content" class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16" hidden>
       <div class="min-w-0">
         <h2 class="text-heading-lg text-brand">Tus productos</h2>
-        <ul id="quote-items" class="mt-6 flex flex-col gap-4"></ul>
+        <ul id="quote-items" class="mt-6 flex flex-col gap-4" data-prices={JSON.stringify(pricesById)} data-price-settings={JSON.stringify(priceSettings)}></ul>
+        <div id="quote-summary" class="mt-6 rounded-card bg-surface p-4 shadow-card">
+          <dl class="flex items-baseline justify-between gap-4">
+            <dt class="text-body font-medium">Total estimado</dt>
+            <dd data-total class="text-heading-lg text-brand tabular-nums"></dd>
+          </dl>
+          <p data-pending class="mt-1 text-caption text-text-muted" hidden></p>
+          <p class="mt-2 text-caption text-text-muted">{[PRICE_DISCLAIMER, wholesaleNote(settings.wholesaleThresholdQty), fragranceNote(settings.fragranceSurcharge)].filter(Boolean).join(' ')}</p>
+        </div>
       </div>
 
       <form id="request-form" class="min-w-0 space-y-6 rounded-card bg-surface p-6 shadow-card" novalidate>
@@ -49,7 +70,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
 
         <div class="flex gap-4 rounded-input border-l-[3px] border-action bg-surface-tint p-4 text-body-sm text-text">
           <svg class="shrink-0 text-action" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v2" /></svg>
-          <p>Entregas solo en {settings.city}. Pide con al menos {settings.minLeadTimeDays} días de anticipación. Te enviamos el precio por WhatsApp.</p>
+          <p>Entregas solo en {settings.city}. Pide con al menos {settings.minLeadTimeDays} días de anticipación. Te confirmamos el precio final por WhatsApp.</p>
         </div>
 
         <div>
@@ -95,6 +116,8 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
     <div class="min-w-0">
       <a data-name class="text-heading-sm text-text [overflow-wrap:anywhere] hover:text-action"></a>
       <p data-options class="mt-1 text-caption text-text-muted [overflow-wrap:anywhere]"></p>
+      <p data-unit class="mt-2 text-caption text-text-muted"></p>
+      <p data-line-total class="text-body font-semibold text-brand tabular-nums"></p>
     </div>
     <div class="flex flex-col items-end gap-2">
       <input data-quantity type="number" min="1" max="5000" step="1" class="field-input w-20 text-center font-semibold" />
@@ -122,6 +145,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
   import { API_URL } from '../lib/api';
   import { clearQuote, readQuote, removeQuoteItem, updateQuoteItem } from '../lib/quote-list';
   import { initDatePicker } from '../lib/date-picker';
+  import { estimateLine, estimateTotal, formatPrice, type LineEstimate, type PriceSettings, type ProductPrices } from '../lib/price';
 
   const content = document.querySelector<HTMLElement>('#quote-content')!;
   const empty = document.querySelector<HTMLElement>('#quote-empty')!;
@@ -135,9 +159,16 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
   const eventDate = datePicker.querySelector<HTMLInputElement>('input[name=eventDate]')!;
   const eventDateButton = datePicker.querySelector<HTMLButtonElement>('[data-date-trigger]')!;
   initDatePicker(datePicker, { min: datePicker.dataset.min! });
+  const summary = document.querySelector<HTMLElement>('#quote-summary')!;
+  const summaryTotal = summary.querySelector<HTMLElement>('[data-total]')!;
+  const summaryPending = summary.querySelector<HTMLElement>('[data-pending]')!;
+  const pricesById: Record<string, ProductPrices | undefined> = JSON.parse(list.dataset.prices ?? '{}');
+  const priceSettings: PriceSettings = JSON.parse(list.dataset.priceSettings ?? '{}');
+  const tierLabel = { retail: 'Menudeo', wholesale: 'Mayoreo' } as const;
 
   const render = () => {
     const items = readQuote();
+    const estimates: (LineEstimate | null)[] = items.map((item) => estimateLine(item, pricesById[item.productId], priceSettings));
     content.hidden = items.length === 0 || !sent.hidden;
     empty.hidden = items.length > 0 || !sent.hidden;
     list.replaceChildren(
@@ -153,6 +184,11 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
           ...item.extraFields.map((field) => `${field.label}: ${field.value}`),
           item.withFragrance ? `Aroma: ${item.fragranceName || 'sin especificar'}` : 'Sin aroma',
         ].filter(Boolean).join(' · ');
+        const estimate = estimates[index];
+        row.querySelector('[data-unit]')!.textContent = estimate
+          ? `${tierLabel[estimate.tier]} · ${formatPrice(estimate.unitPrice)} c/u${item.withFragrance && priceSettings.fragranceSurcharge ? ' (aroma incluido)' : ''}`
+          : 'Precio a cotizar';
+        row.querySelector('[data-line-total]')!.textContent = estimate ? formatPrice(estimate.lineTotal) : '';
         const quantity = row.querySelector<HTMLInputElement>('[data-quantity]')!;
         quantity.value = String(item.quantity);
         quantity.setAttribute('aria-label', `Cantidad de ${item.name}`);
@@ -167,6 +203,12 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
         return row;
       }),
     );
+    const { total, pending } = estimateTotal(estimates);
+    // Sin ningun renglon con precio no hay nada que estimar.
+    summary.hidden = pending === items.length;
+    summaryTotal.textContent = formatPrice(total);
+    summaryPending.hidden = pending === 0;
+    summaryPending.textContent = pending === 1 ? 'No incluye 1 producto a cotizar.' : `No incluye ${pending} productos a cotizar.`;
   };
 
   const showError = (message: string) => {
