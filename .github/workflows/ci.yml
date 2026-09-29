@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Pruebas unitarias
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Las pruebas no generan PDFs reales: no hace falta bajar Chrome.
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toma la version de pnpm del campo packageManager de package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # La API importa @lignumvitae/types desde dist/ y usa el cliente de Prisma generado.
+      - run: pnpm --filter @lignumvitae/types build
+      - run: pnpm --filter @lignumvitae/api exec prisma generate
+
+      - run: pnpm test
