@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeFilterCount, categoryFromHash, facetVisible, flattenCatalog, matchesFilters, normalizeText, resultsLabel } from './catalog-filter.ts';
+import { activeFilterCount, categoryFromHash, facetVisible, filtersFromSearch, filtersToSearch, flattenCatalog, matchesFilters, normalizeText, resultsLabel } from './catalog-filter.ts';
 
 const card = { name: 'Vela Corazón', category: 'flores', candles: ['rosa', 'girasol'], packaging: 'caja' };
 const emptyFilters = { categories: [], candles: [], packagings: [], query: '' };
@@ -129,4 +129,32 @@ test('resultsLabel muestra el conteo con singular o plural', () => {
   assert.equal(resultsLabel(0), 'Ver 0 productos');
   assert.equal(resultsLabel(1), 'Ver 1 producto');
   assert.equal(resultsLabel(29), 'Ver 29 productos');
+});
+
+const valid = { categories: ['flores', 'corazones'], candles: ['rosa', 'girasol'], packagings: ['caja', 'bolsa'] };
+
+test('filtersToSearch omite los grupos vacíos y usa claves de una letra', () => {
+  assert.equal(filtersToSearch(emptyFilters), '');
+  assert.equal(filtersToSearch({ ...emptyFilters, query: '   ' }), '');
+  assert.equal(filtersToSearch({ categories: ['flores', 'corazones'], candles: ['rosa'], packagings: ['caja'], query: '' }), '?c=flores,corazones&m=rosa&e=caja');
+});
+
+test('filtersToSearch codifica la búsqueda con + para los espacios', () => {
+  assert.equal(filtersToSearch({ ...emptyFilters, query: ' vela corazón ' }), '?q=vela+coraz%C3%B3n');
+  assert.equal(filtersToSearch({ ...emptyFilters, query: 'a&b=c,d' }), '?q=a%26b%3Dc%2Cd');
+});
+
+test('filtersFromSearch lee lo que escribe filtersToSearch', () => {
+  const state = { categories: ['corazones', 'flores'], candles: ['girasol'], packagings: ['bolsa'], query: 'vela coraz\u00f3n & más' };
+  assert.deepEqual(filtersFromSearch(filtersToSearch(state), valid), state);
+});
+
+test('filtersFromSearch descarta slugs inválidos o repetidos y tolera parámetros ausentes', () => {
+  assert.deepEqual(filtersFromSearch('', valid), emptyFilters);
+  assert.deepEqual(filtersFromSearch('?c=flores,,no-existe,flores&m=FLORES&x=1', valid), { ...emptyFilters, categories: ['flores'] });
+  assert.deepEqual(filtersFromSearch('?c=%E0&q=%E0', valid), { ...emptyFilters, query: '\uFFFD' });
+});
+
+test('filtersFromSearch acepta comas codificadas entre slugs', () => {
+  assert.deepEqual(filtersFromSearch('?c=flores%2Ccorazones', valid).categories, ['flores', 'corazones']);
 });

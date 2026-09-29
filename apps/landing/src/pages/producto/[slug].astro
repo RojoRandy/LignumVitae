@@ -83,7 +83,7 @@ const surcharge = settings?.fragranceSurcharge ?? 0;
 
       <div class="min-w-0 [overflow-wrap:anywhere]">
         <nav aria-label="Ruta de navegación" class="text-caption">
-          <a href="/catalogo" class="text-action hover:underline">Catálogo</a> / <a href={`/catalogo#${encodeURIComponent(product.category.slug)}`} class="text-action hover:underline">{product.category.name}</a>
+          <a href="/catalogo" class="text-action hover:underline">Catálogo</a> / <a href={`/catalogo?c=${encodeURIComponent(product.category.slug)}`} class="text-action hover:underline">{product.category.name}</a>
         </nav>
         <h1 id="product-title" class="mt-4 text-display-lg text-brand">{product.name}</h1>
         {hasPrice && <div class="mt-6">
