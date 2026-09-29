@@ -27,6 +27,47 @@ export function categoryFromHash(hash: string, validSlugs: string[]): string | n
   }
 }
 
+export interface FilterSelection {
+  categories: string[];
+  candles: string[];
+  packagings: string[];
+}
+
+export interface FilterState extends FilterSelection {
+  query: string;
+}
+
+// Claves de una letra para que el enlace compartido quede corto:
+// /catalogo?c=flores,corazones&m=rosa&e=caja&q=osito
+const PARAM_KEYS = { categories: 'c', candles: 'm', packagings: 'e' } as const;
+const QUERY_KEY = 'q';
+
+/** Lee los filtros del query string y descarta slugs que no existen o repetidos. */
+export function filtersFromSearch(search: string, valid: FilterSelection): FilterState {
+  const params = new URLSearchParams(search);
+  const pick = (group: keyof FilterSelection) => {
+    const values = (params.get(PARAM_KEYS[group]) ?? '').split(',').filter((slug) => valid[group].includes(slug));
+    return [...new Set(values)];
+  };
+  return {
+    categories: pick('categories'),
+    candles: pick('candles'),
+    packagings: pick('packagings'),
+    query: (params.get(QUERY_KEY) ?? '').trim(),
+  };
+}
+
+/** Arma el query string mas corto posible: omite grupos vacios y separa slugs con coma. */
+export function filtersToSearch(state: FilterState): string {
+  const parts: string[] = [];
+  for (const group of ['categories', 'candles', 'packagings'] as const) {
+    if (state[group].length > 0) parts.push(`${PARAM_KEYS[group]}=${state[group].map(encodeURIComponent).join(',')}`);
+  }
+  const query = state.query.trim();
+  if (query) parts.push(`${QUERY_KEY}=${encodeURIComponent(query).replace(/%20/g, '+')}`);
+  return parts.length > 0 ? `?${parts.join('&')}` : '';
+}
+
 export function flattenCatalog<P extends { isFeatured: boolean }>(
   categories: { slug: string; products: P[] }[],
 ): { product: P; categorySlug: string }[] {

@@ -125,7 +125,7 @@ const steps = [
     {categories.length > 0 ? <div class="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
       {categories.map((category) => {
         const cover = category.coverImageUrl || category.products[0]?.image?.url;
-        return <a href={`/catalogo#${encodeURIComponent(category.slug)}`} class="min-w-0 rounded-card bg-surface shadow-card">
+        return <a href={`/catalogo?c=${encodeURIComponent(category.slug)}`} class="min-w-0 rounded-card bg-surface shadow-card">
           <img src={cover ? imageUrl(cover) : '/logo.svg'} alt={category.name} loading="lazy" decoding="async" class:list={['aspect-square w-full rounded-t-card bg-canvas-deep', cover ? 'object-cover' : 'object-contain p-6']} />
           <div class="p-4">
             <h3 class="text-heading text-brand [overflow-wrap:anywhere]">{category.name}</h3>

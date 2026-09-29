@@ -22,23 +22,77 @@ test('el catálogo no muestra chips ni navegación de categorías', async ({ pag
 });
 
 test('el enlace directo a flores preselecciona la categoría', async ({ page }) => {
-  await page.goto('/catalogo#flores');
+  await page.goto('/catalogo?c=flores');
 
   await expect(page.locator('input[data-filter-category][value="flores"]')).toBeChecked();
   await expectCategory(page, 'flores');
 });
 
+test('los enlaces viejos con #slug se convierten a ?c=slug', async ({ page }) => {
+  await page.goto('/catalogo#flores');
+
+  await expect(page.locator('input[data-filter-category][value="flores"]')).toBeChecked();
+  await expectCategory(page, 'flores');
+  await expect(page).toHaveURL((url) => url.search === '?c=flores' && url.hash === '');
+});
+
+test('los filtros se reflejan en la URL y el enlace se puede compartir', async ({ page, context }) => {
+  await page.goto('/catalogo');
+  const category = page.locator('input[data-filter-category]').first();
+  const slug = await category.inputValue();
+  await category.check();
+  const candle = page.locator('label[data-facet-categories]:visible input[data-filter-candle]').first();
+  const mold = await candle.inputValue();
+  await candle.check();
+  await page.locator('#catalog-search').fill('a b');
+
+  await expect(page).toHaveURL((url) => url.search === `?c=${slug}&m=${mold}&q=a+b`);
+  const visible = await page.locator('.product-card:not([hidden])').count();
+
+  const shared = await context.newPage();
+  await shared.goto(page.url());
+  await expect(shared.locator(`input[data-filter-category][value="${slug}"]`)).toBeChecked();
+  await expect(shared.locator(`input[data-filter-candle][value="${mold}"]`)).toBeChecked();
+  await expect(shared.locator('#catalog-search')).toHaveValue('a b');
+  await expect(shared.locator('.product-card:not([hidden])')).toHaveCount(visible);
+});
+
+test('el servidor entrega el catálogo ya filtrado', async ({ request }) => {
+  const res = await request.get('/catalogo?c=flores');
+  expect(res.ok()).toBe(true);
+  const html = await res.text();
+  expect(html).toMatch(/value="flores"[^>]*checked/);
+  expect(html).toMatch(/data-category="(?!flores")[^"]*"[^>]*hidden/);
+  expect(html).not.toMatch(/data-category="flores"[^>]*hidden/);
+  expect(html).toContain('<link rel="canonical" href="https://lignumvitae.com.mx/catalogo">');
+});
+
+test('limpiar filtros deja la URL sin parámetros', async ({ page }) => {
+  await page.goto('/catalogo?c=flores&q=vela');
+  await page.locator('[data-clear-filters]:visible').first().click();
+
+  await expect(page).toHaveURL((url) => url.pathname === '/catalogo' && url.search === '');
+});
+
+test('parámetros inválidos se ignoran y se quitan de la URL', async ({ page }) => {
+  await page.goto('/catalogo?c=no-existe&m=tampoco&x=1');
+  const total = await page.locator('.product-card').count();
+
+  await expect(page.locator('.product-card:not([hidden])')).toHaveCount(total);
+  await expect(page.locator('input[type="checkbox"]:checked')).toHaveCount(0);
+  await expect(page).toHaveURL((url) => url.search === '');
+});
+
 test('la categoría de la home abre el catálogo filtrado', async ({ page }) => {
   await page.goto('/');
-  const link = page.locator('a[href^="/catalogo#"]').first();
+  const link = page.locator('a[href^="/catalogo?c="]').first();
   const href = await link.getAttribute('href');
   expect(href).toBeTruthy();
-  const hash = href!.slice(href!.indexOf('#'));
-  const slug = decodeURIComponent(hash.slice(1));
+  const slug = new URL(href!, 'http://x').searchParams.get('c')!;
 
   await link.click();
 
-  await expect(page).toHaveURL((url) => url.pathname === '/catalogo' && url.hash === hash);
+  await expect(page).toHaveURL((url) => url.pathname === '/catalogo' && url.searchParams.get('c') === slug);
   await expect(page.locator(`input[data-filter-category][value="${slug}"]`)).toBeChecked();
   await expectCategory(page, slug);
 });
