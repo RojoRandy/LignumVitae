@@ -5,6 +5,7 @@
 // pagado (personalizacion reutilizada) y si esta pieza en particular lleva
 // aroma -- por eso ProductCostingCalculator.compute() recibe `overrides`.
 import { Injectable } from '@nestjs/common';
+import { money, round6 } from '@lignumvitae/types';
 import type { Settings } from '@prisma/client';
 import { ProductCostingCalculator, type ProductCostingContext, type ProductCostingResult } from '../../../catalog/products/services/product-costing-calculator.service';
 import type { ProductWithRelations } from '../../../catalog/products/product.repository';
@@ -14,14 +15,13 @@ export interface QuotationLineCostingContext {
   laborRatePerMinute: number;
   overheadRatePerMinute: number;
   defaultWaxUnitCost: number;
-  fragranceLoadPct: number;
+  fragranceSurcharge: number;
 }
 
 export interface QuotationLineCostingInput {
   quantity: number;
   setupMinutesOverride?: number | null;
   withFragrance: boolean;
-  fragranceUnitCost: number | null;
 }
 
 @Injectable()
@@ -43,12 +43,19 @@ export class QuotationLineCostingService {
       assemblyMinutes: product.assemblyMinutes,
     };
 
-    return this.calculator.compute(context, ctx.settings, ctx.laborRatePerMinute, ctx.overheadRatePerMinute, ctx.defaultWaxUnitCost, {
+    const result = this.calculator.compute(context, ctx.settings, ctx.laborRatePerMinute, ctx.overheadRatePerMinute, ctx.defaultWaxUnitCost, {
       prorationQuantity: input.quantity,
       setupMinutesTotal: input.setupMinutesOverride ?? undefined,
-      fragrance: input.withFragrance && input.fragranceUnitCost !== null
-        ? { unitCost: input.fragranceUnitCost, loadPct: ctx.fragranceLoadPct }
-        : null,
+      fragrance: null,
     });
+
+    // Decision de negocio: el aroma cuesta y cobra el recargo fijo;
+    // su costo real no entra en el margen de la cotizacion.
+    if (!input.withFragrance) return result;
+    return {
+      ...result,
+      unitFragranceCost: round6(money(result.unitFragranceCost).plus(ctx.fragranceSurcharge)).toNumber(),
+      unitTotalCost: round6(money(result.unitTotalCost).plus(ctx.fragranceSurcharge)).toNumber(),
+    };
   }
 }

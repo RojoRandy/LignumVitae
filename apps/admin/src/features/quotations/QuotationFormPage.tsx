@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ApiError } from '@lignumvitae/types';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
@@ -201,6 +202,20 @@ export default function QuotationFormPage() {
     error: previewError,
   } = useQuotationTotalsPreview(previewInput);
 
+  const marginErrorData = previewError instanceof ApiError && previewError.code === 'BELOW_MIN_MARGIN'
+    ? previewError.details
+    : undefined;
+  const rowErrors = rows.map((row) => {
+    if (
+      !marginErrorData || typeof marginErrorData !== 'object' ||
+      !('productId' in marginErrorData) || marginErrorData.productId !== row.productId ||
+      row.unitPriceOverride == null ||
+      !('minPrice' in marginErrorData) || (typeof marginErrorData.minPrice !== 'number' && typeof marginErrorData.minPrice !== 'string') ||
+      !('minMarginPct' in marginErrorData) || (typeof marginErrorData.minMarginPct !== 'number' && typeof marginErrorData.minMarginPct !== 'string')
+    ) return undefined;
+    return `Precio minimo permitido: ${formatMoney(marginErrorData.minPrice)} (margen minimo ${marginErrorData.minMarginPct}%).`;
+  });
+
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       isEditing ? httpPatch<QuotationDto>(`/quotations/${id}`, body) : httpPost<QuotationDto>('/quotations', body),
@@ -325,7 +340,9 @@ export default function QuotationFormPage() {
             <QuotationLineItemEditor
               rows={rows}
               onChange={setRows}
+              rowErrors={rowErrors}
               previews={rows.map((_row, rowIndex) => {
+                if (previewError) return undefined;
                 const idx = previewIndexByRow[rowIndex];
                 const item = idx === undefined ? undefined : preview?.totals.items[idx];
                 return item ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
@@ -393,7 +410,9 @@ export default function QuotationFormPage() {
               <h3 className="text-body font-semibold text-text">Totales</h3>
               {previewLoading && <Spinner className="size-3.5" />}
             </div>
-            {preview ? (
+            {previewError ? (
+              <p className="text-body-sm text-text-muted">Corrige el error para ver el total.</p>
+            ) : preview ? (
               <>
                 <div className="flex flex-col gap-1.5 text-body-sm">
                   <MoneyRow label="Subtotal" value={formatMoney(preview.totals.subtotal)} />
@@ -417,4 +436,3 @@ export default function QuotationFormPage() {
     </div>
   );
 }
-

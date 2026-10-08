@@ -57,9 +57,10 @@ interface QuotationLineItemEditorProps {
   rows: QuotationLineItemRow[];
   onChange: (rows: QuotationLineItemRow[]) => void;
   previews?: (RowPreview | undefined)[];
+  rowErrors?: (string | undefined)[];
 }
 
-export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationLineItemEditorProps) => {
+export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }: QuotationLineItemEditorProps) => {
   const { options: productOptions, products } = useProductOptions();
   const { supplies } = useSupplyOptions();
   const fragranceOptions = supplies
@@ -151,12 +152,10 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 <RowField label="Aroma" htmlFor={`fragrance-${index}`} className="col-span-12 sm:col-span-6">
                   <Select
                     id={`fragrance-${index}`}
-                    options={fragranceOptions}
-                    value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : undefined}
-                    onChange={(v) => update(index, { fragranceSupplyId: v ? Number(v) : null })}
-                    placeholder="Elegir aroma..."
+                    options={[{ value: 'pending', label: 'Pendiente' }, ...fragranceOptions]}
+                    value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : 'pending'}
+                    onChange={(v) => update(index, { fragranceSupplyId: v && v !== 'pending' ? Number(v) : null })}
                     searchable
-                    required
                   />
                   {fragranceOptions.length === 0 && (
                     <p className="text-caption text-text-muted">No hay insumos marcados como aroma en Inventario.</p>
@@ -181,6 +180,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 tooltip="Vacio: usa el precio de lista sugerido. Un precio manual se valida contra el piso de margen de Configuracion."
               >
                 <NumberInput id={`price-${index}`} min={0} step={0.01} unit="$" unitPosition="prefix" value={row.unitPriceOverride} onChange={(v) => update(index, { unitPriceOverride: v })} />
+                {rowErrors?.[index] && <p className="text-caption text-danger-fg">{rowErrors[index]}</p>}
               </RowField>
               <RowField label="Precio final" className="col-span-6 sm:col-span-3">
                 <ReadonlyAmount>{preview ? formatMoney(preview.unitPrice) : '—'}</ReadonlyAmount>

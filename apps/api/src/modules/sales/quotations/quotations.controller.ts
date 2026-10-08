@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
@@ -10,6 +10,7 @@ import { CreateQuotationDto, UpdateQuotationDto } from './dto/create-quotation.d
 import { PreviewQuotationTotalsDto } from './dto/preview-quotation-totals.dto';
 import { FindQuotationsQueryDto } from './dto/find-quotations.query.dto';
 import { PdfService } from '../../pdf/pdf.service';
+import type { QuotationLayout } from '../../pdf/pdf.service';
 
 @ApiTags('Sales')
 @Auth()
@@ -81,14 +82,27 @@ export class QuotationsController {
 
   // @Res({ passthrough: false }): unico controller del repo que responde
   // binario -- se salta el ApiResponseInterceptor global a proposito, para
-  // mandar el PDF crudo con su propio Content-Type en vez de envolverlo en
+  // mandar el PDF o PNG crudo con su propio Content-Type en vez de envolverlo en
   // el sobre {data, success, message} de toda otra respuesta.
   @Get(':id/pdf')
-  async pdf(@Param('id', ParseIntPipe) id: number, @Res({ passthrough: false }) res: Response) {
+  async pdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: false }) res: Response,
+    @Query('layout', new ParseEnumPipe(['letter', 'mobile'], { optional: true })) layout: QuotationLayout = 'letter',
+  ) {
     const quotation = await this.quotationsService.findById(id);
-    const buffer = await this.pdfService.renderQuotationPdf(quotation);
+    const buffer = await this.pdfService.renderQuotationPdf(quotation, layout);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${quotation.folio}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="${quotation.folio}${layout === 'mobile' ? '-movil' : ''}.pdf"`);
+    res.send(buffer);
+  }
+
+  @Get(':id/image')
+  async image(@Param('id', ParseIntPipe) id: number, @Res({ passthrough: false }) res: Response) {
+    const quotation = await this.quotationsService.findById(id);
+    const buffer = await this.pdfService.renderQuotationImage(quotation);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Content-Disposition', `inline; filename="${quotation.folio}.png"`);
     res.send(buffer);
   }
 }

@@ -12,9 +12,11 @@
     --surface-sunken: #F7F4EC; /* cream-50 */
     --border-strong: #B2CBAE;  /* sage-300 */
     --border: #E9E3D3;         /* cream-100 */
+    --paper: #FFFFFF;          /* fondo explicito: la imagen PNG no tiene papel blanco como el PDF */
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--ink); margin: 0; padding: 0; font-size: 12px; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--ink); background: var(--paper); margin: 0; padding: 0; font-size: 12px; }
   .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 32px 32px 16px; border-bottom: 2px solid var(--accent); }
   .brand { display: flex; align-items: center; gap: 12px; }
   .brand img { height: 64px; width: 64px; }
@@ -45,6 +47,32 @@
   .bank .value { font-weight: 600; letter-spacing: 0.02em; }
   .terms { margin-top: 24px; font-size: 10px; color: var(--muted); white-space: pre-line; }
   .footer { padding: 16px 32px 32px; font-size: 10px; color: var(--muted); text-align: center; }
+  @media (max-width: 480px) {
+    body { font-size: 13px; }
+    .header, .section, .footer { padding-left: 16px; padding-right: 16px; }
+    .header { flex-direction: column; gap: 16px; }
+    .doc-info { text-align: left; }
+    .brand, .brand > div, .product span { min-width: 0; overflow-wrap: anywhere; }
+    .brand img, .product img { flex-shrink: 0; }
+    table, tbody, tr, td { display: block; }
+    thead { display: none; }
+    tbody tr { display: grid; grid-template-columns: 1fr; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    tbody tr.has-img { grid-template-columns: 96px 1fr; column-gap: 12px; }
+    td { padding: 4px 0; border-bottom: 0; font-size: 13px; }
+    td.product-cell, .product { display: contents; }
+    .product img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; grid-column: 1; grid-row: 1 / span 2; }
+    .product span { grid-column: 1; grid-row: 1; padding: 4px 0; }
+    td.detail { grid-column: 1; grid-row: 2; min-width: 0; font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
+    .has-img .product span, .has-img td.detail { grid-column: 2; }
+    td.num { grid-column: 1 / -1; grid-row: 3; align-self: start; display: flex; flex-wrap: wrap; justify-content: space-between; width: 35%; }
+    td.num::before { content: attr(data-label); width: 100%; text-align: left; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    td.num:nth-child(3) { width: 25%; position: relative; padding-right: 20px; }
+    td.num:nth-child(3)::after { content: '×'; position: absolute; right: 8px; bottom: 4px; color: var(--muted); }
+    td.num:nth-child(4) { margin-left: 25%; }
+    td.num:last-child { width: 40%; justify-self: end; justify-content: flex-end; font-weight: 700; }
+    td.num:last-child::before { text-align: right; font-weight: 400; }
+    .totals, .bank { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -83,18 +111,18 @@
       </thead>
       <tbody>
         {{#each items}}
-        <tr>
-          <td><div class="product">{{#if imageUrl}}<img src="{{imageUrl}}" alt="" />{{/if}}<span>{{product.name}}</span></div></td>
+        <tr class="{{#if imageUrl}}has-img{{/if}}">
+          <td class="product-cell"><div class="product">{{#if imageUrl}}<img src="{{imageUrl}}" alt="" />{{/if}}<span>{{product.name}}</span></div></td>
           <td class="detail">
             {{#if candleColor}}Color: {{candleColor}}<br />{{/if}}
             {{#if ribbonColor}}Liston: {{ribbonColor}}<br />{{/if}}
             {{#each extraFields}}{{label}}: {{value}}<br />{{/each}}
-            {{#if withFragrance}}Con aroma{{#if fragranceSupply.name}} ({{fragranceSupply.name}}){{/if}}<br />{{/if}}
+            {{#if withFragrance}}Aroma: {{#if fragranceSupply.name}}{{fragranceSupply.name}}{{else}}Pendiente{{/if}}<br />{{/if}}
             {{#if personalizationText}}{{personalizationText}}{{/if}}
           </td>
-          <td class="num">{{quantity}}</td>
-          <td class="num">{{money unitPrice}}</td>
-          <td class="num">{{money lineTotal}}</td>
+          <td class="num" data-label="Cant.">{{quantity}}</td>
+          <td class="num" data-label="Precio">{{money unitPrice}}</td>
+          <td class="num" data-label="Importe">{{money lineTotal}}</td>
         </tr>
         {{/each}}
       </tbody>

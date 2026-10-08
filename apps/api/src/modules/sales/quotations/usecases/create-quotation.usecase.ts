@@ -103,9 +103,8 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
           quantity: item.quantity,
           setupMinutesOverride: item.setupMinutesOverride,
           withFragrance: Boolean(item.withFragrance),
-          fragranceUnitCost: item.fragranceSupplyId ? (fragranceMap.get(item.fragranceSupplyId)?.currentUnitCost.toNumber() ?? null) : null,
         },
-        { settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, fragranceLoadPct: settings.fragranceLoadPct.toNumber() },
+        { settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, fragranceSurcharge: settings.fragranceSurcharge.toNumber() },
       ),
     );
 
