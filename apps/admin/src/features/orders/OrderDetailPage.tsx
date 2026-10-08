@@ -93,6 +93,8 @@ export default function OrderDetailPage() {
   }
 
   const depositCovered = Number(order.paidAmount) >= Number(order.depositAmount);
+  // Centavos enteros: restar decimales en flotante deja ruido como 40.99999.
+  const balanceCents = Math.round(Number(order.total) * 100) - Math.round(Number(order.paidAmount) * 100);
   const nextStatus = NEXT_STATUS[order.status];
 
   return (
@@ -177,7 +179,7 @@ export default function OrderDetailPage() {
                   <div>
                     <p className="text-body-sm font-medium text-text">{item.productName}</p>
                     <p className="text-caption text-text-muted">
-                      {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null, item.personalizationText]
+                      {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma: ${item.fragranceName ?? 'Pendiente'}` : null, item.personalizationText]
                         .filter(Boolean)
                         .join(' · ') || '—'}
                     </p>
@@ -228,7 +230,15 @@ export default function OrderDetailPage() {
             </div>
             <PaymentProgress paid={order.paidAmount} total={order.total} />
           </div>
-          {depositCovered && <Badge variant="success">Anticipo cubierto</Badge>}
+          <div className="flex flex-wrap gap-2">
+            {depositCovered && <Badge variant="success">Anticipo cubierto</Badge>}
+            {order.status !== 'CANCELLED' &&
+              (balanceCents > 0 ? (
+                <Badge variant="warning">Saldo pendiente {formatMoney(balanceCents / 100)}</Badge>
+              ) : (
+                <Badge variant="success">Pagado</Badge>
+              ))}
+          </div>
           <div className="flex flex-col gap-1.5 text-body-sm">
             <div className="flex justify-between"><span className="text-text-muted">Anticipo requerido</span><span className="font-medium text-text">{formatMoney(order.depositAmount)}</span></div>
             <div className="flex justify-between"><span className="text-text-muted">Costo total</span><span className="text-text-muted">{formatMoney(order.totalCost)}</span></div>
