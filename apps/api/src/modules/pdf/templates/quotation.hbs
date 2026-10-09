@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <style>
-  /* Paleta de marca: valores de packages/tailwind-preset/brand.json, mismo
+  /* Paleta de marca: todos los valores, incluido --paper, vienen de packages/tailwind-preset/brand.json; mismo
      criterio que apps/admin/src/styles/tokens.css. Ningun otro hex en esta plantilla. */
   :root {
     --accent: #3D6660;         /* teal-700 */
@@ -12,7 +12,7 @@
     --surface-sunken: #F7F4EC; /* cream-50 */
     --border-strong: #B2CBAE;  /* sage-300 */
     --border: #E9E3D3;         /* cream-100 */
-    --paper: #FFFFFF;          /* fondo explicito: la imagen PNG no tiene papel blanco como el PDF */
+    --paper: #FFFFFF;          /* token "paper" de packages/tailwind-preset/brand.json (#FFFFFF): fondo explicito, el PNG no trae papel blanco como el PDF */
     color-scheme: light;
   }
   * { box-sizing: border-box; }
@@ -47,35 +47,33 @@
   .bank .value { font-weight: 600; letter-spacing: 0.02em; }
   .terms { margin-top: 24px; font-size: 10px; color: var(--muted); white-space: pre-line; }
   .footer { padding: 16px 32px 32px; font-size: 10px; color: var(--muted); text-align: center; }
-  @media (max-width: 480px) {
-    body { font-size: 13px; }
-    .header, .section, .footer { padding-left: 16px; padding-right: 16px; }
-    .header { flex-direction: column; gap: 16px; }
-    .doc-info { text-align: left; }
-    .brand, .brand > div, .product span { min-width: 0; overflow-wrap: anywhere; }
-    .brand img, .product img { flex-shrink: 0; }
-    table, tbody, tr, td { display: block; }
-    thead { display: none; }
-    tbody tr { display: grid; grid-template-columns: 1fr; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    tbody tr.has-img { grid-template-columns: 96px 1fr; column-gap: 12px; }
-    td { padding: 4px 0; border-bottom: 0; font-size: 13px; }
-    td.product-cell, .product { display: contents; }
-    .product img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; grid-column: 1; grid-row: 1 / span 2; }
-    .product span { grid-column: 1; grid-row: 1; padding: 4px 0; }
-    td.detail { grid-column: 1; grid-row: 2; min-width: 0; font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
-    .has-img .product span, .has-img td.detail { grid-column: 2; }
-    td.num { grid-column: 1 / -1; grid-row: 3; align-self: start; display: flex; flex-wrap: wrap; justify-content: space-between; width: 35%; }
-    td.num::before { content: attr(data-label); width: 100%; text-align: left; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-    td.num:nth-child(3) { width: 25%; position: relative; padding-right: 20px; }
-    td.num:nth-child(3)::after { content: '×'; position: absolute; right: 8px; bottom: 4px; color: var(--muted); }
-    td.num:nth-child(4) { margin-left: 25%; }
-    td.num:last-child { width: 40%; justify-self: end; justify-content: flex-end; font-weight: 700; }
-    td.num:last-child::before { text-align: right; font-weight: 400; }
-    .totals, .bank { width: 100%; }
-  }
+  .layout-mobile { font-size: 13px; }
+  .layout-mobile .header, .layout-mobile .section, .layout-mobile .footer { padding-left: 16px; padding-right: 16px; }
+  .layout-mobile .header { flex-direction: column; gap: 16px; }
+  .layout-mobile .doc-info { text-align: left; }
+  .layout-mobile .brand, .layout-mobile .brand > div, .layout-mobile .product span { min-width: 0; overflow-wrap: anywhere; }
+  .layout-mobile .brand img, .layout-mobile .product img { flex-shrink: 0; }
+  .layout-mobile table, .layout-mobile tbody, .layout-mobile tr, .layout-mobile td { display: block; }
+  .layout-mobile thead { display: none; }
+  .layout-mobile tbody tr { break-inside: avoid; page-break-inside: avoid; display: grid; grid-template-columns: 1fr; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .layout-mobile tbody tr.has-img { grid-template-columns: 96px 1fr; column-gap: 12px; }
+  .layout-mobile td { padding: 4px 0; border-bottom: 0; font-size: 13px; }
+  .layout-mobile td.product-cell, .layout-mobile .product { display: contents; }
+  .layout-mobile .product img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; grid-column: 1; grid-row: 1 / span 2; }
+  .layout-mobile .product span { grid-column: 1; grid-row: 1; padding: 4px 0; }
+  .layout-mobile td.detail { grid-column: 1; grid-row: 2; min-width: 0; font-size: 12px; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .layout-mobile .has-img .product span, .layout-mobile .has-img td.detail { grid-column: 2; }
+  .layout-mobile td.nums { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: max-content minmax(max-content, 1fr) minmax(max-content, 1fr); column-gap: 12px; }
+  .layout-mobile .nums .num { display: grid; grid-template-columns: auto; text-align: left; align-content: start; }
+  .layout-mobile .nums .num::before { content: attr(data-label); grid-column: 1; grid-row: 1; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 400; }
+  .layout-mobile .nums .num > span { grid-column: 1; grid-row: 2; }
+  .layout-mobile .nums .quantity { grid-template-columns: auto auto; column-gap: 12px; }
+  .layout-mobile .nums .quantity::after { content: '×'; grid-column: 2; grid-row: 2; color: var(--muted); }
+  .layout-mobile .nums .amount { text-align: right; font-weight: 700; }
+  .layout-mobile .totals, .layout-mobile .bank { width: 100%; }
 </style>
 </head>
-<body>
+<body class="layout-{{layout}}">
   <div class="header">
     <div class="brand">
       <img src="{{logoSrc}}" alt="{{brandName}}" />
@@ -120,9 +118,18 @@
             {{#if withFragrance}}Aroma: {{#if fragranceSupply.name}}{{fragranceSupply.name}}{{else}}Pendiente{{/if}}<br />{{/if}}
             {{#if personalizationText}}{{personalizationText}}{{/if}}
           </td>
+          {{!-- layout es 'letter' | 'mobile': en movil los tres valores van en una sola celda con su propia rejilla. --}}
+          {{#if (eq @root.layout 'mobile')}}
+          <td class="nums">
+            <span class="num quantity" data-label="Cant."><span>{{quantity}}</span></span>
+            <span class="num" data-label="Precio"><span>{{money unitPrice}}</span></span>
+            <span class="num amount" data-label="Importe"><span>{{money lineTotal}}</span></span>
+          </td>
+          {{else}}
           <td class="num" data-label="Cant.">{{quantity}}</td>
           <td class="num" data-label="Precio">{{money unitPrice}}</td>
           <td class="num" data-label="Importe">{{money lineTotal}}</td>
+          {{/if}}
         </tr>
         {{/each}}
       </tbody>

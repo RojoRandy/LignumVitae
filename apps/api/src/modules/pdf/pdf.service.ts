@@ -4,7 +4,7 @@
 // persistente (singleton), asi que se lanza y se cierra por peticion.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Handlebars from 'handlebars';
 import puppeteer, { type Page, type Viewport } from 'puppeteer';
@@ -13,6 +13,16 @@ import { registerHelpers } from './templates/helpers';
 import type { QuotationWithRelations } from '../sales/quotations/quotation.repository';
 
 export type QuotationLayout = 'letter' | 'mobile';
+
+export const MAX_PDF_PAGE_HEIGHT = 14000;
+export const MAX_IMAGE_HEIGHT = 16000;
+
+export const mobileRenderPlan = (contentHeight: number) => ({
+  pdfPageHeight: Math.min(Math.ceil(contentHeight) + 2, MAX_PDF_PAGE_HEIGHT),
+  paginate: contentHeight + 2 > MAX_PDF_PAGE_HEIGHT,
+  imageScale: contentHeight <= 0 ? 2 : Math.min(2, Math.floor((MAX_IMAGE_HEIGHT / contentHeight) * 100) / 100),
+  imageTooTall: contentHeight > MAX_IMAGE_HEIGHT,
+});
 
 /** Puppeteer corre en el mismo host que el API, asi que una ruta relativa
  *  "/static/..." (STORAGE_DRIVER=local) se resuelve contra el propio API; las
@@ -38,11 +48,13 @@ export class PdfService {
     this.logoSrc = `data:image/svg+xml;base64,${logo.toString('base64')}`;
   }
 
-  private async buildHtml(quotation: QuotationWithRelations): Promise<string> {
+  // expuesto para pruebas
+  async buildHtml(quotation: QuotationWithRelations, layout: QuotationLayout): Promise<string> {
     const settings = await this.settingsService.get();
     const publicSiteUrl = this.configService.get<string>('PUBLIC_SITE_URL') ?? '';
 
     return this.quotationTemplate({
+      layout,
       brandName: settings.brandName,
       logoSrc: this.logoSrc,
       phone: settings.phone,
@@ -82,7 +94,7 @@ export class PdfService {
   }
 
   async renderQuotationPdf(quotation: QuotationWithRelations, layout: QuotationLayout = 'letter'): Promise<Buffer> {
-    const html = await this.buildHtml(quotation);
+    const html = await this.buildHtml(quotation, layout);
     const viewport = layout === 'mobile' ? { width: 420, height: 800 } : undefined;
     return this.withPage(viewport, async (page) => {
       // El logo va inline; las fotos de producto si se piden por red, y
@@ -91,13 +103,14 @@ export class PdfService {
       // ponytail: imagenes a resolucion original; redimensionar al subir si el PDF pesa.
       await page.setContent(html, { waitUntil: 'load' });
       if (layout === 'mobile') {
+        await page.emulateMediaType('print');
         const h = await page.evaluate(() => document.documentElement.scrollHeight);
+        const plan = mobileRenderPlan(h);
         const pdf = await page.pdf({
           width: '420px',
-          height: `${h}px`,
+          height: `${plan.pdfPageHeight}px`,
           printBackground: true,
           margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
-          pageRanges: '1',
         });
         return Buffer.from(pdf);
       }
@@ -111,9 +124,15 @@ export class PdfService {
   }
 
   async renderQuotationImage(quotation: QuotationWithRelations): Promise<Buffer> {
-    const html = await this.buildHtml(quotation);
-    return this.withPage({ width: 420, height: 800, deviceScaleFactor: 2 }, async (page) => {
+    const html = await this.buildHtml(quotation, 'mobile');
+    return this.withPage({ width: 420, height: 800, deviceScaleFactor: 1 }, async (page) => {
       await page.setContent(html, { waitUntil: 'load' });
+      const h = await page.evaluate(() => document.documentElement.scrollHeight);
+      const plan = mobileRenderPlan(h);
+      if (plan.imageTooTall) {
+        throw new BadRequestException('La cotizacion es demasiado larga para exportarla como imagen; descarga el PDF.');
+      }
+      await page.setViewport({ width: 420, height: 800, deviceScaleFactor: plan.imageScale });
       const image = await page.screenshot({ type: 'png', fullPage: true });
       return Buffer.from(image);
     });
