@@ -105,11 +105,45 @@ export const validateMinMargin = (
     : money(0);
   // minPrice = costo / (1 - margen/100) — aqui SI es correcto usar margen
   // sobre precio, porque estamos fijando un piso de resultado, no un precio.
-  const minPrice = round2(money(unitTotalCost).dividedBy(money(1).minus(money(minMarginPct).dividedBy(100))));
+  // Hacia arriba al centavo: redondear al mas cercano puede dejar un minimo
+  // (p. ej. 16.12 en vez de 16.13) que otra vez no alcanza el piso.
+  const minPrice = ceilToMultiple(money(unitTotalCost).dividedBy(money(1).minus(money(minMarginPct).dividedBy(100))), '0.01');
 
   return {
     ok: marginPct.greaterThanOrEqualTo(minMarginPct),
     marginPct: marginPct.toNumber(),
     minPrice: minPrice.toNumber(),
+  };
+};
+
+export interface MarginWarning {
+  marginPct: number;
+  minMarginPct: number;
+  /** Precio final por pieza (con aroma) que cumple el piso de margen. */
+  minUnitPrice: number;
+  /** Lo que hay que escribir en "Precio manual": el minimo final menos el recargo de aroma, que se suma despues. */
+  minManualPrice: number;
+}
+
+/**
+ * Aviso (no bloqueo) cuando el precio final por pieza deja menos margen que
+ * el piso. Aplica igual al precio de lista y al manual: el mismo renglon no
+ * debe pasar o fallar segun de donde venga el precio.
+ */
+export const marginWarning = (input: {
+  unitPrice: number;
+  unitTotalCost: number;
+  minMarginPct: number;
+  /** Recargo de aroma ya incluido en unitPrice (0 si el renglon no lleva aroma). */
+  fragranceCharge?: number;
+}): MarginWarning | undefined => {
+  const check = validateMinMargin(input.unitPrice, input.unitTotalCost, input.minMarginPct);
+  if (check.ok) return undefined;
+  const minManual = round2(money(check.minPrice).minus(input.fragranceCharge ?? 0));
+  return {
+    marginPct: check.marginPct,
+    minMarginPct: input.minMarginPct,
+    minUnitPrice: check.minPrice,
+    minManualPrice: minManual.lessThan(0) ? 0 : minManual.toNumber(),
   };
 };

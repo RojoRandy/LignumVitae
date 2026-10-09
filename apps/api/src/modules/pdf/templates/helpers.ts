@@ -12,5 +12,6 @@ export const registerHelpers = () => {
   });
 
   Handlebars.registerHelper('gt', (a: number, b: number) => a > b);
+  Handlebars.registerHelper('eq', (a: unknown, b: unknown) => a === b);
   Handlebars.registerHelper('inc', (value: number) => value + 1);
 };

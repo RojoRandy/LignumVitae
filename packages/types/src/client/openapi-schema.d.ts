@@ -244,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/products/recalculate-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProductsController_recalculateAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/products": {
         parameters: {
             query?: never;
@@ -736,7 +752,7 @@ export interface paths {
         get: operations["QuotationsController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["QuotationsController_deactivate"];
         options?: never;
         head?: never;
         patch: operations["QuotationsController_update"];
@@ -790,6 +806,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quotations/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuotationsController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["QuotationsController_deletePermanently"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quotations/{id}/duplicate": {
         parameters: {
             query?: never;
@@ -814,6 +862,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["QuotationsController_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quotations/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QuotationsController_image"];
         put?: never;
         post?: never;
         delete?: never;
@@ -848,7 +912,7 @@ export interface paths {
         get: operations["QuoteRequestsController_findById"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["QuoteRequestsController_deactivate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -865,6 +929,38 @@ export interface paths {
         put?: never;
         post: operations["QuoteRequestsController_dismiss"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quote-requests/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QuoteRequestsController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/quote-requests/{id}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["QuoteRequestsController_deletePermanently"];
         options?: never;
         head?: never;
         patch?: never;
@@ -916,6 +1012,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{id}/items/{itemId}/fragrance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OrdersController_setItemFragrance"];
         trace?: never;
     };
     "/api/orders/{id}/status": {
@@ -1245,7 +1357,8 @@ export interface components {
             waxSupplyId?: number;
             /** @description Que tipo de insumo es la cera (por id, no por slug) */
             waxSupplyTypeId?: number;
-            fragranceLoadPct?: number;
+            fragranceDropsPer100g?: number;
+            fragranceRealCost?: boolean;
             fragranceSurcharge?: number;
             /** @enum {string} */
             overheadRateMode?: "DERIVED" | "FIXED";
@@ -1255,6 +1368,7 @@ export interface components {
             retailMarkupPct?: number;
             wholesaleMarkupPct?: number;
             wholesaleThresholdQty?: number;
+            designReferenceQty?: number;
             minMarginPct?: number;
             roundingMultiple?: number;
             supplyCostWindowDays?: number;
@@ -1264,6 +1378,12 @@ export interface components {
             quotationTerms?: string;
             quotationFooterNote?: string;
             orderPolicyText?: string;
+            bankName?: string;
+            bankAccountHolder?: string;
+            /** @description CLABE de 18 digitos o vacio */
+            bankClabe?: string;
+            /** @description Tarjeta de 16 digitos o vacio */
+            bankCardNumber?: string;
             quotationFolioPrefix?: string;
             orderFolioPrefix?: string;
             purchaseFolioPrefix?: string;
@@ -1508,6 +1628,8 @@ export interface components {
              * @default false
              */
             isFeatured: boolean;
+            /** @description Fecha ISO hasta la que el producto sale en Novedades; null lo quita */
+            newUntil?: string | null;
             /** @description Requerido si kind=BOUQUET: las velas que arma el ramo */
             components?: components["schemas"]["ProductComponentItemDto"][];
             /** @description Insumos ADICIONALES a los que ya aportan las plantillas de la vela, el empaque y la tarjeta (p. ej. un cascabel extra) */
@@ -1552,6 +1674,8 @@ export interface components {
              * @default false
              */
             isFeatured: boolean;
+            /** @description Fecha ISO hasta la que el producto sale en Novedades; null lo quita */
+            newUntil?: string | null;
             /** @description Requerido si kind=BOUQUET: las velas que arma el ramo */
             components?: components["schemas"]["ProductComponentItemDto"][];
             /** @description Insumos ADICIONALES a los que ya aportan las plantillas de la vela, el empaque y la tarjeta (p. ej. un cascabel extra) */
@@ -1767,7 +1891,7 @@ export interface components {
         CreateCustomerDto: {
             fullName: string;
             /** @example 3312345678 */
-            phone: string;
+            phone?: string | null;
             /** Format: email */
             email?: string;
             address?: string;
@@ -1777,7 +1901,7 @@ export interface components {
         UpdateCustomerDto: {
             fullName?: string;
             /** @example 3312345678 */
-            phone?: string;
+            phone?: string | null;
             /** Format: email */
             email?: string;
             address?: string;
@@ -1818,6 +1942,11 @@ export interface components {
             discountValue: number;
             /** @default 0 */
             shippingCost: number;
+            /**
+             * @description false = cada renglon decide menudeo/mayoreo con su propia cantidad
+             * @default true
+             */
+            accumulatePieces: boolean;
         };
         CreateQuotationDto: {
             customerId: number;
@@ -1835,6 +1964,11 @@ export interface components {
             discountValue: number;
             /** @default 0 */
             shippingCost: number;
+            /**
+             * @description false = cada renglon decide menudeo/mayoreo con su propia cantidad
+             * @default true
+             */
+            accumulatePieces: boolean;
             items: components["schemas"]["CreateQuotationItemDto"][];
             /** @description Solicitud web de la que sale esta cotizacion; queda CONVERTED en la misma transaccion */
             quoteRequestId?: number;
@@ -1855,10 +1989,18 @@ export interface components {
             discountValue: number;
             /** @default 0 */
             shippingCost: number;
+            /**
+             * @description false = cada renglon decide menudeo/mayoreo con su propia cantidad
+             * @default true
+             */
+            accumulatePieces: boolean;
             items?: components["schemas"]["CreateQuotationItemDto"][];
         };
         DismissQuoteRequestDto: {
             reason?: string;
+        };
+        SetOrderItemFragranceDto: {
+            fragranceSupplyId: number;
         };
         UpdateOrderStatusDto: {
             /** @enum {string} */
@@ -2569,6 +2711,23 @@ export interface operations {
             };
         };
     };
+    ProductsController_recalculateAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ProductsController_findAll: {
         parameters: {
             query?: {
@@ -2577,6 +2736,12 @@ export interface operations {
                 search?: string;
                 /** @description Si es false, incluye tambien los registros dados de baja */
                 onlyActive?: boolean;
+                highlight?: "featured" | "hero" | "gallery" | "new";
+                sortBy?: "name" | "retailMargin" | "wholesaleMargin";
+                /** @description Margen minimo de venta al menudeo en porcentaje */
+                minRetailMarginPct?: number;
+                /** @description Margen minimo de venta al mayoreo en porcentaje */
+                minWholesaleMarginPct?: number;
                 categoryId?: number;
                 candleId?: number;
                 kind?: "SIMPLE" | "BOUQUET";
@@ -3795,6 +3960,25 @@ export interface operations {
             };
         };
     };
+    QuotationsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     QuotationsController_update: {
         parameters: {
             query?: never;
@@ -3885,6 +4069,44 @@ export interface operations {
             };
         };
     };
+    QuotationsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuotationsController_deletePermanently: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     QuotationsController_duplicate: {
         parameters: {
             query?: never;
@@ -3907,6 +4129,27 @@ export interface operations {
         };
     };
     QuotationsController_pdf: {
+        parameters: {
+            query?: {
+                layout?: string;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuotationsController_image: {
         parameters: {
             query?: never;
             header?: never;
@@ -3968,6 +4211,25 @@ export interface operations {
             };
         };
     };
+    QuoteRequestsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     QuoteRequestsController_dismiss: {
         parameters: {
             query?: never;
@@ -3984,6 +4246,44 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuoteRequestsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QuoteRequestsController_deletePermanently: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4049,6 +4349,32 @@ export interface operations {
         requestBody?: never;
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    OrdersController_setItemFragrance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOrderItemFragranceDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

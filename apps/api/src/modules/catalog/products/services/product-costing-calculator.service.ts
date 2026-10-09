@@ -67,18 +67,17 @@ type SettingsEntity = Awaited<ReturnType<SettingsService['get']>>;
  *  costearon, sin volver a resolver plantillas por su cuenta. */
 export interface ProductCostingResult extends ProductCostBreakdown {
   resolvedSupplies: SupplyConsumption[];
+  fragranceBaseGrams: number;
 }
 
 /** Lo que un producto de CATALOGO no puede saber por adelantado porque
  *  depende del renglon concreto de una cotizacion: cuantas piezas son de
  *  verdad (no el umbral de mayoreo generico), si el diseno ya esta pagado
- *  (setupMinutesTotal: 0), y si esta pieza en particular lleva aroma. Los
- *  dos call sites de catalogo (recalculo y vista previa de producto) nunca
- *  pasan esto, asi que su comportamiento no cambia en absoluto. */
+ *  (setupMinutesTotal: 0). Los
+ *  call sites de catalogo usan prorationQuantity para el costo de mayoreo. */
 export interface ProductCostingOverrides {
   prorationQuantity?: number;
   setupMinutesTotal?: number;
-  fragrance?: { unitCost: number; loadPct: number } | null;
 }
 
 @Injectable()
@@ -130,19 +129,14 @@ export class ProductCostingCalculator {
       setupMinutes: overrides?.setupMinutesTotal ?? setupMinutes,
       packMinutes,
       // Costeo de catalogo (sin una cotizacion concreta todavia): se usa el
-      // umbral de mayoreo como cantidad de referencia y el precio se marca
-      // como "a partir de N piezas" en la UI. Una cotizacion pasa la
+      // pedido de referencia de diseno para menudeo. Una cotizacion pasa la
       // cantidad REAL del renglon en overrides.prorationQuantity.
-      prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
+      prorationQuantity: overrides?.prorationQuantity ?? settings.designReferenceQty,
       laborRatePerMinute,
       overheadRatePerMinute,
-      // El aroma se elige y se cobra por renglon en la cotizacion, nunca a
-      // nivel de catalogo -- por eso los dos call sites de catalogo jamas
-      // pasan overrides.fragrance y esto sigue siendo null para ellos.
-      fragrance: overrides?.fragrance ?? null,
     });
 
-    return { ...breakdown, resolvedSupplies };
+    return { ...breakdown, resolvedSupplies, fragranceBaseGrams: breakdown.waxGramsPerUnit };
   }
 
   private costBouquet(
@@ -170,7 +164,6 @@ export class ProductCostingCalculator {
         prorationQuantity: 1,
         laborRatePerMinute,
         overheadRatePerMinute: 0, // los indirectos del ramo se cargan una sola vez, a nivel de ramo
-        fragrance: null,
       });
       return { unitCost: candleCost, quantity: component.quantity };
     });
@@ -193,12 +186,11 @@ export class ProductCostingCalculator {
       supplies: manualSupplies,
       assemblyMinutes: context.assemblyMinutes,
       setupMinutes: overrides?.setupMinutesTotal ?? setupMinutes,
-      prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
+      prorationQuantity: overrides?.prorationQuantity ?? settings.designReferenceQty,
       laborRatePerMinute,
       overheadRatePerMinute,
-      fragrance: overrides?.fragrance ? { ...overrides.fragrance, totalGrams } : null,
     });
 
-    return { ...breakdown, resolvedSupplies: manualSupplies };
+    return { ...breakdown, resolvedSupplies: manualSupplies, fragranceBaseGrams: totalGrams };
   }
 }

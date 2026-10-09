@@ -8,8 +8,8 @@ import { CreateQuotationUseCase, type QuotationPricingResult } from './create-qu
 import { UseCase } from '../../../../common/interfaces/use-case.interface';
 import { PreviewQuotationTotalsDto } from '../dto/preview-quotation-totals.dto';
 
-export type PreviewQuotationTotalsResult = Pick<QuotationPricingResult, 'totals'> & {
-  items: { unitTotalCost: number }[];
+export type PreviewQuotationTotalsResult = Pick<QuotationPricingResult, 'totals' | 'warnings'> & {
+  items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 };
 
 @Injectable()
@@ -21,7 +21,7 @@ export class PreviewQuotationTotalsUseCase implements UseCase<PreviewQuotationTo
 
   async execute(dto: PreviewQuotationTotalsDto): Promise<PreviewQuotationTotalsResult> {
     const settings = await this.settingsService.get();
-    const { totals, costings } = await this.createQuotationUseCase.computePricing(dto.items, dto, settings);
-    return { totals, items: costings.map((c) => ({ unitTotalCost: c.unitTotalCost })) };
+    const { totals, warnings, costings } = await this.createQuotationUseCase.computePricing(dto.items, dto, settings);
+    return { totals, warnings, items: costings.map((c) => ({ unitTotalCost: c.unitTotalCost, fragranceMlPerUnit: c.fragranceMlPerUnit })) };
   }
 }

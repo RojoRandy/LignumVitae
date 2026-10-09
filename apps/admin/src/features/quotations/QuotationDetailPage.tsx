@@ -1,12 +1,12 @@
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Copy, Download, FileStack, MoreHorizontal, Pencil, RotateCcw, Trash2, X } from 'lucide-react';
-import { downloadPdf, errorMessage, httpDelete, httpGet, httpPost } from '@/lib/http';
+import { Copy, Download, FileStack, Image as ImageIcon, MoreHorizontal, Pencil, RotateCcw, Smartphone, Trash2, X } from 'lucide-react';
+import { downloadFile, errorMessage, httpDelete, httpGet, httpPost } from '@/lib/http';
 import { staticUrl } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
-import { formatDate, formatMoney, formatPercent } from '@/lib/format';
+import { formatDate, formatMoney, formatPercent, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -103,7 +103,7 @@ export default function QuotationDetailPage() {
   });
 
   const downloadMutation = useMutation({
-    mutationFn: (filename: string) => downloadPdf(`/quotations/${id}/pdf`, filename),
+    mutationFn: ({ path, filename }: { path: string; filename: string }) => downloadFile(path, filename),
     onError: (error) => toast.error(errorMessage(error)),
   });
 
@@ -155,6 +155,10 @@ export default function QuotationDetailPage() {
   }
 
   const canConvert = quotation.status === 'DRAFT' || quotation.status === 'SENT' || quotation.status === 'VIEWED';
+  const totalFragranceMl = (quotation.items ?? []).reduce(
+    (total, item) => total + (item.withFragrance ? Number(item.fragranceMlPerUnit) * item.quantity : 0),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -194,8 +198,14 @@ export default function QuotationDetailPage() {
                     <Pencil className="size-3.5" /> Editar
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onSelect={() => downloadMutation.mutate(`${quotation.folio}.pdf`)}>
+                <DropdownMenuItem onSelect={() => downloadMutation.mutate({ path: `/quotations/${id}/pdf`, filename: `${quotation.folio}.pdf` })}>
                   <Download className="size-3.5" /> Descargar PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => downloadMutation.mutate({ path: `/quotations/${id}/pdf?layout=mobile`, filename: `${quotation.folio}-movil.pdf` })}>
+                  <Smartphone className="size-3.5" /> Descargar PDF movil
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => downloadMutation.mutate({ path: `/quotations/${id}/image`, filename: `${quotation.folio}.png` })}>
+                  <ImageIcon className="size-3.5" /> Descargar imagen
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={copyPublicLink}>
                   <Copy className="size-3.5" /> Copiar enlace
@@ -257,10 +267,15 @@ export default function QuotationDetailPage() {
                     <div>
                       <p className="text-body-sm font-medium text-text">{item.product?.name}</p>
                       <p className="text-caption text-text-muted">
-                        {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma${item.fragranceSupply?.name ? `: ${item.fragranceSupply.name}` : ''}` : null, item.personalizationText]
+                        {[item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`), item.withFragrance ? `Aroma: ${item.fragranceSupply?.name ?? 'Pendiente'}` : null, item.personalizationText]
                           .filter(Boolean)
                           .join(' · ') || '—'}
                       </p>
+                      {item.withFragrance && (
+                        <p className="text-caption text-text-muted">
+                          Aroma estimado: {fragranceEstimateLabel(Number(item.fragranceMlPerUnit) * item.quantity)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -290,9 +305,9 @@ export default function QuotationDetailPage() {
           <Separator />
           <MoneyRow label="Costo total" value={formatMoney(quotation.totalCost)} muted />
           <MoneyRow label="Margen" value={`${formatMoney(quotation.grossProfit)} (${formatPercent(quotation.grossMarginPct)})`} muted />
+          {totalFragranceMl > 0 && <MoneyRow label="Aroma estimado (total)" value={fragranceEstimateLabel(totalFragranceMl)} muted />}
         </Card>
       </div>
     </div>
   );
 }
-

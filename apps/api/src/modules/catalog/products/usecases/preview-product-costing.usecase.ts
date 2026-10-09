@@ -88,12 +88,21 @@ export class PreviewProductCostingUseCase implements UseCase<PreviewProductCostD
     };
 
     const breakdown = this.calculator.compute(context, settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost);
-    const prices = suggestPrices(breakdown.unitTotalCost, {
+    const wholesaleBreakdown = settings.designReferenceQty === settings.wholesaleThresholdQty
+      ? breakdown
+      : this.calculator.compute(context, settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, {
+          prorationQuantity: settings.wholesaleThresholdQty,
+        });
+    const policy = {
       retailMarkupPct: settings.retailMarkupPct.toNumber(),
       wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
       roundingMultiple: settings.roundingMultiple.toNumber(),
       minMarginPct: settings.minMarginPct.toNumber(),
-    });
+    };
+    const prices: SuggestedPrices = {
+      retail: suggestPrices(breakdown.unitTotalCost, policy).retail,
+      wholesale: suggestPrices(wholesaleBreakdown.unitTotalCost, policy).wholesale,
+    };
 
     return { breakdown, prices };
   }

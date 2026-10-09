@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import type { ItemExtraField, PriceTierValue } from '@/lib/types';
 
 export interface QuotationLineItemRow {
@@ -47,21 +47,25 @@ export const emptyQuotationLineRow = (): QuotationLineItemRow => ({
 });
 
 interface RowPreview {
+  fragranceMlPerUnit: number;
   priceTier: PriceTierValue;
   unitPrice: number;
   lineTotal: number;
   lineMargin: number;
+  /** El margen por pieza queda bajo el piso de Configuracion (solo aviso). */
+  belowMinMargin?: boolean;
 }
 
 interface QuotationLineItemEditorProps {
   rows: QuotationLineItemRow[];
   onChange: (rows: QuotationLineItemRow[]) => void;
   previews?: (RowPreview | undefined)[];
+  rowWarnings?: (string | undefined)[];
 }
 
-export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationLineItemEditorProps) => {
-  const { options: productOptions, products } = useProductOptions();
-  const { supplies } = useSupplyOptions();
+export const QuotationLineItemEditor = ({ rows, onChange, previews, rowWarnings }: QuotationLineItemEditorProps) => {
+  const { options: productOptions, products, isLoading: loadingProducts } = useProductOptions();
+  const { supplies, isLoading: loadingSupplies } = useSupplyOptions();
   const fragranceOptions = supplies
     .filter((supply) => supply.isFragrance)
     .map((supply) => ({ value: String(supply.id), label: supply.name }));
@@ -92,12 +96,14 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
 
       {rows.map((row, index) => {
         const preview = previews?.[index];
+        const fragranceMl = (preview?.fragranceMlPerUnit ?? 0) * (row.quantity ?? 0);
         return (
           <div key={index} className="flex flex-col gap-3 rounded-input border border-border p-3">
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <Select
                   options={productOptions}
+                  loading={loadingProducts}
                   value={row.productId ? String(row.productId) : undefined}
                   onChange={(v) => update(index, { productId: Number(v), extraFields: [] })}
                   placeholder="Elegir producto..."
@@ -110,7 +116,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 </Badge>
               )}
               {preview && (
-                <Badge variant={preview.lineMargin >= 0 ? 'success' : 'danger'} className="shrink-0">
+                <Badge variant={preview.lineMargin < 0 ? 'danger' : preview.belowMinMargin ? 'warning' : 'success'} className="shrink-0">
                   Margen {formatMoney(preview.lineMargin)}
                 </Badge>
               )}
@@ -151,13 +157,17 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 <RowField label="Aroma" htmlFor={`fragrance-${index}`} className="col-span-12 sm:col-span-6">
                   <Select
                     id={`fragrance-${index}`}
-                    options={fragranceOptions}
-                    value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : undefined}
-                    onChange={(v) => update(index, { fragranceSupplyId: v ? Number(v) : null })}
-                    placeholder="Elegir aroma..."
+                    options={[{ value: 'pending', label: 'Pendiente' }, ...fragranceOptions]}
+                    loading={loadingSupplies}
+                    value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : 'pending'}
+                    onChange={(v) => update(index, { fragranceSupplyId: v && v !== 'pending' ? Number(v) : null })}
                     searchable
-                    required
                   />
+                  {preview && (
+                    <p className="text-caption text-text-muted">
+                      Aroma estimado: {fragranceEstimateLabel(fragranceMl)} en total
+                    </p>
+                  )}
                   {fragranceOptions.length === 0 && (
                     <p className="text-caption text-text-muted">No hay insumos marcados como aroma en Inventario.</p>
                   )}
@@ -178,9 +188,10 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews }: QuotationL
                 label="Precio manual"
                 htmlFor={`price-${index}`}
                 className="col-span-6 sm:col-span-3"
-                tooltip="Vacio: usa el precio de lista sugerido. Un precio manual se valida contra el piso de margen de Configuracion."
+                tooltip="Vacio: usa el precio de lista sugerido. Si el precio deja menos margen que el minimo de Configuracion, solo se muestra un aviso: se puede guardar igual."
               >
                 <NumberInput id={`price-${index}`} min={0} step={0.01} unit="$" unitPosition="prefix" value={row.unitPriceOverride} onChange={(v) => update(index, { unitPriceOverride: v })} />
+                {rowWarnings?.[index] && <p className="text-caption text-warning-fg">{rowWarnings[index]}</p>}
               </RowField>
               <RowField label="Precio final" className="col-span-6 sm:col-span-3">
                 <ReadonlyAmount>{preview ? formatMoney(preview.unitPrice) : '—'}</ReadonlyAmount>

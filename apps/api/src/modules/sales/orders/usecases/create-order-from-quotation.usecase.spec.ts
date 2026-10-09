@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { QuotationStatus } from '@prisma/client';
+import { Prisma, QuotationStatus } from '@prisma/client';
 import { CreateOrderFromQuotationUseCase } from './create-order-from-quotation.usecase';
 
 const build = (status: QuotationStatus, order: { id: number } | null = null) => {
@@ -13,6 +13,7 @@ const build = (status: QuotationStatus, order: { id: number } | null = null) => 
       productId: 1,
       product: { name: 'Vela' },
       quantity: 2,
+      fragranceMlPerUnit: new Prisma.Decimal(1.25),
       unitSupplyCost: 10,
       unitLaborCost: 5,
       unitOverheadCost: 3,
@@ -45,6 +46,9 @@ it('convierte un borrador sin pedido y marca la cotizacion ACCEPTED', async () =
 
   expect(tx.order.create).toHaveBeenCalledWith({
     data: expect.objectContaining({ quotationId: 7, status: 'PENDING_DEPOSIT' }),
+  });
+  expect(tx.orderItem.createMany).toHaveBeenCalledWith({
+    data: [expect.objectContaining({ fragranceMlPerUnit: new Prisma.Decimal(1.25) })],
   });
   expect(tx.quotation.update).toHaveBeenCalledWith({
     where: { id: 7 },

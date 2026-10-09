@@ -34,6 +34,10 @@ export class OrderRepository {
     return this.prisma.order.findUnique({ where: { quotationId } });
   }
 
+  updateItem(itemId: number, data: Prisma.OrderItemUpdateInput) {
+    return this.prisma.orderItem.update({ where: { id: itemId }, data });
+  }
+
   update(id: number, data: Prisma.OrderUpdateInput) {
     return this.prisma.order.update({ where: { id }, data });
   }

@@ -26,8 +26,8 @@ import { FormError, PageHeader, PageToolbar } from '@/components/ui/page';
 export default function SuppliesPage() {
   const { page, search, setSearch, onlyActive, setOnlyActive, setPage } = useTableParams();
   const queryClient = useQueryClient();
-  const { supplyTypes, options: typeOptions } = useSupplyTypeOptions();
-  const { units, options: unitOptions } = useUnitOfMeasureOptions();
+  const { supplyTypes, options: typeOptions, isLoading: loadingTypes } = useSupplyTypeOptions();
+  const { units, options: unitOptions, isLoading: loadingUnits } = useUnitOfMeasureOptions();
   const confirm = useConfirm();
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -225,10 +225,10 @@ export default function SuppliesPage() {
               </label>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Tipo" htmlFor="typeId" required>
-                  <Select key={defaultTypeId} id="typeId" name="typeId" options={typeOptions} defaultValue={defaultTypeId} required />
+                  <Select key={defaultTypeId} id="typeId" name="typeId" options={typeOptions} loading={loadingTypes} defaultValue={defaultTypeId} required />
                 </Field>
                 <Field label="Unidad de medida" htmlFor="unitId" required>
-                  <Select key={defaultUnitId} id="unitId" name="unitId" options={unitOptions} defaultValue={defaultUnitId} required />
+                  <Select key={defaultUnitId} id="unitId" name="unitId" options={unitOptions} loading={loadingUnits} defaultValue={defaultUnitId} required />
                 </Field>
               </div>
               <Field

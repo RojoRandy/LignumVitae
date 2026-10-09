@@ -5,6 +5,7 @@ import {
   marginFromMarkup,
   resolvePriceTier,
   suggestPrices,
+  marginWarning,
   validateMinMargin,
 } from './pricing';
 
@@ -110,5 +111,43 @@ describe('correccion #9: validateMinMargin bloquea overrides que rompen el piso'
   it('acepta un precio que si respeta el piso', () => {
     const check = validateMinMargin(12, 7.63, 25);
     expect(check.ok).toBe(true);
+  });
+});
+
+describe('marginWarning: avisa en vez de bloquear, igual para lista y manual', () => {
+  // Caso real: vela con tarjeta a 15 piezas con aroma: costo 12.09, piso 25 %.
+  it('precio final bajo el piso: da el minimo final y el minimo del campo manual (sin el recargo de aroma)', () => {
+    const warning = marginWarning({ unitPrice: 16, unitTotalCost: 12.09, minMarginPct: 25, fragranceCharge: 1 });
+    expect(warning).toEqual({ marginPct: 24.44, minMarginPct: 25, minUnitPrice: 16.12, minManualPrice: 15.12 });
+  });
+
+  it('el precio de lista tambien avisa (13.6 % de margen)', () => {
+    const warning = marginWarning({ unitPrice: 14, unitTotalCost: 12.09, minMarginPct: 25, fragranceCharge: 1 });
+    expect(warning?.marginPct).toBe(13.64);
+    expect(warning?.minManualPrice).toBe(15.12);
+  });
+
+  it('sin aroma el minimo manual es el minimo final', () => {
+    expect(marginWarning({ unitPrice: 12, unitTotalCost: 11.09, minMarginPct: 25 })?.minManualPrice).toBe(14.79);
+  });
+
+  it('un precio que cumple el piso no avisa', () => {
+    expect(marginWarning({ unitPrice: 17, unitTotalCost: 12.09, minMarginPct: 25, fragranceCharge: 1 })).toBeUndefined();
+  });
+
+  it('el minimo manual nunca es negativo', () => {
+    expect(marginWarning({ unitPrice: 1, unitTotalCost: 10, minMarginPct: 25, fragranceCharge: 50 })?.minManualPrice).toBe(0);
+  });
+});
+
+describe('el minimo sugerido siempre alcanza el piso (redondeo hacia arriba al centavo)', () => {
+  it('costo 12.0915 con piso 25 %: el minimo es 16.13 (no 16.12) y cumple', () => {
+    const check = validateMinMargin(1, 12.0915, 25);
+    expect(check.minPrice).toBe(16.13);
+    expect(validateMinMargin(check.minPrice, 12.0915, 25).ok).toBe(true);
+  });
+
+  it('un minimo exacto no se sube un centavo de mas', () => {
+    expect(validateMinMargin(1, 12, 25).minPrice).toBe(16);
   });
 });

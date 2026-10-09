@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { OverheadRateMode } from '@prisma/client';
 
 export class UpdateSettingsDto {
@@ -37,7 +37,8 @@ export class UpdateSettingsDto {
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() waxSupplyId?: number;
   @ApiPropertyOptional({ description: 'Que tipo de insumo es la cera (por id, no por slug)' })
   @IsOptional() @Type(() => Number) @IsInt() waxSupplyTypeId?: number;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(1) fragranceLoadPct?: number;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) fragranceDropsPer100g?: number;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() fragranceRealCost?: boolean;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) fragranceSurcharge?: number;
 
   // --- Gastos indirectos
@@ -50,6 +51,7 @@ export class UpdateSettingsDto {
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) retailMarkupPct?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) wholesaleMarkupPct?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(1) wholesaleThresholdQty?: number;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(1) designReferenceQty?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(100) minMarginPct?: number;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() @Min(0) roundingMultiple?: number;
 

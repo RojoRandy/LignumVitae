@@ -211,19 +211,19 @@ export default function ProductWizardPage() {
     setRecoveredDraft(false);
   };
 
-  const { data: categories } = useQuery({
+  const { data: categories, isLoading: loadingCategories } = useQuery({
     queryKey: ['categories', 'all'],
     queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { limit: 100 }),
   });
-  const { data: candles } = useQuery({
+  const { data: candles, isLoading: loadingCandles } = useQuery({
     queryKey: ['candles', 'all'],
     queryFn: () => httpGet<Paginated<CandleDto>>('/candles', { limit: 200 }),
   });
-  const { data: packagingTypes } = useQuery({
+  const { data: packagingTypes, isLoading: loadingPackaging } = useQuery({
     queryKey: ['packaging-types', 'all'],
     queryFn: () => httpGet<Paginated<PackagingTypeDto>>('/packaging-types', { limit: 100 }),
   });
-  const { data: cardTypes } = useQuery({
+  const { data: cardTypes, isLoading: loadingCards } = useQuery({
     queryKey: ['card-types', 'all'],
     queryFn: () => httpGet<Paginated<CardTypeDto>>('/card-types', { limit: 100 }),
   });
@@ -425,12 +425,12 @@ export default function ProductWizardPage() {
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Osito Chico con Liston" required />
               </Field>
               <Field label="Categoria" required>
-                <Select options={categoryOptions} value={categoryId} onChange={setCategoryId} placeholder="Elegir categoria..." />
+                <Select options={categoryOptions} loading={loadingCategories} value={categoryId} onChange={setCategoryId} placeholder="Elegir categoria..." />
               </Field>
 
               {kind === 'SIMPLE' ? (
                 <Field label="Vela / molde" required error={fieldErrors.candleId}>
-                  <Select options={candleOptions} value={candleId} onChange={setCandleId} placeholder="Elegir vela..." />
+                  <Select options={candleOptions} loading={loadingCandles} value={candleId} onChange={setCandleId} placeholder="Elegir vela..." />
                 </Field>
               ) : null}
 
@@ -487,10 +487,10 @@ export default function ProductWizardPage() {
             <h3 className="text-body font-semibold text-text">Empaque y tarjeta</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Empaque" hint="Pre-llena los insumos desde su plantilla">
-                <Select options={packagingOptions} value={packagingTypeId} onChange={setPackagingTypeId} placeholder="Sin empaque (sola)" clearable />
+                <Select options={packagingOptions} loading={loadingPackaging} value={packagingTypeId} onChange={setPackagingTypeId} placeholder="Sin empaque (sola)" clearable />
               </Field>
               <Field label="Tarjeta">
-                <Select options={cardOptions} value={cardTypeId} onChange={setCardTypeId} placeholder="Sin tarjeta" clearable />
+                <Select options={cardOptions} loading={loadingCards} value={cardTypeId} onChange={setCardTypeId} placeholder="Sin tarjeta" clearable />
               </Field>
               <Field
                 label="Minutos extra de diseno"

@@ -80,7 +80,7 @@ export const uploadTestimonial = async (
   return request<TestimonialDto>('/testimonials', { method: 'POST', body: form });
 };
 
-export const downloadPdf = async (path: string, filename: string) => {
+export const downloadFile = async (path: string, filename: string) => {
   const token = tokenStore.get();
   const response = await fetch(`${API_ORIGIN}/api${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -89,7 +89,7 @@ export const downloadPdf = async (path: string, filename: string) => {
     tokenStore.clear();
     if (!location.pathname.startsWith('/login')) location.href = '/login';
   }
-  if (!response.ok) throw new Error('No se pudo descargar el PDF');
+  if (!response.ok) throw new Error('No se pudo descargar el archivo');
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -206,6 +206,8 @@ export interface ProductCostingBasisJson {
   waxUnitCost: number;
   meltBatchGrams: number;
   prorationQuantity: number;
+  wholesaleProrationQuantity?: number;
+  wholesaleUnitTotalCost?: number;
   retailMarkupPct: number;
   wholesaleMarkupPct: number;
   roundingMultiple: number;
@@ -304,6 +306,7 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   // Opcional: registros anteriores a los campos por insumo no lo traen.
   extraFields?: ItemExtraField[];
   withFragrance: boolean;
+  fragranceMlPerUnit: string;
   fragranceSupplyId: number | null;
   fragranceSupply?: { id: number; name: string } | null;
   personalizationText: string | null;
@@ -363,6 +366,7 @@ export interface OrderItemDto extends SalesLineItemCostFields {
   // Opcional: registros anteriores a los campos por insumo no lo traen.
   extraFields?: ItemExtraField[];
   withFragrance: boolean;
+  fragranceMlPerUnit: string;
   fragranceName: string | null;
   personalizationText: string | null;
 }
@@ -446,9 +450,24 @@ export interface QuotationTotalsPreview {
   grossMarginPct: number;
 }
 
+/** Renglon con menos margen que el piso de Configuracion. Es un aviso: no impide guardar. */
+export interface QuotationMarginWarning {
+  itemIndex: number;
+  productId: number;
+  /** true: el bajo margen viene de un precio manual; false: del precio de lista. */
+  hasManualPrice: boolean;
+  marginPct: number;
+  minMarginPct: number;
+  /** Precio final por pieza (con aroma) que cumple el piso. */
+  minUnitPrice: number;
+  /** Lo que hay que escribir en "Precio manual" (antes del recargo de aroma). */
+  minManualPrice: number;
+}
+
 export interface PreviewQuotationTotalsResult {
   totals: QuotationTotalsPreview;
-  items: { unitTotalCost: number }[];
+  warnings: QuotationMarginWarning[];
+  items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 }
 
 export interface SalesStatsDto {
@@ -578,7 +597,8 @@ export interface SettingsDto {
   defaultWastePct: string;
   waxSupplyId: number | null;
   waxSupplyTypeId: number | null;
-  fragranceLoadPct: string;
+  fragranceDropsPer100g: number;
+  fragranceRealCost: boolean;
   fragranceSurcharge: string;
   overheadRateMode: 'DERIVED' | 'FIXED';
   overheadRatePerMinute: string;
@@ -587,6 +607,7 @@ export interface SettingsDto {
   retailMarkupPct: string;
   wholesaleMarkupPct: string;
   wholesaleThresholdQty: number;
+  designReferenceQty: number;
   minMarginPct: string;
   roundingMultiple: string;
   supplyCostWindowDays: number;

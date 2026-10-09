@@ -3,7 +3,7 @@
 // vez que cambian los renglones o los ajustes. El guardado real vuelve a
 // correr exactamente el mismo calculo en el servidor -- esto es solo
 // vista previa, la fuente de la verdad siempre es POST/PATCH /quotations.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { httpPost } from '@/lib/http';
 import type { AdjustmentTypeValue, PreviewQuotationTotalsResult } from '@/lib/types';
@@ -48,10 +48,16 @@ const useDebounced = <T,>(value: T, ms: number) => {
 
 export const useQuotationTotalsPreview = (input: PreviewQuotationTotalsInput) => {
   const debouncedInput = useDebounced(input, 300);
-  return useQuery({
+  const lastPreview = useRef<PreviewQuotationTotalsResult | undefined>(undefined);
+  const query = useQuery({
     queryKey: ['quotations', 'preview-totals', debouncedInput],
     queryFn: () => httpPost<PreviewQuotationTotalsResult>('/quotations/preview-totals', debouncedInput),
     enabled: isReady(debouncedInput),
     placeholderData: keepPreviousData,
   });
+  // keepPreviousData solo cubre la espera; conserva tambien el ultimo exito si falla la peticion.
+  useEffect(() => {
+    if (query.data) lastPreview.current = query.data;
+  }, [query.data]);
+  return { ...query, data: query.data ?? lastPreview.current };
 };

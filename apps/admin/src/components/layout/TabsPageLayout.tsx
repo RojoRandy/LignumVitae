@@ -10,9 +10,10 @@
  * activo bg-white + shadow-sm) pero con NavLink en vez de Radix.Trigger,
  * porque aqui la pestana activa la decide la URL, no un estado en memoria.
  */
+import { Suspense } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { cn } from '@/lib/cn';
-import { PageHeader } from '@/components/ui/page';
+import { PageHeader, PageState } from '@/components/ui/page';
 
 export interface TabsPageLayoutProps {
   title: string;
@@ -41,6 +42,9 @@ export const TabsPageLayout = ({ title, description, tabs }: TabsPageLayoutProps
       ))}
     </nav>
 
-    <Outlet />
+    {/* Suspense propio: al cambiar de pestana el encabezado y las pestanas se quedan y solo el contenido muestra el loader. */}
+    <Suspense fallback={<PageState isLoading />}>
+      <Outlet />
+    </Suspense>
   </div>
 );

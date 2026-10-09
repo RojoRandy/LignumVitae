@@ -7,6 +7,7 @@ import type { SettingsDto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -22,8 +23,8 @@ export default function SettingsPage() {
   const [form, setForm] = useState<Partial<SettingsDto>>({});
   // includeWax: aqui se elige JUSTAMENTE la cera, que es lo unico que el
   // hook excluye por defecto (nunca va en el BOM de un producto).
-  const { options: supplyOptions } = useSupplyOptions({ includeWax: true });
-  const { options: supplyTypeOptions } = useSupplyTypeOptions();
+  const { options: supplyOptions, isLoading: loadingSupplies } = useSupplyOptions({ includeWax: true });
+  const { options: supplyTypeOptions, isLoading: loadingSupplyTypes } = useSupplyTypeOptions();
 
   useEffect(() => {
     if (data) setForm(data);
@@ -154,6 +155,7 @@ export default function SettingsPage() {
               <Select
                 id="waxSupplyTypeId"
                 options={supplyTypeOptions}
+                loading={loadingSupplyTypes}
                 value={form.waxSupplyTypeId ? String(form.waxSupplyTypeId) : ''}
                 onChange={(v) => set('waxSupplyTypeId', (v ? Number(v) : null) as never)}
                 placeholder="Sin definir"
@@ -169,6 +171,7 @@ export default function SettingsPage() {
               <Select
                 id="waxSupplyId"
                 options={supplyOptions}
+                loading={loadingSupplies}
                 value={form.waxSupplyId ? String(form.waxSupplyId) : ''}
                 onChange={(v) => set('waxSupplyId', (v ? Number(v) : null) as never)}
                 placeholder="Sin definir"
@@ -208,6 +211,21 @@ export default function SettingsPage() {
             >
               <NumberInput id="fragranceSurcharge" step={0.01} min={0} unit="$" unitPosition="prefix" required value={form.fragranceSurcharge !== undefined ? Number(form.fragranceSurcharge) : null} onChange={setDecimal('fragranceSurcharge')} />
             </Field>
+            <Field
+              label="Gotas de aroma por 100 g de cera"
+              htmlFor="fragranceDropsPer100g"
+              hint="Tu rango habitual: 15 a 30"
+              tooltip="Se aplica igual a todos los productos: gotas de aroma por cada 100 g de cera. Con un gotero estandar, 20 gotas equivalen a 1 ml. Solo sirve para estimar cuanto aroma lleva cada pedido; no cambia el precio."
+            >
+              <NumberInput id="fragranceDropsPer100g" step={1} min={1} max={200} unit="gotas" required value={form.fragranceDropsPer100g ?? null} onChange={setNumber('fragranceDropsPer100g')} />
+            </Field>
+            <label className="col-span-full flex items-start gap-3">
+              <Checkbox className="mt-0.5" checked={form.fragranceRealCost ?? false} onCheckedChange={(checked) => set('fragranceRealCost', checked === true)} />
+              <span>
+                <span className="block text-body-sm font-medium text-text">Costear el aroma a precio real por ml</span>
+                <span className="block text-caption text-text-muted">Apagado: el aroma cuesta el cargo fijo por pieza. Encendido: cuesta los ml estimados por el precio del aroma elegido (con aroma pendiente se usa el cargo fijo). Lo que se cobra al cliente no cambia.</span>
+              </span>
+            </label>
             <Field
               label="Tasa de respaldo ($/min)"
               htmlFor="overheadRatePerMinute"
@@ -258,9 +276,17 @@ export default function SettingsPage() {
               <NumberInput id="wholesaleThresholdQty" min={1} step={1} unit="pz" required value={form.wholesaleThresholdQty ?? null} onChange={setNumber('wholesaleThresholdQty')} />
             </Field>
             <Field
+              label="Piezas de referencia para repartir el diseno"
+              htmlFor="designReferenceQty"
+              hint="Tu pedido tipico"
+              tooltip="El diseno de la tarjeta o del empaque es un costo por pedido, no por pieza. El precio de menudeo del catalogo reparte ese costo entre estas piezas; el precio de mayoreo lo reparte entre las piezas del umbral de mayoreo. Con un valor menor, el precio de menudeo sube y cubre mejor los pedidos chicos."
+            >
+              <NumberInput id="designReferenceQty" min={1} step={1} unit="pz" required value={form.designReferenceQty ?? null} onChange={setNumber('designReferenceQty')} />
+            </Field>
+            <Field
               label="Piso de margen para overrides (%)"
               htmlFor="minMarginPct"
-              tooltip="Margen minimo que se exige cuando se fija un precio manual (distinto al sugerido) en el editor de producto. Si el precio capturado deja un margen menor a este porcentaje, el sistema lo rechaza y avisa cual es el precio mas bajo que si cumple."
+              tooltip="Margen minimo sobre el precio. En el editor de producto, un precio manual que deje menos margen se rechaza y se indica el precio mas bajo que si cumple. En una cotizacion solo se muestra un aviso en el renglon y se puede guardar igual."
             >
               <NumberInput id="minMarginPct" step={0.1} min={0} max={100} unit="%" required value={form.minMarginPct !== undefined ? Number(form.minMarginPct) : null} onChange={setDecimal('minMarginPct')} />
             </Field>

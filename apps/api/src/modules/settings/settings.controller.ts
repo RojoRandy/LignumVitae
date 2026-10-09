@@ -4,6 +4,11 @@ import { UserRoles } from '@prisma/client';
 import { SettingsService } from './settings.service';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import type { Settings } from '@prisma/client';
+
+// fragranceLoadPct esta deprecado (ver schema.prisma): se omite de la respuesta
+// porque el admin reenvia lo que recibe y el DTO ya no lo acepta.
+const toResponse = ({ fragranceLoadPct: _deprecated, ...settings }: Settings) => settings;
 
 @ApiTags('Settings')
 @Controller('settings')
@@ -12,13 +17,13 @@ export class SettingsController {
 
   @Auth()
   @Get()
-  get() {
-    return this.settingsService.get();
+  async get() {
+    return toResponse(await this.settingsService.get());
   }
 
   @Auth(UserRoles.admin, UserRoles.super_user)
   @Patch()
-  update(@Body() dto: UpdateSettingsDto) {
-    return this.settingsService.update(dto);
+  async update(@Body() dto: UpdateSettingsDto) {
+    return toResponse(await this.settingsService.update(dto));
   }
 }

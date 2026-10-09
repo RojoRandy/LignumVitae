@@ -26,7 +26,7 @@ export default function CandlesPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   // includeWax: es el unico select del portal donde la cera SI es la respuesta.
-  const { options: waxOptions } = useSupplyOptions({ includeWax: true });
+  const { options: waxOptions, isLoading: loadingWax } = useSupplyOptions({ includeWax: true });
   const { fieldErrors, formError, handleError, clear } = useFieldErrors();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CandleDto | null>(null);
@@ -37,7 +37,7 @@ export default function CandlesPage() {
     queryFn: () => httpGet<Paginated<CandleDto>>('/candles', { page, search, onlyActive, limit: 20 }),
   });
 
-  const { data: categories } = useQuery({
+  const { data: categories, isLoading: loadingCategories } = useQuery({
     queryKey: ['categories', 'all'],
     queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { limit: 100 }),
   });
@@ -193,6 +193,7 @@ export default function CandlesPage() {
                   id="categoryId"
                   name="categoryId"
                   options={(categories?.items ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+                  loading={loadingCategories}
                   defaultValue={editing ? String(editing.categoryId) : undefined}
                   required
                 />
@@ -249,6 +250,7 @@ export default function CandlesPage() {
                   id="waxSupplyId"
                   name="waxSupplyId"
                   options={waxOptions}
+                  loading={loadingWax}
                   defaultValue={editing?.waxSupplyId ? String(editing.waxSupplyId) : undefined}
                   placeholder="Usar la de Configuracion"
                   clearable

@@ -120,6 +120,7 @@ export class CreateOrderFromQuotationUseCase implements UseCase<CreateOrderFromQ
             unitWaxCost: item.unitWaxCost,
             unitSupplyCost: item.unitSupplyCost,
             unitFragranceCost: item.unitFragranceCost,
+            fragranceMlPerUnit: item.fragranceMlPerUnit,
             unitLaborCost: item.unitLaborCost,
             unitOverheadCost: item.unitOverheadCost,
             unitTotalCost: item.unitTotalCost,

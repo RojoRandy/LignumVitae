@@ -11,7 +11,7 @@ import { Plus } from 'lucide-react';
 import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
-import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuoteRequestDto, SettingsDto } from '@/lib/types';
+import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuotationMarginWarning, QuoteRequestDto, SettingsDto } from '@/lib/types';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
@@ -29,6 +29,12 @@ import { MoneyRow } from '@/components/domain/money-row';
 import { CustomerQuickCreateDialog } from '@/features/customers/quick-create-dialog';
 import { QuotationLineItemEditor, type QuotationLineItemRow } from './components/quotation-line-item-editor';
 import { useQuotationTotalsPreview, type PreviewQuotationTotalsInput } from './use-quotation-totals-preview';
+
+const marginWarningText = (w: QuotationMarginWarning) =>
+  `Margen ${w.marginPct}% bajo el minimo de ${w.minMarginPct}%. ` +
+  (w.hasManualPrice
+    ? `Para llegar al minimo, el precio manual debe ser al menos ${formatMoney(w.minManualPrice)} (antes del aroma).`
+    : `Precio manual sugerido: ${formatMoney(w.minManualPrice)} (antes del aroma).`);
 
 export default function QuotationFormPage() {
   const { id } = useParams();
@@ -201,6 +207,12 @@ export default function QuotationFormPage() {
     error: previewError,
   } = useQuotationTotalsPreview(previewInput);
 
+  // Avisos de margen por renglon: solo informan, guardar siempre se puede.
+  const warningByRow = previewIndexByRow.map((itemIndex) =>
+    itemIndex === undefined ? undefined : preview?.warnings.find((w) => w.itemIndex === itemIndex),
+  );
+  const rowWarnings = warningByRow.map((w) => (w ? marginWarningText(w) : undefined));
+
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       isEditing ? httpPatch<QuotationDto>(`/quotations/${id}`, body) : httpPost<QuotationDto>('/quotations', body),
@@ -298,7 +310,7 @@ export default function QuotationFormPage() {
               <Field label="Cliente" required>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <Select options={customerOptions} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
+                    <Select options={customerOptions} loading={loadingCustomers} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
                   </div>
                   <Button type="button" variant="secondary" size="icon" aria-label="Nuevo cliente" onClick={() => setQuickCreateOpen(true)}>
                     <Plus className="size-4" />
@@ -325,10 +337,12 @@ export default function QuotationFormPage() {
             <QuotationLineItemEditor
               rows={rows}
               onChange={setRows}
+              rowWarnings={rowWarnings}
               previews={rows.map((_row, rowIndex) => {
                 const idx = previewIndexByRow[rowIndex];
                 const item = idx === undefined ? undefined : preview?.totals.items[idx];
-                return item ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
+                const costing = idx === undefined ? undefined : preview?.items[idx];
+                return item && costing ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin, fragranceMlPerUnit: costing.fragranceMlPerUnit, belowMinMargin: warningByRow[rowIndex] !== undefined } : undefined;
               })}
             />
           </Card>
@@ -417,4 +431,3 @@ export default function QuotationFormPage() {
     </div>
   );
 }
-

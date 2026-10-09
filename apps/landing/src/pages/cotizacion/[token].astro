@@ -106,7 +106,7 @@ const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits.length === 
                     item.candleColor && `Vela: ${item.candleColor}`,
                     item.ribbonColor && `Listón: ${item.ribbonColor}`,
                     ...(item.extraFields ?? []).map((field) => `${field.label}: ${field.value}`),
-                    item.withFragrance ? `Aroma${item.fragranceName ? `: ${item.fragranceName}` : ''}` : null,
+                    item.withFragrance ? `Aroma: ${item.fragranceName ?? 'Pendiente'}` : null,
                     item.personalizationText,
                   ].filter(Boolean).join(' · ')}</p>
                 </div>
