@@ -5,7 +5,7 @@
 // que escribe los campos unitXxxCost / xxxListPrice de Product — nunca se
 // escriben a mano desde un controller.
 import { Injectable } from '@nestjs/common';
-import { suggestPrices } from '@lignumvitae/types';
+import { suggestPrices, type SuggestedPrices } from '@lignumvitae/types';
 import { Prisma } from '@prisma/client';
 import { ProductRepository, ProductWithRelations } from '../product.repository';
 import { CatalogErrors } from '../../../../common/errors/catalog.errors';
@@ -64,14 +64,23 @@ export class RecalculateProductCostingUseCase implements UseCase<number, Product
     };
 
     const breakdown = this.calculator.compute(context, settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost);
+    const wholesaleBreakdown = settings.designReferenceQty === settings.wholesaleThresholdQty
+      ? breakdown
+      : this.calculator.compute(context, settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, {
+          prorationQuantity: settings.wholesaleThresholdQty,
+        });
     const { resolvedSupplies: _resolvedSupplies, ...breakdownForBasis } = breakdown;
 
-    const prices = suggestPrices(breakdown.unitTotalCost, {
+    const policy = {
       retailMarkupPct: settings.retailMarkupPct.toNumber(),
       wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
       roundingMultiple: settings.roundingMultiple.toNumber(),
       minMarginPct: settings.minMarginPct.toNumber(),
-    });
+    };
+    const prices: SuggestedPrices = {
+      retail: suggestPrices(breakdown.unitTotalCost, policy).retail,
+      wholesale: suggestPrices(wholesaleBreakdown.unitTotalCost, policy).wholesale,
+    };
 
     await this.productRepository.updateCosting(productId, {
       unitWaxCost: breakdown.unitWaxCost,
@@ -94,7 +103,9 @@ export class RecalculateProductCostingUseCase implements UseCase<number, Product
         // aunque la vela tuviera su propia "Capacidad de la olla" (override)
         // y el calculo de arriba SI la haya usado -- costingBasis mentia.
         meltBatchGrams: product.candle?.meltBatchGrams ?? settings.meltBatchGrams,
-        prorationQuantity: settings.wholesaleThresholdQty,
+        prorationQuantity: settings.designReferenceQty,
+        wholesaleProrationQuantity: settings.wholesaleThresholdQty,
+        wholesaleUnitTotalCost: wholesaleBreakdown.unitTotalCost,
         retailMarkupPct: settings.retailMarkupPct.toNumber(),
         wholesaleMarkupPct: settings.wholesaleMarkupPct.toNumber(),
         roundingMultiple: settings.roundingMultiple.toNumber(),

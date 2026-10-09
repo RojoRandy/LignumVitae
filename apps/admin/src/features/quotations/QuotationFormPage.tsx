@@ -6,13 +6,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError } from '@lignumvitae/types';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
-import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuoteRequestDto, SettingsDto } from '@/lib/types';
+import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuotationMarginWarning, QuoteRequestDto, SettingsDto } from '@/lib/types';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
@@ -31,15 +30,11 @@ import { CustomerQuickCreateDialog } from '@/features/customers/quick-create-dia
 import { QuotationLineItemEditor, type QuotationLineItemRow } from './components/quotation-line-item-editor';
 import { useQuotationTotalsPreview, type PreviewQuotationTotalsInput } from './use-quotation-totals-preview';
 
-const parseMarginError = (error: unknown) => {
-  if (!(error instanceof ApiError) || error.code !== 'BELOW_MIN_MARGIN') return undefined;
-  const details = error.details as { itemIndex?: unknown; minPrice?: unknown; minMarginPct?: unknown } | undefined;
-  const itemIndex = details?.itemIndex;
-  const minPrice = Number(details?.minPrice ?? NaN);
-  const minMarginPct = Number(details?.minMarginPct ?? NaN);
-  if (typeof itemIndex !== 'number' || ![itemIndex, minPrice, minMarginPct].every(Number.isFinite)) return undefined;
-  return { itemIndex, minPrice, minMarginPct };
-};
+const marginWarningText = (w: QuotationMarginWarning) =>
+  `Margen ${w.marginPct}% bajo el minimo de ${w.minMarginPct}%. ` +
+  (w.hasManualPrice
+    ? `Para llegar al minimo, el precio manual debe ser al menos ${formatMoney(w.minManualPrice)} (antes del aroma).`
+    : `Precio manual sugerido: ${formatMoney(w.minManualPrice)} (antes del aroma).`);
 
 export default function QuotationFormPage() {
   const { id } = useParams();
@@ -212,13 +207,11 @@ export default function QuotationFormPage() {
     error: previewError,
   } = useQuotationTotalsPreview(previewInput);
 
-  const belowMinMargin = previewError instanceof ApiError && previewError.code === 'BELOW_MIN_MARGIN';
-  const marginErrorData = parseMarginError(previewError);
-  const rowErrors = previewIndexByRow.map((itemIndex) =>
-    marginErrorData && itemIndex === marginErrorData.itemIndex
-      ? `Precio minimo permitido: ${formatMoney(marginErrorData.minPrice)} (margen minimo ${marginErrorData.minMarginPct}%).`
-      : undefined,
+  // Avisos de margen por renglon: solo informan, guardar siempre se puede.
+  const warningByRow = previewIndexByRow.map((itemIndex) =>
+    itemIndex === undefined ? undefined : preview?.warnings.find((w) => w.itemIndex === itemIndex),
   );
+  const rowWarnings = warningByRow.map((w) => (w ? marginWarningText(w) : undefined));
 
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -344,13 +337,12 @@ export default function QuotationFormPage() {
             <QuotationLineItemEditor
               rows={rows}
               onChange={setRows}
-              rowErrors={rowErrors}
+              rowWarnings={rowWarnings}
               previews={rows.map((_row, rowIndex) => {
-                if (belowMinMargin) return undefined;
                 const idx = previewIndexByRow[rowIndex];
                 const item = idx === undefined ? undefined : preview?.totals.items[idx];
                 const costing = idx === undefined ? undefined : preview?.items[idx];
-                return item && costing ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin, fragranceMlPerUnit: costing.fragranceMlPerUnit } : undefined;
+                return item && costing ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin, fragranceMlPerUnit: costing.fragranceMlPerUnit, belowMinMargin: warningByRow[rowIndex] !== undefined } : undefined;
               })}
             />
           </Card>
@@ -404,7 +396,7 @@ export default function QuotationFormPage() {
           {!readOnly && (
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => navigate('/cotizaciones')}>Cancelar</Button>
-              <Button type="submit" loading={saveMutation.isPending} disabled={belowMinMargin}>Guardar</Button>
+              <Button type="submit" loading={saveMutation.isPending}>Guardar</Button>
             </div>
           )}
         </form>
@@ -415,9 +407,7 @@ export default function QuotationFormPage() {
               <h3 className="text-body font-semibold text-text">Totales</h3>
               {previewLoading && <Spinner className="size-3.5" />}
             </div>
-            {belowMinMargin ? (
-              <p className="text-body-sm text-text-muted">Corrige el precio manual para ver el total.</p>
-            ) : preview ? (
+            {preview ? (
               <>
                 <div className="flex flex-col gap-1.5 text-body-sm">
                   <MoneyRow label="Subtotal" value={formatMoney(preview.totals.subtotal)} />

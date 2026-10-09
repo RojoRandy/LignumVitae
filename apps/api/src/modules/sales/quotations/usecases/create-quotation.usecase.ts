@@ -12,7 +12,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { calculateQuotationTotals, validateMinMargin, type QuotationLineInput, type QuotationTotals } from '@lignumvitae/types';
+import { calculateQuotationTotals, marginWarning, type MarginWarning, type QuotationLineInput, type QuotationTotals } from '@lignumvitae/types';
 import { QuotationRepository, type QuotationWithRelations } from '../quotation.repository';
 import { QuotationLineCostingService } from '../services/quotation-line-costing.service';
 import type { ProductCostingResult } from '../../../catalog/products/services/product-costing-calculator.service';
@@ -36,8 +36,17 @@ export interface CreateQuotationArgs {
   existingId?: number;
 }
 
+/** Renglon cuyo precio final deja menos margen que el piso de Configuracion. Es un aviso: no impide guardar. */
+export interface QuotationMarginWarning extends MarginWarning {
+  itemIndex: number;
+  productId: number;
+  /** true si el renglon trae precio manual; false si el bajo margen viene del precio de lista. */
+  hasManualPrice: boolean;
+}
+
 export interface QuotationPricingResult {
   totals: QuotationTotals;
+  warnings: QuotationMarginWarning[];
   costings: (ProductCostingResult & { fragranceMlPerUnit: number })[];
   productMap: Map<number, ProductWithRelations>;
   defaultWaxUnitCost: number;
@@ -145,27 +154,26 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       accumulatePieces: adjustments.accumulatePieces ?? true,
     });
 
-    // El piso de margen se valida sobre el precio YA calculado (con aroma
+    // El piso de margen se revisa sobre el precio YA calculado (con aroma
     // incluido), no sobre el override crudo: es lo que el cliente de verdad
-    // paga por pieza.
+    // paga por pieza. Solo avisa -- la duena decide si cotiza asi -- y aplica
+    // igual al precio de lista y al manual: antes solo el manual se rechazaba.
+    const warnings: QuotationMarginWarning[] = [];
     items.forEach((item, i) => {
-      if (item.unitPriceOverride === undefined) return;
-      const check = validateMinMargin(totals.items[i].unitPrice, costings[i].unitTotalCost, settings.minMarginPct.toNumber());
-      if (!check.ok) {
-        throw SalesErrors.Exceptions.BELOW_MIN_MARGIN({
-          itemIndex: i,
-          productId: item.productId,
-          unitPrice: totals.items[i].unitPrice,
-          marginPct: check.marginPct,
-          minMarginPct: settings.minMarginPct.toNumber(),
-          minPrice: check.minPrice,
-        });
+      const warning = marginWarning({
+        unitPrice: totals.items[i].unitPrice,
+        unitTotalCost: costings[i].unitTotalCost,
+        minMarginPct: settings.minMarginPct.toNumber(),
+        fragranceCharge: item.withFragrance ? settings.fragranceSurcharge.toNumber() : 0,
+      });
+      if (warning) {
+        warnings.push({ ...warning, itemIndex: i, productId: item.productId, hasManualPrice: item.unitPriceOverride != null });
       }
     });
 
     const totalWaxGrams = items.reduce((acc, item, i) => acc + costings[i].waxGramsPerUnit * item.quantity, 0);
 
-    return { totals, costings, productMap, defaultWaxUnitCost, laborRatePerMinute, overheadRatePerMinute, totalWaxGrams };
+    return { totals, warnings, costings, productMap, defaultWaxUnitCost, laborRatePerMinute, overheadRatePerMinute, totalWaxGrams };
   }
 
   async execute({ dto, userId, existingId }: CreateQuotationArgs): Promise<QuotationWithRelations> {

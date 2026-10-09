@@ -74,8 +74,7 @@ export interface ProductCostingResult extends ProductCostBreakdown {
  *  depende del renglon concreto de una cotizacion: cuantas piezas son de
  *  verdad (no el umbral de mayoreo generico), si el diseno ya esta pagado
  *  (setupMinutesTotal: 0). Los
- *  dos call sites de catalogo (recalculo y vista previa de producto) nunca
- *  pasan esto, asi que su comportamiento no cambia en absoluto. */
+ *  call sites de catalogo usan prorationQuantity para el costo de mayoreo. */
 export interface ProductCostingOverrides {
   prorationQuantity?: number;
   setupMinutesTotal?: number;
@@ -130,10 +129,9 @@ export class ProductCostingCalculator {
       setupMinutes: overrides?.setupMinutesTotal ?? setupMinutes,
       packMinutes,
       // Costeo de catalogo (sin una cotizacion concreta todavia): se usa el
-      // umbral de mayoreo como cantidad de referencia y el precio se marca
-      // como "a partir de N piezas" en la UI. Una cotizacion pasa la
+      // pedido de referencia de diseno para menudeo. Una cotizacion pasa la
       // cantidad REAL del renglon en overrides.prorationQuantity.
-      prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
+      prorationQuantity: overrides?.prorationQuantity ?? settings.designReferenceQty,
       laborRatePerMinute,
       overheadRatePerMinute,
     });
@@ -188,7 +186,7 @@ export class ProductCostingCalculator {
       supplies: manualSupplies,
       assemblyMinutes: context.assemblyMinutes,
       setupMinutes: overrides?.setupMinutesTotal ?? setupMinutes,
-      prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
+      prorationQuantity: overrides?.prorationQuantity ?? settings.designReferenceQty,
       laborRatePerMinute,
       overheadRatePerMinute,
     });

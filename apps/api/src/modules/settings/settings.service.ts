@@ -20,6 +20,7 @@ const COSTING_KEYS = [
   'workHoursPerDay',
   'meltBatchGrams',
   'wholesaleThresholdQty',
+  'designReferenceQty',
   'overheadRateMode',
   'overheadRatePerMinute',
   'waxSupplyId',

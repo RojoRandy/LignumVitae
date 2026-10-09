@@ -94,6 +94,19 @@ it('al editar ignora quoteRequestId', async () => {
   expect(quoteRequestRepository.markFromNew).not.toHaveBeenCalled();
 });
 
+it('guarda la cotizacion aunque el costeo traiga avisos de margen', async () => {
+  const { useCase, tx } = build(1);
+  (useCase.computePricing as jest.Mock).mockResolvedValue({
+    totals: { items: [{}] },
+    warnings: [{ itemIndex: 0, productId: 1, hasManualPrice: true, marginPct: 10, minMarginPct: 25, minUnitPrice: 20, minManualPrice: 19 }],
+    costings: [{ fragranceMlPerUnit: 0 }],
+    totalWaxGrams: 0,
+  });
+
+  await expect(useCase.execute({ dto })).resolves.toBeDefined();
+  expect(tx.quotation.create).toHaveBeenCalled();
+});
+
 it('guarda fragranceMlPerUnit del costeo en el renglon', async () => {
   const { useCase, tx } = build(1);
 
@@ -139,15 +152,45 @@ const buildPricing = () => {
   return { useCase, settings, lineCosting };
 };
 
-it('identifica el segundo renglon del mismo producto con precio bajo el piso', async () => {
+it('un precio manual bajo el piso solo avisa (no lanza) y senala el renglon correcto', async () => {
   const { useCase, settings } = buildPricing();
 
-  await expect(useCase.computePricing([
+  const result = await useCase.computePricing([
     { productId: 1, quantity: 1, unitPriceOverride: 100 },
     { productId: 1, quantity: 1, unitPriceOverride: 40 },
-  ], {}, settings as never)).rejects.toMatchObject({
-    response: { code: 'BELOW_MIN_MARGIN', data: { productId: 1, itemIndex: 1, unitPrice: 40 } },
-  });
+  ], {}, settings as never);
+
+  expect(result.warnings).toHaveLength(1);
+  expect(result.warnings[0]).toMatchObject({ itemIndex: 1, productId: 1, hasManualPrice: true, minMarginPct: 20 });
+});
+
+it('el precio de lista bajo el piso tambien avisa, sin marcarlo como manual', async () => {
+  const { useCase, settings, lineCosting } = buildPricing();
+  // costo 90 contra precio de lista 100 => 10 % de margen, piso 20 %
+  lineCosting.costLine.mockReturnValue({ unitTotalCost: 90, waxGramsPerUnit: 100, fragranceMlPerUnit: 0 });
+
+  const result = await useCase.computePricing([{ productId: 1, quantity: 1 }], {}, settings as never);
+
+  expect(result.warnings).toEqual([expect.objectContaining({ itemIndex: 0, hasManualPrice: false, marginPct: 10 })]);
+});
+
+it('con aroma el minimo del campo manual descuenta el recargo que se suma despues', async () => {
+  const { useCase, settings } = buildPricing();
+
+  const result = await useCase.computePricing([
+    { productId: 1, quantity: 1, withFragrance: true, fragranceSupplyId: 2, unitPriceOverride: 40 },
+  ], {}, settings as never);
+
+  const [warning] = result.warnings;
+  expect(warning.minManualPrice).toBeCloseTo(warning.minUnitPrice - 5, 2);
+});
+
+it('un renglon que cumple el piso no genera aviso', async () => {
+  const { useCase, settings } = buildPricing();
+
+  const result = await useCase.computePricing([{ productId: 1, quantity: 1 }], {}, settings as never);
+
+  expect(result.warnings).toEqual([]);
 });
 
 it('pasa el costo y unidad del aroma y su configuracion al costeo por renglon', async () => {

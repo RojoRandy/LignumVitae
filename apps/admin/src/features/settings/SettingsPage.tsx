@@ -274,9 +274,17 @@ export default function SettingsPage() {
               <NumberInput id="wholesaleThresholdQty" min={1} step={1} unit="pz" required value={form.wholesaleThresholdQty ?? null} onChange={setNumber('wholesaleThresholdQty')} />
             </Field>
             <Field
+              label="Piezas de referencia para repartir el diseno"
+              htmlFor="designReferenceQty"
+              hint="Tu pedido tipico"
+              tooltip="El diseno de la tarjeta o del empaque es un costo por pedido, no por pieza. El precio de menudeo del catalogo reparte ese costo entre estas piezas; el precio de mayoreo lo reparte entre las piezas del umbral de mayoreo. Con un valor menor, el precio de menudeo sube y cubre mejor los pedidos chicos."
+            >
+              <NumberInput id="designReferenceQty" min={1} step={1} unit="pz" required value={form.designReferenceQty ?? null} onChange={setNumber('designReferenceQty')} />
+            </Field>
+            <Field
               label="Piso de margen para overrides (%)"
               htmlFor="minMarginPct"
-              tooltip="Margen minimo que se exige cuando se fija un precio manual (distinto al sugerido) en el editor de producto. Si el precio capturado deja un margen menor a este porcentaje, el sistema lo rechaza y avisa cual es el precio mas bajo que si cumple."
+              tooltip="Margen minimo sobre el precio. En el editor de producto, un precio manual que deje menos margen se rechaza y se indica el precio mas bajo que si cumple. En una cotizacion solo se muestra un aviso en el renglon y se puede guardar igual."
             >
               <NumberInput id="minMarginPct" step={0.1} min={0} max={100} unit="%" required value={form.minMarginPct !== undefined ? Number(form.minMarginPct) : null} onChange={setDecimal('minMarginPct')} />
             </Field>

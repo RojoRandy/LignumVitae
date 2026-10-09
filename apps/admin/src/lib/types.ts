@@ -206,6 +206,8 @@ export interface ProductCostingBasisJson {
   waxUnitCost: number;
   meltBatchGrams: number;
   prorationQuantity: number;
+  wholesaleProrationQuantity?: number;
+  wholesaleUnitTotalCost?: number;
   retailMarkupPct: number;
   wholesaleMarkupPct: number;
   roundingMultiple: number;
@@ -448,8 +450,23 @@ export interface QuotationTotalsPreview {
   grossMarginPct: number;
 }
 
+/** Renglon con menos margen que el piso de Configuracion. Es un aviso: no impide guardar. */
+export interface QuotationMarginWarning {
+  itemIndex: number;
+  productId: number;
+  /** true: el bajo margen viene de un precio manual; false: del precio de lista. */
+  hasManualPrice: boolean;
+  marginPct: number;
+  minMarginPct: number;
+  /** Precio final por pieza (con aroma) que cumple el piso. */
+  minUnitPrice: number;
+  /** Lo que hay que escribir en "Precio manual" (antes del recargo de aroma). */
+  minManualPrice: number;
+}
+
 export interface PreviewQuotationTotalsResult {
   totals: QuotationTotalsPreview;
+  warnings: QuotationMarginWarning[];
   items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 }
 
@@ -590,6 +607,7 @@ export interface SettingsDto {
   retailMarkupPct: string;
   wholesaleMarkupPct: string;
   wholesaleThresholdQty: number;
+  designReferenceQty: number;
   minMarginPct: string;
   roundingMultiple: string;
   supplyCostWindowDays: number;

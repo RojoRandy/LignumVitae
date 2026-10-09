@@ -52,16 +52,18 @@ interface RowPreview {
   unitPrice: number;
   lineTotal: number;
   lineMargin: number;
+  /** El margen por pieza queda bajo el piso de Configuracion (solo aviso). */
+  belowMinMargin?: boolean;
 }
 
 interface QuotationLineItemEditorProps {
   rows: QuotationLineItemRow[];
   onChange: (rows: QuotationLineItemRow[]) => void;
   previews?: (RowPreview | undefined)[];
-  rowErrors?: (string | undefined)[];
+  rowWarnings?: (string | undefined)[];
 }
 
-export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }: QuotationLineItemEditorProps) => {
+export const QuotationLineItemEditor = ({ rows, onChange, previews, rowWarnings }: QuotationLineItemEditorProps) => {
   const { options: productOptions, products } = useProductOptions();
   const { supplies } = useSupplyOptions();
   const fragranceOptions = supplies
@@ -113,7 +115,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }:
                 </Badge>
               )}
               {preview && (
-                <Badge variant={preview.lineMargin >= 0 ? 'success' : 'danger'} className="shrink-0">
+                <Badge variant={preview.lineMargin < 0 ? 'danger' : preview.belowMinMargin ? 'warning' : 'success'} className="shrink-0">
                   Margen {formatMoney(preview.lineMargin)}
                 </Badge>
               )}
@@ -184,10 +186,10 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }:
                 label="Precio manual"
                 htmlFor={`price-${index}`}
                 className="col-span-6 sm:col-span-3"
-                tooltip="Vacio: usa el precio de lista sugerido. Un precio manual se valida contra el piso de margen de Configuracion."
+                tooltip="Vacio: usa el precio de lista sugerido. Si el precio deja menos margen que el minimo de Configuracion, solo se muestra un aviso: se puede guardar igual."
               >
                 <NumberInput id={`price-${index}`} min={0} step={0.01} unit="$" unitPosition="prefix" value={row.unitPriceOverride} onChange={(v) => update(index, { unitPriceOverride: v })} />
-                {rowErrors?.[index] && <p className="text-caption text-danger-fg">{rowErrors[index]}</p>}
+                {rowWarnings?.[index] && <p className="text-caption text-warning-fg">{rowWarnings[index]}</p>}
               </RowField>
               <RowField label="Precio final" className="col-span-6 sm:col-span-3">
                 <ReadonlyAmount>{preview ? formatMoney(preview.unitPrice) : '—'}</ReadonlyAmount>

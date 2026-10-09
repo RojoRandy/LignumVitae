@@ -1368,6 +1368,7 @@ export interface components {
             retailMarkupPct?: number;
             wholesaleMarkupPct?: number;
             wholesaleThresholdQty?: number;
+            designReferenceQty?: number;
             minMarginPct?: number;
             roundingMultiple?: number;
             supplyCostWindowDays?: number;

@@ -1246,6 +1246,10 @@ model Settings {
   /// A partir de ESTA cantidad acumulada del pedido, mayoreo. 31 y no 30: el
   /// Excel decia "1-30" y "30-50", que se solapaban en 30.
   wholesaleThresholdQty Int     @default(31) @map("wholesale_threshold_qty")
+  /// Piezas entre las que se reparte el diseño (tarjeta/empaque, costo POR PEDIDO) al costear y
+  /// fijar el precio de MENUDEO del catalogo. El precio de mayoreo usa wholesaleThresholdQty.
+  /// 31 = comportamiento historico; bajarlo al pedido tipico sube el precio de menudeo.
+  designReferenceQty    Int     @default(31) @map("design_reference_qty")
   /// Piso de margen SOBRE PRECIO. Un override por debajo se rechaza.
   minMarginPct          Decimal @default(25) @map("min_margin_pct") @db.Decimal(5, 2)
   /// Multiplo del precio sugerido. Se redondea SIEMPRE hacia arriba.
