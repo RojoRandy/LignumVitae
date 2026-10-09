@@ -67,18 +67,18 @@ type SettingsEntity = Awaited<ReturnType<SettingsService['get']>>;
  *  costearon, sin volver a resolver plantillas por su cuenta. */
 export interface ProductCostingResult extends ProductCostBreakdown {
   resolvedSupplies: SupplyConsumption[];
+  fragranceBaseGrams: number;
 }
 
 /** Lo que un producto de CATALOGO no puede saber por adelantado porque
  *  depende del renglon concreto de una cotizacion: cuantas piezas son de
  *  verdad (no el umbral de mayoreo generico), si el diseno ya esta pagado
- *  (setupMinutesTotal: 0), y si esta pieza en particular lleva aroma. Los
+ *  (setupMinutesTotal: 0). Los
  *  dos call sites de catalogo (recalculo y vista previa de producto) nunca
  *  pasan esto, asi que su comportamiento no cambia en absoluto. */
 export interface ProductCostingOverrides {
   prorationQuantity?: number;
   setupMinutesTotal?: number;
-  fragrance?: { unitCost: number; loadPct: number } | null;
 }
 
 @Injectable()
@@ -136,13 +136,9 @@ export class ProductCostingCalculator {
       prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
       laborRatePerMinute,
       overheadRatePerMinute,
-      // El aroma se elige y se cobra por renglon en la cotizacion, nunca a
-      // nivel de catalogo -- por eso los dos call sites de catalogo jamas
-      // pasan overrides.fragrance y esto sigue siendo null para ellos.
-      fragrance: overrides?.fragrance ?? null,
     });
 
-    return { ...breakdown, resolvedSupplies };
+    return { ...breakdown, resolvedSupplies, fragranceBaseGrams: breakdown.waxGramsPerUnit };
   }
 
   private costBouquet(
@@ -170,7 +166,6 @@ export class ProductCostingCalculator {
         prorationQuantity: 1,
         laborRatePerMinute,
         overheadRatePerMinute: 0, // los indirectos del ramo se cargan una sola vez, a nivel de ramo
-        fragrance: null,
       });
       return { unitCost: candleCost, quantity: component.quantity };
     });
@@ -196,9 +191,8 @@ export class ProductCostingCalculator {
       prorationQuantity: overrides?.prorationQuantity ?? settings.wholesaleThresholdQty,
       laborRatePerMinute,
       overheadRatePerMinute,
-      fragrance: overrides?.fragrance ? { ...overrides.fragrance, totalGrams } : null,
     });
 
-    return { ...breakdown, resolvedSupplies: manualSupplies };
+    return { ...breakdown, resolvedSupplies: manualSupplies, fragranceBaseGrams: totalGrams };
   }
 }

@@ -31,6 +31,16 @@ import { CustomerQuickCreateDialog } from '@/features/customers/quick-create-dia
 import { QuotationLineItemEditor, type QuotationLineItemRow } from './components/quotation-line-item-editor';
 import { useQuotationTotalsPreview, type PreviewQuotationTotalsInput } from './use-quotation-totals-preview';
 
+const parseMarginError = (error: unknown) => {
+  if (!(error instanceof ApiError) || error.code !== 'BELOW_MIN_MARGIN') return undefined;
+  const details = error.details as { itemIndex?: unknown; minPrice?: unknown; minMarginPct?: unknown } | undefined;
+  const itemIndex = details?.itemIndex;
+  const minPrice = Number(details?.minPrice ?? NaN);
+  const minMarginPct = Number(details?.minMarginPct ?? NaN);
+  if (typeof itemIndex !== 'number' || ![itemIndex, minPrice, minMarginPct].every(Number.isFinite)) return undefined;
+  return { itemIndex, minPrice, minMarginPct };
+};
+
 export default function QuotationFormPage() {
   const { id } = useParams();
   const isEditing = Boolean(id);
@@ -202,19 +212,13 @@ export default function QuotationFormPage() {
     error: previewError,
   } = useQuotationTotalsPreview(previewInput);
 
-  const marginErrorData = previewError instanceof ApiError && previewError.code === 'BELOW_MIN_MARGIN'
-    ? previewError.details
-    : undefined;
-  const rowErrors = rows.map((row) => {
-    if (
-      !marginErrorData || typeof marginErrorData !== 'object' ||
-      !('productId' in marginErrorData) || marginErrorData.productId !== row.productId ||
-      row.unitPriceOverride == null ||
-      !('minPrice' in marginErrorData) || (typeof marginErrorData.minPrice !== 'number' && typeof marginErrorData.minPrice !== 'string') ||
-      !('minMarginPct' in marginErrorData) || (typeof marginErrorData.minMarginPct !== 'number' && typeof marginErrorData.minMarginPct !== 'string')
-    ) return undefined;
-    return `Precio minimo permitido: ${formatMoney(marginErrorData.minPrice)} (margen minimo ${marginErrorData.minMarginPct}%).`;
-  });
+  const belowMinMargin = previewError instanceof ApiError && previewError.code === 'BELOW_MIN_MARGIN';
+  const marginErrorData = parseMarginError(previewError);
+  const rowErrors = previewIndexByRow.map((itemIndex) =>
+    marginErrorData && itemIndex === marginErrorData.itemIndex
+      ? `Precio minimo permitido: ${formatMoney(marginErrorData.minPrice)} (margen minimo ${marginErrorData.minMarginPct}%).`
+      : undefined,
+  );
 
   const saveMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -342,10 +346,11 @@ export default function QuotationFormPage() {
               onChange={setRows}
               rowErrors={rowErrors}
               previews={rows.map((_row, rowIndex) => {
-                if (previewError) return undefined;
+                if (belowMinMargin) return undefined;
                 const idx = previewIndexByRow[rowIndex];
                 const item = idx === undefined ? undefined : preview?.totals.items[idx];
-                return item ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin } : undefined;
+                const costing = idx === undefined ? undefined : preview?.items[idx];
+                return item && costing ? { priceTier: item.priceTier, unitPrice: item.unitPrice, lineTotal: item.lineTotal, lineMargin: item.lineMargin, fragranceMlPerUnit: costing.fragranceMlPerUnit } : undefined;
               })}
             />
           </Card>
@@ -399,7 +404,7 @@ export default function QuotationFormPage() {
           {!readOnly && (
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => navigate('/cotizaciones')}>Cancelar</Button>
-              <Button type="submit" loading={saveMutation.isPending}>Guardar</Button>
+              <Button type="submit" loading={saveMutation.isPending} disabled={belowMinMargin}>Guardar</Button>
             </div>
           )}
         </form>
@@ -410,8 +415,8 @@ export default function QuotationFormPage() {
               <h3 className="text-body font-semibold text-text">Totales</h3>
               {previewLoading && <Spinner className="size-3.5" />}
             </div>
-            {previewError ? (
-              <p className="text-body-sm text-text-muted">Corrige el error para ver el total.</p>
+            {belowMinMargin ? (
+              <p className="text-body-sm text-text-muted">Corrige el precio manual para ver el total.</p>
             ) : preview ? (
               <>
                 <div className="flex flex-col gap-1.5 text-body-sm">

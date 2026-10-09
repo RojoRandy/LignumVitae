@@ -38,7 +38,7 @@ export interface CreateQuotationArgs {
 
 export interface QuotationPricingResult {
   totals: QuotationTotals;
-  costings: ProductCostingResult[];
+  costings: (ProductCostingResult & { fragranceMlPerUnit: number })[];
   productMap: Map<number, ProductWithRelations>;
   defaultWaxUnitCost: number;
   laborRatePerMinute: number;
@@ -96,17 +96,28 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       }
     }
 
-    const costings = items.map((item) =>
-      this.lineCosting.costLine(
+    const costings = items.map((item) => {
+      const fragrance = item.fragranceSupplyId == null ? null : fragranceMap.get(item.fragranceSupplyId)!;
+      return this.lineCosting.costLine(
         productMap.get(item.productId)!,
         {
           quantity: item.quantity,
           setupMinutesOverride: item.setupMinutesOverride,
           withFragrance: Boolean(item.withFragrance),
+          fragranceUnitCost: fragrance?.currentUnitCost.toNumber() ?? null,
+          fragranceUnit: fragrance ? { slug: fragrance.unit.slug, abbr: fragrance.unit.abbr } : null,
         },
-        { settings, laborRatePerMinute, overheadRatePerMinute, defaultWaxUnitCost, fragranceSurcharge: settings.fragranceSurcharge.toNumber() },
-      ),
-    );
+        {
+          settings,
+          laborRatePerMinute,
+          overheadRatePerMinute,
+          defaultWaxUnitCost,
+          fragranceSurcharge: settings.fragranceSurcharge.toNumber(),
+          fragranceDropsPer100g: settings.fragranceDropsPer100g,
+          fragranceRealCost: settings.fragranceRealCost,
+        },
+      );
+    });
 
     const lineInputs: QuotationLineInput[] = items.map((item, i) => {
       const product = productMap.get(item.productId)!;
@@ -142,6 +153,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
       const check = validateMinMargin(totals.items[i].unitPrice, costings[i].unitTotalCost, settings.minMarginPct.toNumber());
       if (!check.ok) {
         throw SalesErrors.Exceptions.BELOW_MIN_MARGIN({
+          itemIndex: i,
           productId: item.productId,
           unitPrice: totals.items[i].unitPrice,
           marginPct: check.marginPct,
@@ -224,6 +236,7 @@ export class CreateQuotationUseCase implements UseCase<CreateQuotationArgs, Quot
         unitWaxCost: c.unitWaxCost,
         unitSupplyCost: c.unitSupplyCost,
         unitFragranceCost: c.unitFragranceCost,
+        fragranceMlPerUnit: c.fragranceMlPerUnit,
         unitLaborCost: c.unitLaborCost,
         unitOverheadCost: c.unitOverheadCost,
         unitTotalCost: c.unitTotalCost,

@@ -5,6 +5,7 @@ import { OrdersService } from './orders.service';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { AuthUser } from '../../auth/decorators/auth-user.decorator';
 import { FindOrdersQueryDto } from './dto/find-orders.query.dto';
+import { SetOrderItemFragranceDto } from './dto/set-order-item-fragrance.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @ApiTags('Sales')
@@ -29,6 +30,15 @@ export class OrdersController {
   @Post('from-quotation/:quotationId')
   acceptFromQuotation(@Param('quotationId', ParseIntPipe) quotationId: number, @AuthUser('id') userId: number) {
     return this.ordersService.acceptFromQuotation(quotationId, userId);
+  }
+
+  @Patch(':id/items/:itemId/fragrance')
+  setItemFragrance(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Body() dto: SetOrderItemFragranceDto,
+  ) {
+    return this.ordersService.setItemFragrance(id, itemId, dto);
   }
 
   @Patch(':id/status')

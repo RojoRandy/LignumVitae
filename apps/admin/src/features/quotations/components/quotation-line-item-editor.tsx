@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ReadonlyAmount } from '@/components/ui/page';
 import { useProductOptions } from '@/hooks/use-product-options';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import type { ItemExtraField, PriceTierValue } from '@/lib/types';
 
 export interface QuotationLineItemRow {
@@ -47,6 +47,7 @@ export const emptyQuotationLineRow = (): QuotationLineItemRow => ({
 });
 
 interface RowPreview {
+  fragranceMlPerUnit: number;
   priceTier: PriceTierValue;
   unitPrice: number;
   lineTotal: number;
@@ -93,6 +94,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }:
 
       {rows.map((row, index) => {
         const preview = previews?.[index];
+        const fragranceMl = (preview?.fragranceMlPerUnit ?? 0) * (row.quantity ?? 0);
         return (
           <div key={index} className="flex flex-col gap-3 rounded-input border border-border p-3">
             <div className="flex items-center gap-2">
@@ -157,6 +159,11 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowErrors }:
                     onChange={(v) => update(index, { fragranceSupplyId: v && v !== 'pending' ? Number(v) : null })}
                     searchable
                   />
+                  {preview && (
+                    <p className="text-caption text-text-muted">
+                      Aroma estimado: {fragranceEstimateLabel(fragranceMl)} en total
+                    </p>
+                  )}
                   {fragranceOptions.length === 0 && (
                     <p className="text-caption text-text-muted">No hay insumos marcados como aroma en Inventario.</p>
                   )}

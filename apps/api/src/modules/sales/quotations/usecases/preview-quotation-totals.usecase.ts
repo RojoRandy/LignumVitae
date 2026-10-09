@@ -9,7 +9,7 @@ import { UseCase } from '../../../../common/interfaces/use-case.interface';
 import { PreviewQuotationTotalsDto } from '../dto/preview-quotation-totals.dto';
 
 export type PreviewQuotationTotalsResult = Pick<QuotationPricingResult, 'totals'> & {
-  items: { unitTotalCost: number }[];
+  items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 };
 
 @Injectable()
@@ -22,6 +22,6 @@ export class PreviewQuotationTotalsUseCase implements UseCase<PreviewQuotationTo
   async execute(dto: PreviewQuotationTotalsDto): Promise<PreviewQuotationTotalsResult> {
     const settings = await this.settingsService.get();
     const { totals, costings } = await this.createQuotationUseCase.computePricing(dto.items, dto, settings);
-    return { totals, items: costings.map((c) => ({ unitTotalCost: c.unitTotalCost })) };
+    return { totals, items: costings.map((c) => ({ unitTotalCost: c.unitTotalCost, fragranceMlPerUnit: c.fragranceMlPerUnit })) };
   }
 }

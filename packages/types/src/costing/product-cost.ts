@@ -43,9 +43,6 @@ export interface ProductCostInput {
 
   laborRatePerMinute: number;
   overheadRatePerMinute: number;
-
-  /** null si la pieza se cotiza sin aroma. */
-  fragrance?: { unitCost: number; loadPct: number } | null;
 }
 
 export interface ProductCostBreakdown {
@@ -77,10 +74,7 @@ export const calculateProductCost = (input: ProductCostInput): ProductCostBreakd
     ),
   );
 
-  // No existia en el Excel: el aroma se cobraba con un "+1" ciego sin costear.
-  const unitFragranceCost = input.fragrance
-    ? round6(gramosConMerma.times(input.fragrance.loadPct).times(input.fragrance.unitCost))
-    : money(0);
+  const unitFragranceCost = money(0);
 
   // [Excel: R / 30] — el Excel prorrateaba el derretido entre 30 piezas fijas.
   // Aqui se prorratea entre el rendimiento REAL del lote de esta vela.
@@ -145,7 +139,6 @@ export interface BouquetCostInput {
   prorationQuantity: number;
   laborRatePerMinute: number;
   overheadRatePerMinute: number;
-  fragrance?: { unitCost: number; loadPct: number; totalGrams: number } | null;
 }
 
 /**
@@ -170,9 +163,7 @@ export const calculateBouquetCost = (input: BouquetCostInput): ProductCostBreakd
     input.supplies.reduce((acc, s) => acc.plus(money(s.quantity).times(s.unitCost)), money(0)),
   );
 
-  const unitFragranceCost = input.fragrance
-    ? round6(money(input.fragrance.totalGrams).times(input.fragrance.loadPct).times(input.fragrance.unitCost))
-    : money(0);
+  const unitFragranceCost = money(0);
 
   const setupMinutesPerUnit = money(input.setupMinutes).dividedBy(Math.max(1, input.prorationQuantity));
   const laborMinutesPerUnit = componentsMeltMinutes.plus(setupMinutesPerUnit).plus(input.assemblyMinutes);

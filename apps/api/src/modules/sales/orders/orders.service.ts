@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { SupplyRepository } from '../../inventory/supplies/supply.repository';
+import type { SetOrderItemFragranceDto } from './dto/set-order-item-fragrance.dto';
 import { OrderRepository } from './order.repository';
 import { CreateOrderFromQuotationUseCase } from './usecases/create-order-from-quotation.usecase';
 import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
@@ -12,6 +14,7 @@ export class OrdersService {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly createOrderFromQuotationUseCase: CreateOrderFromQuotationUseCase,
+    private readonly supplyRepository: SupplyRepository,
   ) {}
 
   async findAll(query: FindOrdersQueryDto & Pick<PaginationQueryDto, 'onlyActive'>) {
@@ -34,6 +37,22 @@ export class OrdersService {
     const order = await this.orderRepository.findById(id);
     if (!order) throw SalesErrors.Exceptions.ORDER_NOT_FOUND({ id });
     return order;
+  }
+
+  async setItemFragrance(orderId: number, itemId: number, dto: SetOrderItemFragranceDto) {
+    const order = await this.findById(orderId);
+    const item = order.items.find((item) => item.id === itemId);
+    if (!item) throw SalesErrors.Exceptions.ORDER_ITEM_NOT_FOUND({ orderId, itemId });
+    if (order.status === 'CANCELLED') throw SalesErrors.Exceptions.ORDER_NOT_EDITABLE({ orderId });
+    if (!item.withFragrance) throw SalesErrors.Exceptions.ORDER_ITEM_WITHOUT_FRAGRANCE({ orderId, itemId });
+
+    const { fragranceSupplyId } = dto;
+    const supply = await this.supplyRepository.findById(fragranceSupplyId);
+    if (!supply || !supply.isActive || !supply.isFragrance) {
+      throw SalesErrors.Exceptions.INVALID_FRAGRANCE_SUPPLY({ fragranceSupplyId });
+    }
+    await this.orderRepository.updateItem(itemId, { fragranceName: supply.name });
+    return this.findById(orderId);
   }
 
   acceptFromQuotation(quotationId: number, userId?: number) {

@@ -38,6 +38,7 @@ describe('Osito Chico Liston (fila 3 de "Catalogo")', () => {
     });
 
     expect(result.unitWaxCost).toBeCloseTo(1.4925, 4);
+    expect(result.unitFragranceCost).toBe(0);
     expect(result.unitSupplyCost).toBeCloseTo(1.9, 4); // V3 - D3 = 3.3925 - 1.4925
     // Con estas mismas condiciones "a la Excel", el prorrateo de mano de obra
     // tambien coincide con X3 = 1.7375:
@@ -198,6 +199,7 @@ describe('calculateBouquetCost: ramos como producto compuesto', () => {
     });
 
     expect(bouquet.unitWaxCost).toBeCloseTo(rose.unitWaxCost * 3, 4);
+    expect(bouquet.unitFragranceCost).toBe(0);
     expect(bouquet.unitSupplyCost).toBeCloseTo(rose.unitSupplyCost * 3 + 1.125, 4);
     expect(bouquet.unitTotalCost).toBeGreaterThan(rose.unitTotalCost * 3); // el armado suma costo
   });

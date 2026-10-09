@@ -6,7 +6,7 @@ import { downloadFile, errorMessage, httpDelete, httpGet, httpPost } from '@/lib
 import { staticUrl } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
-import { formatDate, formatMoney, formatPercent } from '@/lib/format';
+import { formatDate, formatMoney, formatPercent, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -155,6 +155,10 @@ export default function QuotationDetailPage() {
   }
 
   const canConvert = quotation.status === 'DRAFT' || quotation.status === 'SENT' || quotation.status === 'VIEWED';
+  const totalFragranceMl = (quotation.items ?? []).reduce(
+    (total, item) => total + (item.withFragrance ? Number(item.fragranceMlPerUnit) * item.quantity : 0),
+    0,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -267,6 +271,11 @@ export default function QuotationDetailPage() {
                           .filter(Boolean)
                           .join(' · ') || '—'}
                       </p>
+                      {item.withFragrance && (
+                        <p className="text-caption text-text-muted">
+                          Aroma estimado: {fragranceEstimateLabel(Number(item.fragranceMlPerUnit) * item.quantity)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
@@ -296,6 +305,7 @@ export default function QuotationDetailPage() {
           <Separator />
           <MoneyRow label="Costo total" value={formatMoney(quotation.totalCost)} muted />
           <MoneyRow label="Margen" value={`${formatMoney(quotation.grossProfit)} (${formatPercent(quotation.grossMarginPct)})`} muted />
+          {totalFragranceMl > 0 && <MoneyRow label="Aroma estimado (total)" value={fragranceEstimateLabel(totalFragranceMl)} muted />}
         </Card>
       </div>
     </div>

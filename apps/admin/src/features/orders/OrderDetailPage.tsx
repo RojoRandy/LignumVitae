@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { orderBalance } from '@lignumvitae/types';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -6,8 +7,10 @@ import { MoreHorizontal, Plus } from 'lucide-react';
 import { httpGet, httpPatch, errorMessage } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
+import { Select } from '@/components/ui/select';
 import type { OrderDto, OrderStatus } from '@/lib/types';
-import { formatDate, formatDateTime, formatMoney } from '@/lib/format';
+import { formatDate, formatDateTime, formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +53,10 @@ export default function OrderDetailPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { isAdmin } = useAuth();
+  const { supplies } = useSupplyOptions();
+  const fragranceOptions = supplies
+    .filter((supply) => supply.isFragrance && supply.isActive)
+    .map((supply) => ({ value: String(supply.id), label: supply.name }));
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
 
@@ -67,6 +74,16 @@ export default function OrderDetailPage() {
       // La entrega ya quedo registrada; el testimonio es un extra opcional
       // que no debe poder bloquearla, por eso se ofrece DESPUES del PATCH.
       if (status === 'DELIVERED' && !updated.testimonial) setTestimonialDialogOpen(true);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const fragranceMutation = useMutation({
+    mutationFn: ({ itemId, fragranceSupplyId }: { itemId: number; fragranceSupplyId: number }) =>
+      httpPatch<OrderDto>(`/orders/${id}/items/${itemId}/fragrance`, { fragranceSupplyId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders', id] });
+      toast.success('Aroma actualizado');
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -93,8 +110,11 @@ export default function OrderDetailPage() {
   }
 
   const depositCovered = Number(order.paidAmount) >= Number(order.depositAmount);
-  // Centavos enteros: restar decimales en flotante deja ruido como 40.99999.
-  const balanceCents = Math.round(Number(order.total) * 100) - Math.round(Number(order.paidAmount) * 100);
+  const balance = orderBalance(order.total, order.paidAmount);
+  const totalFragranceMl = (order.items ?? []).reduce(
+    (total, item) => total + (item.withFragrance ? Number(item.fragranceMlPerUnit) * item.quantity : 0),
+    0,
+  );
   const nextStatus = NEXT_STATUS[order.status];
 
   return (
@@ -183,6 +203,23 @@ export default function OrderDetailPage() {
                         .filter(Boolean)
                         .join(' · ') || '—'}
                     </p>
+                    {item.withFragrance && (
+                      <p className="text-caption text-text-muted">
+                        Aroma estimado: {fragranceEstimateLabel(Number(item.fragranceMlPerUnit) * item.quantity)}
+                      </p>
+                    )}
+                    {item.withFragrance && !item.fragranceName && order.status !== 'CANCELLED' && (
+                      <Select
+                        className="mt-1 max-w-56"
+                        options={fragranceOptions}
+                        value=""
+                        placeholder="Definir aroma..."
+                        disabled={fragranceMutation.isPending}
+                        onChange={(value) => {
+                          if (value) fragranceMutation.mutate({ itemId: item.id, fragranceSupplyId: Number(value) });
+                        }}
+                      />
+                    )}
                   </div>
                   <p className="text-body-sm text-text">{item.quantity} × {formatMoney(item.unitPrice)}</p>
                 </div>
@@ -232,17 +269,21 @@ export default function OrderDetailPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {depositCovered && <Badge variant="success">Anticipo cubierto</Badge>}
-            {order.status !== 'CANCELLED' &&
-              (balanceCents > 0 ? (
-                <Badge variant="warning">Saldo pendiente {formatMoney(balanceCents / 100)}</Badge>
-              ) : (
-                <Badge variant="success">Pagado</Badge>
-              ))}
+            {order.status !== 'CANCELLED' && (
+              <>
+                {balance.status === 'PENDING' && <Badge variant="warning">Saldo pendiente {formatMoney(balance.amount)}</Badge>}
+                {balance.status === 'PAID' && <Badge variant="success">Pagado</Badge>}
+                {balance.status === 'OVERPAID' && <Badge variant="info">Excedente {formatMoney(balance.amount)}</Badge>}
+              </>
+            )}
           </div>
           <div className="flex flex-col gap-1.5 text-body-sm">
             <div className="flex justify-between"><span className="text-text-muted">Anticipo requerido</span><span className="font-medium text-text">{formatMoney(order.depositAmount)}</span></div>
             <div className="flex justify-between"><span className="text-text-muted">Costo total</span><span className="text-text-muted">{formatMoney(order.totalCost)}</span></div>
             <div className="flex justify-between"><span className="text-text-muted">Margen</span><span className="text-text-muted">{formatMoney(order.grossProfit)}</span></div>
+            {totalFragranceMl > 0 && (
+              <div className="flex justify-between gap-2"><span className="text-text-muted">Aroma estimado (total)</span><span className="text-text-muted">{fragranceEstimateLabel(totalFragranceMl)}</span></div>
+            )}
           </div>
         </Card>
       </div>

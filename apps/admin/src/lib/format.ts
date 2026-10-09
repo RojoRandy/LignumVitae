@@ -1,3 +1,5 @@
+import { estimateFragranceDrops } from '@lignumvitae/types';
+
 // Formateadores compartidos por toda la UI del admin. Los importes llegan
 // de la API como string (Decimal serializado): SIEMPRE pasan por aqui antes
 // de mostrarse, nunca se hace aritmetica con ellos en el cliente.
@@ -32,3 +34,6 @@ export const formatDateTime = (value: string | null | undefined): string =>
   value ? dateTimeFormatter.format(new Date(value)) : '—';
 
 export const formatGrams = (value: string | number | null | undefined): string => `${formatNumber(value, 1)} g`;
+
+export const fragranceEstimateLabel = (ml: number): string =>
+  `${formatNumber(ml, 2)} ml (≈ ${estimateFragranceDrops(ml)} gotas)`;

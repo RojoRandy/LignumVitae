@@ -11,6 +11,12 @@ const Responses = {
   QUOTATION_EXPIRED: (data?: unknown) =>
     new ErrorResponseDto('QUOTATION_EXPIRED', 'Esta cotizacion ya vencio', data),
   ORDER_NOT_FOUND: (data?: unknown) => new ErrorResponseDto('ORDER_NOT_FOUND', 'No se encontro el pedido', data),
+  ORDER_ITEM_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('ORDER_ITEM_NOT_FOUND', 'No se encontro el renglon del pedido', data),
+  ORDER_NOT_EDITABLE: (data?: unknown) =>
+    new ErrorResponseDto('ORDER_NOT_EDITABLE', 'No se puede modificar un pedido cancelado', data),
+  ORDER_ITEM_WITHOUT_FRAGRANCE: (data?: unknown) =>
+    new ErrorResponseDto('ORDER_ITEM_WITHOUT_FRAGRANCE', 'Este renglon no lleva aroma', data),
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) =>
     new ErrorResponseDto('PAYMENT_EXCEEDS_BALANCE', 'El abono excede el saldo pendiente del pedido', data),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) =>
@@ -46,6 +52,9 @@ const Exceptions = {
   QUOTATION_ALREADY_CONVERTED: (data?: unknown) => new ConflictException(Responses.QUOTATION_ALREADY_CONVERTED(data)),
   QUOTATION_EXPIRED: (data?: unknown) => new BadRequestException(Responses.QUOTATION_EXPIRED(data)),
   ORDER_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.ORDER_NOT_FOUND(data)),
+  ORDER_ITEM_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.ORDER_ITEM_NOT_FOUND(data)),
+  ORDER_NOT_EDITABLE: (data?: unknown) => new BadRequestException(Responses.ORDER_NOT_EDITABLE(data)),
+  ORDER_ITEM_WITHOUT_FRAGRANCE: (data?: unknown) => new BadRequestException(Responses.ORDER_ITEM_WITHOUT_FRAGRANCE(data)),
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) => new BadRequestException(Responses.PAYMENT_EXCEEDS_BALANCE(data)),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTE_REQUEST_NOT_FOUND(data)),
   QUOTE_REQUEST_NOT_NEW: (data?: unknown) => new ConflictException(Responses.QUOTE_REQUEST_NOT_NEW(data)),

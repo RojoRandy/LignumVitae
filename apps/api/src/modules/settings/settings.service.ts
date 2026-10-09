@@ -11,9 +11,10 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 // minMarginPct entra porque ahora tambien sube el precio sugerido al piso de margen.
 // Fuera a proposito: defaultWastePct
-// solo es el default de alta (cada vela trae su merma); fragranceLoadPct y
-// fragranceSurcharge se cobran por renglon de cotizacion, nunca en catalogo
-// (ambos call sites de catalogo pasan fragrance: null).
+// solo es el default de alta (cada vela trae su merma); fragranceSurcharge,
+// fragranceDropsPer100g y fragranceRealCost se usan solo por renglon de cotizacion,
+// nunca en catalogo.
+// fragranceLoadPct esta deprecado.
 const COSTING_KEYS = [
   'dailyWage',
   'workHoursPerDay',

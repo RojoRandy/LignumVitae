@@ -304,6 +304,7 @@ export interface QuotationItemDto extends SalesLineItemCostFields {
   // Opcional: registros anteriores a los campos por insumo no lo traen.
   extraFields?: ItemExtraField[];
   withFragrance: boolean;
+  fragranceMlPerUnit: string;
   fragranceSupplyId: number | null;
   fragranceSupply?: { id: number; name: string } | null;
   personalizationText: string | null;
@@ -363,6 +364,7 @@ export interface OrderItemDto extends SalesLineItemCostFields {
   // Opcional: registros anteriores a los campos por insumo no lo traen.
   extraFields?: ItemExtraField[];
   withFragrance: boolean;
+  fragranceMlPerUnit: string;
   fragranceName: string | null;
   personalizationText: string | null;
 }
@@ -448,7 +450,7 @@ export interface QuotationTotalsPreview {
 
 export interface PreviewQuotationTotalsResult {
   totals: QuotationTotalsPreview;
-  items: { unitTotalCost: number }[];
+  items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 }
 
 export interface SalesStatsDto {
@@ -578,7 +580,8 @@ export interface SettingsDto {
   defaultWastePct: string;
   waxSupplyId: number | null;
   waxSupplyTypeId: number | null;
-  fragranceLoadPct: string;
+  fragranceDropsPer100g: number;
+  fragranceRealCost: boolean;
   fragranceSurcharge: string;
   overheadRateMode: 'DERIVED' | 'FIXED';
   overheadRatePerMinute: string;

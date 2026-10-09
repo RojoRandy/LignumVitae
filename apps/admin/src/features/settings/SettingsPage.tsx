@@ -7,6 +7,7 @@ import type { SettingsDto } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Field } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -208,6 +209,21 @@ export default function SettingsPage() {
             >
               <NumberInput id="fragranceSurcharge" step={0.01} min={0} unit="$" unitPosition="prefix" required value={form.fragranceSurcharge !== undefined ? Number(form.fragranceSurcharge) : null} onChange={setDecimal('fragranceSurcharge')} />
             </Field>
+            <Field
+              label="Gotas de aroma por 100 g de cera"
+              htmlFor="fragranceDropsPer100g"
+              hint="Tu rango habitual: 15 a 30"
+              tooltip="Se aplica igual a todos los productos: gotas de aroma por cada 100 g de cera. Con un gotero estandar, 20 gotas equivalen a 1 ml. Solo sirve para estimar cuanto aroma lleva cada pedido; no cambia el precio."
+            >
+              <NumberInput id="fragranceDropsPer100g" step={1} min={1} max={200} unit="gotas" required value={form.fragranceDropsPer100g ?? null} onChange={setNumber('fragranceDropsPer100g')} />
+            </Field>
+            <label className="col-span-full flex items-start gap-3">
+              <Checkbox className="mt-0.5" checked={form.fragranceRealCost ?? false} onCheckedChange={(checked) => set('fragranceRealCost', checked === true)} />
+              <span>
+                <span className="block text-body-sm font-medium text-text">Costear el aroma a precio real por ml</span>
+                <span className="block text-caption text-text-muted">Apagado: el aroma cuesta el cargo fijo por pieza. Encendido: cuesta los ml estimados por el precio del aroma elegido (con aroma pendiente se usa el cargo fijo). Lo que se cobra al cliente no cambia.</span>
+              </span>
+            </label>
             <Field
               label="Tasa de respaldo ($/min)"
               htmlFor="overheadRatePerMinute"
