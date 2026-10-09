@@ -76,6 +76,7 @@
   --animate-scale-in: scale-in 150ms var(--ease-out);
   --animate-slide-in-from-top: slide-in-from-top 200ms var(--ease-out);
   --animate-slide-in-from-right: slide-in-from-right 220ms var(--ease-out);
+  --animate-progress-slide: progress-slide 1.1s ease-in-out infinite;
 }
 
 @keyframes fade-in {
@@ -89,6 +90,10 @@
 @keyframes slide-in-from-top {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+@keyframes progress-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(350%); }
 }
 @keyframes slide-in-from-right {
   from { opacity: 0; transform: translateX(12px); }

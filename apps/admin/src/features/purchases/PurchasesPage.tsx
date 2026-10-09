@@ -60,8 +60,8 @@ export default function PurchasesPage() {
     queryFn: () => httpGet<Paginated<PurchaseDto>>('/purchases', { page, limit: 20 }),
   });
 
-  const { options: supplyOptions, supplies } = useSupplyOptions({ includeWax: true });
-  const { data: expenseCategories } = useQuery({
+  const { options: supplyOptions, supplies, isLoading: loadingSupplies } = useSupplyOptions({ includeWax: true });
+  const { data: expenseCategories, isLoading: loadingExpenseCategories } = useQuery({
     queryKey: ['expense-categories'],
     queryFn: () => httpGet<ExpenseCategoryDto[]>('/expenses/categories'),
   });
@@ -266,6 +266,7 @@ export default function PurchasesPage() {
                         <div className="col-span-12 sm:col-span-5">
                           <Select
                             options={supplyOptions}
+                            loading={loadingSupplies}
                             value={item.supplyId ? String(item.supplyId) : undefined}
                             onChange={(v) => updateItem(index, { supplyId: Number(v) })}
                             placeholder="Insumo que se abastece..."
@@ -284,6 +285,7 @@ export default function PurchasesPage() {
                         <div className="col-span-12 sm:col-span-5">
                           <Select
                             options={(expenseCategories ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+                            loading={loadingExpenseCategories}
                             value={item.expenseCategoryId ? String(item.expenseCategoryId) : undefined}
                             onChange={(v) => updateItem(index, { expenseCategoryId: Number(v) })}
                             placeholder="Categoria de gasto..."

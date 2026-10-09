@@ -36,7 +36,7 @@ export default function ExpensesPage() {
     queryFn: () => httpGet<Paginated<ExpenseDto>>('/expenses', { page, limit: 20 }),
   });
 
-  const { data: categories } = useQuery({
+  const { data: categories, isLoading: loadingCategories } = useQuery({
     queryKey: ['expense-categories'],
     queryFn: () => httpGet<ExpenseCategoryDto[]>('/expenses/categories'),
   });
@@ -147,6 +147,7 @@ export default function ExpensesPage() {
                 id="categoryId"
                 name="categoryId"
                 options={(categories ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+                loading={loadingCategories}
                 placeholder="Elegir..."
                 required
               />

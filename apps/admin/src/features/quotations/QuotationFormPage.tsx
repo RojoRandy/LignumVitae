@@ -310,7 +310,7 @@ export default function QuotationFormPage() {
               <Field label="Cliente" required>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <Select options={customerOptions} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
+                    <Select options={customerOptions} loading={loadingCustomers} value={customerId} onChange={setCustomerId} placeholder="Elegir cliente..." searchable />
                   </div>
                   <Button type="button" variant="secondary" size="icon" aria-label="Nuevo cliente" onClick={() => setQuickCreateOpen(true)}>
                     <Plus className="size-4" />

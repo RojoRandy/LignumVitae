@@ -49,11 +49,11 @@ export default function ProductsPage() {
     }),
   });
 
-  const { data: categories } = useQuery({
+  const { data: categories, isLoading: loadingCategories } = useQuery({
     queryKey: ['categories', 'all'],
     queryFn: () => httpGet<Paginated<CandleCategoryDto>>('/categories', { limit: 100 }),
   });
-  const { data: candles } = useQuery({
+  const { data: candles, isLoading: loadingCandles } = useQuery({
     queryKey: ['candles', 'all'],
     queryFn: () => httpGet<Paginated<CandleDto>>('/candles', { limit: 200 }),
   });
@@ -340,6 +340,7 @@ export default function ProductsPage() {
             <Select
               id="products-category"
               options={categoryOptions}
+              loading={loadingCategories}
               value={categoryId ?? ''}
               onChange={(value) => {
                 setCategoryId(value);
@@ -353,6 +354,7 @@ export default function ProductsPage() {
             <Select
               id="products-candle"
               options={candleOptions}
+              loading={loadingCandles}
               value={candleId ?? ''}
               onChange={(value) => {
                 setCandleId(value);

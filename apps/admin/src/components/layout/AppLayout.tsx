@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageState } from '@/components/ui/page';
+import { preloadRoute } from '@/route-loaders';
+import { TopProgressBar } from './top-progress-bar';
 
 const SIDEBAR_COLLAPSED_KEY = 'lignumvitae.sidebar-collapsed';
 
@@ -40,6 +42,8 @@ const SidebarNav = ({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate
                   to={item.to}
                   end={item.to === '/'}
                   onClick={onNavigate}
+                  onMouseEnter={() => preloadRoute(item.to)}
+                  onFocus={() => preloadRoute(item.to)}
                   className={cn(
                     'relative flex items-center gap-3 rounded-input px-2.5 py-2.5 text-body-sm font-semibold transition-colors',
                     isActive ? 'text-accent-hover' : 'text-text-muted hover:bg-surface-sunken hover:text-text',
@@ -110,6 +114,7 @@ export const AppLayout = () => {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-sunken">
+      <TopProgressBar />
       {/* Sidebar de escritorio */}
       <aside
         className={cn(

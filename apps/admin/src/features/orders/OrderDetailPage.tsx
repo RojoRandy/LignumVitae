@@ -53,7 +53,7 @@ export default function OrderDetailPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { isAdmin } = useAuth();
-  const { supplies } = useSupplyOptions();
+  const { supplies, isLoading: loadingSupplies } = useSupplyOptions();
   const fragranceOptions = supplies
     .filter((supply) => supply.isFragrance && supply.isActive)
     .map((supply) => ({ value: String(supply.id), label: supply.name }));
@@ -212,6 +212,7 @@ export default function OrderDetailPage() {
                       <Select
                         className="mt-1 max-w-56"
                         options={fragranceOptions}
+                        loading={loadingSupplies}
                         value=""
                         placeholder="Definir aroma..."
                         disabled={fragranceMutation.isPending}

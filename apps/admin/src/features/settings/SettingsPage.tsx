@@ -23,8 +23,8 @@ export default function SettingsPage() {
   const [form, setForm] = useState<Partial<SettingsDto>>({});
   // includeWax: aqui se elige JUSTAMENTE la cera, que es lo unico que el
   // hook excluye por defecto (nunca va en el BOM de un producto).
-  const { options: supplyOptions } = useSupplyOptions({ includeWax: true });
-  const { options: supplyTypeOptions } = useSupplyTypeOptions();
+  const { options: supplyOptions, isLoading: loadingSupplies } = useSupplyOptions({ includeWax: true });
+  const { options: supplyTypeOptions, isLoading: loadingSupplyTypes } = useSupplyTypeOptions();
 
   useEffect(() => {
     if (data) setForm(data);
@@ -155,6 +155,7 @@ export default function SettingsPage() {
               <Select
                 id="waxSupplyTypeId"
                 options={supplyTypeOptions}
+                loading={loadingSupplyTypes}
                 value={form.waxSupplyTypeId ? String(form.waxSupplyTypeId) : ''}
                 onChange={(v) => set('waxSupplyTypeId', (v ? Number(v) : null) as never)}
                 placeholder="Sin definir"
@@ -170,6 +171,7 @@ export default function SettingsPage() {
               <Select
                 id="waxSupplyId"
                 options={supplyOptions}
+                loading={loadingSupplies}
                 value={form.waxSupplyId ? String(form.waxSupplyId) : ''}
                 onChange={(v) => set('waxSupplyId', (v ? Number(v) : null) as never)}
                 placeholder="Sin definir"

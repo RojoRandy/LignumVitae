@@ -21,6 +21,7 @@ import { Check, ChevronDown, SearchX, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { controlDisabled, controlFocusRing, controlInvalid, controlShell } from './input';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { Spinner } from './spinner';
 
 export interface SelectOption {
   value: string;
@@ -53,6 +54,8 @@ export interface SelectProps {
   placeholder?: string;
   emptyText?: string;
   disabled?: boolean;
+  /** Las opciones aun llegan de una consulta: deshabilita el control y muestra "Cargando...". */
+  loading?: boolean;
   invalid?: boolean;
   /**
    * Va al CONTENEDOR, no al boton interno. El <select> nativo que
@@ -86,6 +89,7 @@ export const Select = ({
   placeholder = 'Selecciona...',
   emptyText = 'Sin resultados',
   disabled,
+  loading,
   invalid,
   className,
 }: SelectProps) => {
@@ -138,7 +142,8 @@ export const Select = ({
           <button
             type="button"
             id={triggerId}
-            disabled={disabled}
+            disabled={disabled || loading}
+            aria-busy={loading || undefined}
             aria-invalid={invalid || undefined}
             className={cn(
               controlShell,
@@ -149,7 +154,7 @@ export const Select = ({
               invalid && controlInvalid,
             )}
           >
-            <span className="min-w-0 truncate">{selected ? selected.label : placeholder}</span>
+            <span className="min-w-0 truncate">{selected ? selected.label : loading ? 'Cargando...' : placeholder}</span>
             <span className="flex shrink-0 items-center gap-0.5">
               {canClear && (
                 <span
@@ -165,7 +170,7 @@ export const Select = ({
                   <X className="size-3.5" />
                 </span>
               )}
-              <ChevronDown className="size-4 text-text-faint" />
+              {loading ? <Spinner className="size-4" /> : <ChevronDown className="size-4 text-text-faint" />}
             </span>
           </button>
         </PopoverTrigger>

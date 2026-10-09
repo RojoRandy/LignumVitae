@@ -18,7 +18,9 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Sin transiciones: con startTransition (default del router) una pagina que aun no
+          carga deja la pantalla anterior con el URL ya cambiado, sin loader. */}
+      <BrowserRouter useTransitions={false}>
         <AuthProvider>
           <TooltipProvider>
             <ConfirmProvider>

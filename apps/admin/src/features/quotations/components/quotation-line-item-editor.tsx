@@ -64,8 +64,8 @@ interface QuotationLineItemEditorProps {
 }
 
 export const QuotationLineItemEditor = ({ rows, onChange, previews, rowWarnings }: QuotationLineItemEditorProps) => {
-  const { options: productOptions, products } = useProductOptions();
-  const { supplies } = useSupplyOptions();
+  const { options: productOptions, products, isLoading: loadingProducts } = useProductOptions();
+  const { supplies, isLoading: loadingSupplies } = useSupplyOptions();
   const fragranceOptions = supplies
     .filter((supply) => supply.isFragrance)
     .map((supply) => ({ value: String(supply.id), label: supply.name }));
@@ -103,6 +103,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowWarnings 
               <div className="flex-1">
                 <Select
                   options={productOptions}
+                  loading={loadingProducts}
                   value={row.productId ? String(row.productId) : undefined}
                   onChange={(v) => update(index, { productId: Number(v), extraFields: [] })}
                   placeholder="Elegir producto..."
@@ -157,6 +158,7 @@ export const QuotationLineItemEditor = ({ rows, onChange, previews, rowWarnings 
                   <Select
                     id={`fragrance-${index}`}
                     options={[{ value: 'pending', label: 'Pendiente' }, ...fragranceOptions]}
+                    loading={loadingSupplies}
                     value={row.fragranceSupplyId ? String(row.fragranceSupplyId) : 'pending'}
                     onChange={(v) => update(index, { fragranceSupplyId: v && v !== 'pending' ? Number(v) : null })}
                     searchable
