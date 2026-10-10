@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Las pruebas no abren Chromium; ahorra ~150 MB de descarga por corrida.
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      ASTRO_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toma la version de "packageManager" en package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # api y admin importan @lignumvitae/types compilado; la API necesita el cliente de Prisma.
+      - name: Preparar paquetes compartidos
+        run: |
+          pnpm --filter @lignumvitae/types build
+          pnpm --filter @lignumvitae/api exec prisma generate
+
+      - name: types
+        run: |
+          pnpm --filter @lignumvitae/types lint
+          pnpm --filter @lignumvitae/types test
+
+      # ponytail: sin eslint de la API (no esta instalado en apps/api); agregarlo cuando se configure.
+      - name: api
+        run: |
+          pnpm --filter @lignumvitae/api exec tsc --noEmit -p tsconfig.json
+          pnpm --filter @lignumvitae/api test
+
+      - name: admin
+        run: |
+          pnpm --filter @lignumvitae/admin lint
+          pnpm --filter @lignumvitae/admin build
+
+      - name: landing
+        run: |
+          pnpm --filter @lignumvitae/landing test
+          pnpm --filter @lignumvitae/landing build
