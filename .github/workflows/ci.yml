@@ -41,9 +41,9 @@ jobs:
           pnpm --filter @lignumvitae/types lint
           pnpm --filter @lignumvitae/types test
 
-      # ponytail: sin eslint de la API (no esta instalado en apps/api); agregarlo cuando se configure.
       - name: api
         run: |
+          pnpm --filter @lignumvitae/api lint
           pnpm --filter @lignumvitae/api exec tsc --noEmit -p tsconfig.json
           pnpm --filter @lignumvitae/api test
 

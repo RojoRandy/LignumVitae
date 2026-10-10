@@ -58,7 +58,7 @@ export class CardTypesService {
   async update(id: number, dto: UpdateCardTypeDto) {
     await this.findById(id);
     const { supplyTemplate, ...rest } = dto;
-    const updated = await this.repository.update(id, rest as Prisma.CardTypeUpdateInput);
+    await this.repository.update(id, rest as Prisma.CardTypeUpdateInput);
     if (supplyTemplate) {
       await this.repository.replaceTemplate(
         id,

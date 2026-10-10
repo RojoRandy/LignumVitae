@@ -386,7 +386,7 @@ export class ProductsService {
     // compartir los primeros 12 caracteres alfanumericos (p. ej. "Osito
     // Chico Liston" y "Osito Chico con Liston Rosa") y generar el mismo
     // SKU truncado aunque sus slugs sean diferentes.
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const candidate = suffix > 0 ? `${truncated}-${suffix}` : truncated;
       const existing = await this.productRepository.findBySku(candidate);
