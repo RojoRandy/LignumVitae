@@ -286,6 +286,8 @@ model Product {
   excludedSupplyIds Int[] @default([]) @map("excluded_supply_ids")
 
   description       String?
+  /// Lo que incluye el producto, una linea por elemento ("- Vela ...\n- Cajita ..."). Separado de description para que el catalogo PDF muestre solo el texto de venta.
+  includes          String?
   /// Minutos extra sobre lo que aportan empaque y tarjeta (o, en un ramo, el
   /// armado). Escape hatch para los casos raros de personalizacion especial.
   extraSetupMinutes Int     @default(0) @map("extra_setup_minutes")

@@ -64,10 +64,15 @@ export class CreateProductDto {
   @IsInt()
   cardTypeId?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true, description: 'null la borra' })
   @IsOptional()
   @IsString()
-  description?: string;
+  description?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Lo que incluye, un elemento por linea; null lo borra' })
+  @IsOptional()
+  @IsString()
+  includes?: string | null;
 
   @ApiPropertyOptional({ default: 0 })
   @IsOptional()

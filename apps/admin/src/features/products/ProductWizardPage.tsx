@@ -37,6 +37,7 @@ type FormValues = {
   name: string;
   categoryId?: string;
   description: string;
+  includes: string;
   candleId?: string;
   packagingTypeId?: string;
   cardTypeId?: string;
@@ -58,6 +59,7 @@ function getFormValues(product?: ProductDto): FormValues {
     name: product?.name ?? '',
     categoryId: product ? String(product.categoryId) : undefined,
     description: product?.description ?? '',
+    includes: product?.includes ?? '',
     candleId: product?.candleId ? String(product.candleId) : undefined,
     packagingTypeId: product?.packagingTypeId ? String(product.packagingTypeId) : undefined,
     cardTypeId: product?.cardTypeId ? String(product.cardTypeId) : undefined,
@@ -95,6 +97,7 @@ export default function ProductWizardPage() {
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [description, setDescription] = useState('');
+  const [includes, setIncludes] = useState('');
   const [candleId, setCandleId] = useState<string | undefined>();
   const [packagingTypeId, setPackagingTypeId] = useState<string | undefined>();
   const [cardTypeId, setCardTypeId] = useState<string | undefined>();
@@ -127,7 +130,7 @@ export default function ProductWizardPage() {
   const [hydratedKey, setHydratedKey] = useState<string | null>(null);
   const [recoveredDraft, setRecoveredDraft] = useState(false);
   const serializedForm = JSON.stringify({
-    kind, name, categoryId, description, candleId, packagingTypeId, cardTypeId, components, extraSetupMinutes, extraPackMinutes, assemblyMinutes, allowsFragrance, isVisibleOnLanding, isFeatured, newUntil, excludedSupplyIds, additionalSupplies,
+    kind, name, categoryId, description, includes, candleId, packagingTypeId, cardTypeId, components, extraSetupMinutes, extraPackMinutes, assemblyMinutes, allowsFragrance, isVisibleOnLanding, isFeatured, newUntil, excludedSupplyIds, additionalSupplies,
   });
 
   const applyForm = useCallback((values: FormValues) => {
@@ -135,6 +138,7 @@ export default function ProductWizardPage() {
     setName(values.name);
     setCategoryId(values.categoryId);
     setDescription(values.description);
+    setIncludes(values.includes);
     setCandleId(values.candleId);
     setPackagingTypeId(values.packagingTypeId);
     setCardTypeId(values.cardTypeId);
@@ -357,7 +361,9 @@ export default function ProductWizardPage() {
       candleId: kind === 'SIMPLE' ? Number(candleId) : undefined,
       packagingTypeId: packagingTypeId ? Number(packagingTypeId) : isEditing ? null : undefined,
       cardTypeId: cardTypeId ? Number(cardTypeId) : isEditing ? null : undefined,
-      description: description || undefined,
+      // null (no undefined): vaciar el campo al editar debe borrar lo guardado.
+      description: description.trim() || null,
+      includes: includes.trim() || null,
       extraSetupMinutes,
       extraPackMinutes,
       assemblyMinutes: kind === 'BOUQUET' ? assemblyMinutes : undefined,
@@ -436,6 +442,9 @@ export default function ProductWizardPage() {
 
               <Field label="Descripcion" className="sm:col-span-2">
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              </Field>
+              <Field label="Incluye" htmlFor="includes" hint="Un elemento por línea." className="sm:col-span-2">
+                <Textarea id="includes" value={includes} onChange={(e) => setIncludes(e.target.value)} rows={4} />
               </Field>
             </div>
           </Card>

@@ -225,6 +225,7 @@ export interface ProductDto {
   packagingTypeId: number | null;
   cardTypeId: number | null;
   description: string | null;
+  includes: string | null;
   extraSetupMinutes: number;
   extraPackMinutes: number;
   assemblyMinutes: number;

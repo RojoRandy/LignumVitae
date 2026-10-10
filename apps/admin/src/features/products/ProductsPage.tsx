@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, AlertTriangle, EyeOff, TrendingUp, SlidersHorizontal, Star, Image as ImageIcon, LayoutGrid, Sparkles, RefreshCw } from 'lucide-react';
+import { Plus, AlertTriangle, EyeOff, TrendingUp, SlidersHorizontal, Star, Image as ImageIcon, LayoutGrid, Sparkles, RefreshCw, FileDown } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router';
 import { useTableParams } from '@/hooks/use-table-params';
 import { useSettings } from '@/hooks/use-settings';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { httpDelete, httpPatch, httpGet, httpPost } from '@/lib/http';
+import { httpDelete, httpPatch, httpGet, httpPost, downloadFile, errorMessage } from '@/lib/http';
 import { staticUrl } from '@/lib/api';
 import type { Paginated, ProductDto, CandleCategoryDto, CandleDto } from '@/lib/types';
 import { formatMoney } from '@/lib/format';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
@@ -26,14 +30,35 @@ export default function ProductsPage() {
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [candleId, setCandleId] = useState<string | undefined>();
   const [highlight, setHighlight] = useState<string | undefined>();
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('candle');
   const [minMarginPct, setMinMarginPct] = useState<number | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilterCount = [categoryId, candleId, highlight, sortBy !== 'name', minMarginPct !== null].filter(Boolean).length;
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [moldDialogOpen, setMoldDialogOpen] = useState(false);
+  const [selectedCandleIds, setSelectedCandleIds] = useState<Set<number>>(() => new Set());
+  const [moldSearch, setMoldSearch] = useState('');
+  const catalogPath = (kind: 'pdf' | 'images', query = '') => `/products/catalog-${kind}${query}`;
+  const selectedCatalogQuery = `?ids=${[...selectedIds].join(',')}`;
+  const selectedCatalogPath = catalogPath('pdf', selectedCatalogQuery);
+  const activeFilterCount = [categoryId, candleId, highlight, sortBy !== 'candle', minMarginPct !== null].filter(Boolean).length;
   const { data: settings } = useSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+
+  const toggle = (id: number, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const catalogMutation = useMutation({
+    mutationFn: ({ path, filename }: { path: string; filename: string }) => downloadFile(path, filename),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', { page, search, onlyActive, categoryId, candleId, highlight, sortBy, minMarginPct }],
@@ -62,6 +87,10 @@ export default function ProductsPage() {
     label: c.name,
     hint: `${c.grams} g · ${c.category?.name ?? ''}`,
   }));
+  const normalizedMoldSearch = moldSearch.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const filteredMolds = (candles?.items ?? []).filter((c) =>
+    c.isActive && c.name.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().includes(normalizedMoldSearch),
+  );
   const categoryOptions = (categories?.items ?? []).map((c) => ({ value: String(c.id), label: c.name }));
 
   const removeMutation = useMutation({
@@ -277,6 +306,19 @@ export default function ProductsPage() {
       ),
     },
     {
+      id: 'select',
+      header: '',
+      meta: { mobile: 'trailing' },
+      cell: ({ row }) => (
+        <Checkbox
+          checked={selectedIds.has(row.original.id)}
+          onCheckedChange={(v) => toggle(row.original.id, v === true)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Seleccionar ${row.original.name}`}
+        />
+      ),
+    },
+    {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
@@ -308,6 +350,34 @@ export default function ProductsPage() {
         description="La vela + su empaque + su tarjeta. Es lo que se cotiza."
         actions={
           <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" loading={catalogMutation.isPending}>
+                  <FileDown className="size-4" /> Catálogo{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('pdf'), filename: 'catalogo-lignum-vitae.pdf' })}>
+                  Completo — PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('images'), filename: 'catalogo-lignum-vitae.zip' })}>
+                  Completo — imágenes (ZIP)
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: selectedCatalogPath, filename: 'catalogo-lignum-vitae.pdf' })}>
+                  Seleccionados ({selectedIds.size}) — PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: catalogPath('images', selectedCatalogQuery), filename: 'catalogo-lignum-vitae.zip' })}>
+                  Seleccionados ({selectedIds.size}) — imágenes (ZIP)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setMoldDialogOpen(true)}>Por moldes…</DropdownMenuItem>
+                {selectedIds.size > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setSelectedIds(new Set())}>Limpiar selección</DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="secondary" loading={recalculateAllMutation.isPending} onClick={handleRecalculateAll}>
               <RefreshCw className="size-4" /> Recalcular costos
             </Button>
@@ -320,6 +390,71 @@ export default function ProductsPage() {
           </>
         }
       />
+
+      <Dialog open={moldDialogOpen} onOpenChange={setMoldDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exportar catálogo por moldes</DialogTitle>
+            <DialogDescription>Incluye los productos visibles en la landing de cada molde.</DialogDescription>
+          </DialogHeader>
+          <Field label="Buscar molde" htmlFor="catalog-mold-search">
+            <Input
+              id="catalog-mold-search"
+              placeholder="Buscar molde..."
+              value={moldSearch}
+              onChange={(event) => setMoldSearch(event.target.value)}
+            />
+          </Field>
+          <div className="mt-4 max-h-72 overflow-y-auto">
+            {loadingCandles ? (
+              <p className="text-body-sm text-text-muted">Cargando moldes...</p>
+            ) : filteredMolds.length === 0 ? (
+              <p className="text-body-sm text-text-muted">Sin moldes que coincidan</p>
+            ) : filteredMolds.map((mold) => (
+              <div key={mold.id} className="flex items-center gap-3 px-1">
+                <Checkbox
+                  id={`catalog-mold-${mold.id}`}
+                  checked={selectedCandleIds.has(mold.id)}
+                  onCheckedChange={(checked) => setSelectedCandleIds((previous) => {
+                    const next = new Set(previous);
+                    if (checked === true) next.add(mold.id);
+                    else next.delete(mold.id);
+                    return next;
+                  })}
+                />
+                <label htmlFor={`catalog-mold-${mold.id}`} className="flex-1 cursor-pointer py-3 text-body-sm text-text">
+                  {mold.name}
+                </label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="flex-wrap">
+            <p className="mr-auto text-body-sm text-text-muted">{selectedCandleIds.size} moldes seleccionados</p>
+            <Button variant="ghost" onClick={() => setSelectedCandleIds(new Set())}>Limpiar</Button>
+            <Button
+              disabled={selectedCandleIds.size === 0 || catalogMutation.isPending}
+              loading={catalogMutation.isPending && catalogMutation.variables?.filename === 'catalogo-lignum-vitae.pdf'}
+              onClick={() => catalogMutation.mutate({
+                path: catalogPath('pdf', `?candleIds=${[...selectedCandleIds].join(',')}`),
+                filename: 'catalogo-lignum-vitae.pdf',
+              }, { onSuccess: () => setMoldDialogOpen(false) })}
+            >
+              Exportar PDF
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={selectedCandleIds.size === 0 || catalogMutation.isPending}
+              loading={catalogMutation.isPending && catalogMutation.variables?.filename === 'catalogo-lignum-vitae.zip'}
+              onClick={() => catalogMutation.mutate({
+                path: catalogPath('images', `?candleIds=${[...selectedCandleIds].join(',')}`),
+                filename: 'catalogo-lignum-vitae.zip',
+              }, { onSuccess: () => setMoldDialogOpen(false) })}
+            >
+              Exportar imágenes (ZIP)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
         <PageToolbar
@@ -387,6 +522,7 @@ export default function ProductsPage() {
             <Select
               id="products-sort"
               options={[
+                { value: 'candle', label: 'Ordenar por molde' },
                 { value: 'name', label: 'Ordenar por nombre' },
                 { value: 'retailMargin', label: 'Mayor margen menudeo' },
                 { value: 'wholesaleMargin', label: 'Mayor margen mayoreo' },
@@ -421,7 +557,7 @@ export default function ProductsPage() {
               setCategoryId(undefined);
               setCandleId(undefined);
               setHighlight(undefined);
-              setSortBy('name');
+              setSortBy('candle');
               setMinMarginPct(null);
               setPage(1);
             }}

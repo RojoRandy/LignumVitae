@@ -38,7 +38,7 @@ export const publicCatalogSelect = {
       // El molde de un producto: SIMPLE lo trae directo, BOUQUET lo arma desde
       // sus componentes. Ver products.service.ts:40 para la misma semantica
       // en el admin.
-      candle: { select: { name: true, slug: true } },
+      candle: { select: { name: true, slug: true, heightCm: true, widthCm: true, grams: true } },
       components: { select: { candle: { select: { name: true, slug: true } } } },
       packagingType: { select: { name: true, slug: true } },
       // Solo los cuatro precios (lista y override) para resolver el precio
@@ -60,8 +60,11 @@ export const publicProductSelect = {
   slug: true,
   kind: true,
   description: true,
+  includes: true,
   allowsFragrance: true,
   category: { select: { name: true, slug: true } },
+  // Solo para armar `dimensions` en el mapper; no sale tal cual.
+  candle: { select: { heightCm: true, widthCm: true, grams: true } },
   images: { orderBy: imageOrder, select: { url: true, alt: true } },
   supplies: { select: { supply: { select: { id: true, askInQuote: true, quoteFieldLabel: true, quoteFieldPlaceholder: true } } } },
   // Solo los cuatro precios (lista y override) para resolver el precio

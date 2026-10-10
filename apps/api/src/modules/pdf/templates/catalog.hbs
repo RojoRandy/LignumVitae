@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8" />
+<title>Catálogo - {{brandName}}</title>
+<style>
+  /* Colores de packages/tailwind-preset/brand.json; muted corresponde a moss-600. */
+  :root {
+    --sage-50: #EFF6E9;
+    --sage-100: #D1E5C2;
+    --moss-700: #4D5E55;
+    --moss-800: #4A5B53;
+    --moss-900: #374039;
+    --teal-700: #3D6660;
+    --teal-800: #2F504B;
+    --cream-50: #F7F4EC;
+    --paper: #FFFFFF;
+    --ink: #26302A;
+    --muted: #5C6E63;
+    color-scheme: light;
+  }
+  @font-face { font-family: 'Parisienne'; src: url({{{fontSrc}}}) format('truetype'); font-weight: 400; font-style: normal; }
+  @page { size: 8.5in 11in; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { position: relative; width: 8.5in; height: 11in; overflow: hidden; break-after: page; page-break-after: always; background: var(--paper); }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+  .logo { display: block; object-fit: contain; }
+  .cover { padding: 40px 32px 90px; text-align: center; }
+  .cover .logo { width: 96px; height: 96px; margin: 0 auto 24px; }
+  .category-title, .mold-title { margin: 0; font-family: 'Parisienne', cursive; font-weight: 400; line-height: 1.15; color: var(--teal-700); overflow-wrap: anywhere; }
+  .category-title { font-size: 64px; }
+  .category-description { max-width: 520px; margin: 12px auto 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .cover-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 20px; margin-top: 36px; }
+  .cover-image { margin: 0; min-width: 0; }
+  .cover-image img { display: block; width: 180px; height: 180px; margin: 0 auto; border: 4px solid var(--paper); border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(38, 48, 42, .15); }
+  .cover-image figcaption { margin-top: 10px; font-size: 12px; line-height: 1.4; color: var(--moss-800); overflow-wrap: anywhere; }
+  .mold { display: flex; flex-direction: column; padding-bottom: 90px; }
+  .mold-header, .product-row { display: grid; grid-template-columns: 120px 1fr 90px 90px; align-items: center; padding-left: 32px; padding-right: 32px; }
+  .mold-header { flex: none; padding-top: 24px; padding-bottom: 24px; }
+  .mold-header .logo { width: 56px; height: 56px; justify-self: center; }
+  .mold-heading { min-width: 0; padding: 0 16px; text-align: center; }
+  .mold-title { font-size: 44px; }
+  .mold-dims { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+  .price-label { margin: 0 4px; padding: 8px 4px; border-radius: 999px; background: var(--sage-100); color: var(--ink); font-size: 12px; font-weight: 700; text-align: center; overflow-wrap: anywhere; }
+  .rows { flex: 1; min-height: 0; overflow: hidden; }
+  .product-row { padding-top: 12px; padding-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
+  .product-row.odd { background: var(--paper); }
+  .product-row.even { background: var(--sage-50); }
+  .product-image { display: block; width: 120px; height: 120px; border: 4px solid var(--paper); border-radius: 50%; object-fit: cover; background: var(--cream-50); }
+  .product-text { min-width: 0; padding: 0 16px; overflow-wrap: anywhere; }
+  .product-name { margin: 0; font-size: 16px; line-height: 1.3; font-weight: 700; color: var(--moss-900); }
+  .product-description { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--ink); }
+  .price { padding: 12px 4px; text-align: center; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+  .wholesale { border-left: 2px solid var(--moss-700); }
+  .page-footer { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; padding: 0 32px; display: flex; align-items: center; justify-content: flex-end; gap: 16px; line-height: 1.4; }
+  .footer-text { flex: 1; text-align: center; }
+  .footer-text p { margin: 0 0 4px; }
+  .fragrance { font-size: 13px; color: var(--moss-800); }
+  .notice { color: var(--teal-800); }
+  .contact { font-size: 11px; color: var(--muted); }
+  .page-number { flex: none; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  {{#each categories}}
+  <section class="page cover">
+    <img class="logo" src="{{@root.logoSrc}}" alt="{{@root.brandName}}" />
+    <h1 class="category-title">{{name}}</h1>
+    {{#if description}}<p class="category-description">{{description}}</p>{{/if}}
+    {{#if coverImages}}
+    <div class="cover-grid">
+      {{#each coverImages}}
+      <figure class="cover-image">
+        <img src="{{src}}" alt="{{label}}" />
+        <figcaption>{{label}}</figcaption>
+      </figure>
+      {{/each}}
+    </div>
+    {{/if}}
+    <footer class="page-footer"><span class="page-number"></span></footer>
+  </section>
+  {{#each molds}}
+  <section class="page mold">
+    <header class="mold-header">
+      <img class="logo" src="{{@root.logoSrc}}" alt="{{@root.brandName}}" />
+      <div class="mold-heading">
+        <h2 class="mold-title">{{name}}</h2>
+        {{#if dims}}<p class="mold-dims">{{dims}}</p>{{/if}}
+      </div>
+      <div class="price-label">{{@root.retailLabel}}</div>
+      <div class="price-label">{{@root.wholesaleLabel}}</div>
+    </header>
+    <div class="rows">
+      {{#each products}}
+      {{! groupCatalog asigna number = index + 1 dentro de cada molde. }}
+      <article class="product-row" data-i="{{number}}">
+        {{#if imageUrl}}
+        <img class="product-image" src="{{imageUrl}}" alt="{{name}}" />
+        {{else}}
+        <div class="product-image" aria-hidden="true"></div>
+        {{/if}}
+        <div class="product-text">
+          <h3 class="product-name">{{number}}.- {{name}}</h3>
+          {{#if description}}<p class="product-description">{{description}}</p>{{/if}}
+        </div>
+        <div class="price">{{#if retail}}{{money retail}}{{else}}—{{/if}}</div>
+        <div class="price wholesale">{{#if wholesale}}{{money wholesale}}{{else}}—{{/if}}</div>
+      </article>
+      {{/each}}
+    </div>
+    <footer class="page-footer">
+      <div class="footer-text">
+        {{#if @root.fragranceSurcharge}}<p class="fragrance">Puedes añadir aroma a tus velas por {{money @root.fragranceSurcharge}} extra por pieza</p>{{/if}}
+        <p class="notice">Precios sujetos a cambios</p>
+        {{#if @root.contact}}<p class="contact">{{@root.contact}}</p>{{/if}}
+      </div>
+      <span class="page-number"></span>
+    </footer>
+  </section>
+  {{/each}}
+  {{/each}}
+</main>
+<script>
+  document.fonts.ready.then(async () => {
+    try {
+      await Promise.all([...document.images].map(i => i.complete ? null : new Promise(r => { i.onload = i.onerror = r; })));
+      document.querySelectorAll('.product-row').forEach(row => {
+        row.classList.add(Number(row.dataset.i) % 2 ? 'odd' : 'even');
+      });
+      for (const original of [...document.querySelectorAll('.page.mold')]) {
+        let page = original;
+        let rows = page.querySelector('.rows');
+        while (rows.scrollHeight > rows.clientHeight + 1 && rows.children.length > 1) {
+          const continuation = page.cloneNode(true);
+          const nextRows = continuation.querySelector('.rows');
+          nextRows.replaceChildren();
+          page.after(continuation);
+          while (rows.scrollHeight > rows.clientHeight + 1 && rows.children.length > 1) {
+            nextRows.insertBefore(rows.lastElementChild, nextRows.firstChild);
+          }
+          page = continuation;
+          rows = nextRows;
+        }
+      }
+      document.querySelectorAll('.page').forEach((page, index) => {
+        page.querySelector('.page-number').textContent = `Pág. ${index + 1}`;
+      });
+    } finally {
+      window.catalogReady = true;
+    }
+  });
+</script>
+</body>
+</html>
