@@ -131,6 +131,14 @@ it('omite la llave newUntil cuando no viene en la actualizacion', async () => {
   expect(repository.update.mock.calls[0][1]).not.toHaveProperty('newUntil');
 });
 
+it('actualiza lo que incluye el producto', async () => {
+  const { service, repository } = build({ product: { id: 1 } });
+
+  await service.update(1, { includes: '- Vela' });
+
+  expect(repository.update).toHaveBeenCalledWith(1, { includes: '- Vela' });
+});
+
 it('un ramo hereda los insumos de cada vela y suma las repetidas', async () => {
   const { service, replaceSupplies } = build({
     product: {
@@ -337,6 +345,7 @@ it.each([
 it.each([
   { sortBy: 'retailMargin' as const, orderBy: [{ retailMarginPct: 'desc' }, { name: 'asc' }] },
   { sortBy: 'wholesaleMargin' as const, orderBy: [{ wholesaleMarginPct: 'desc' }, { name: 'asc' }] },
+  { sortBy: 'candle' as const, orderBy: [{ candle: { name: 'asc' } }, { name: 'asc' }] },
   { sortBy: 'name' as const, orderBy: { name: 'asc' } },
   { sortBy: undefined, orderBy: { name: 'asc' } },
 ])('ordena los productos por $sortBy y conserva la paginacion', async ({ sortBy, orderBy }) => {

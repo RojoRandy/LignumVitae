@@ -18,10 +18,23 @@ const effectivePrice = (override: Prisma.Decimal | null, list: Prisma.Decimal) =
   return price > 0 ? price : null;
 };
 
-const toPublicPrices = (product: PriceFields) => ({
+export const toPublicPrices = (product: PriceFields) => ({
   retail: effectivePrice(product.retailPriceOverride, product.retailListPrice),
   wholesale: effectivePrice(product.wholesalePriceOverride, product.wholesaleListPrice),
 });
+
+interface CandleSize {
+  heightCm: Prisma.Decimal | null;
+  widthCm: Prisma.Decimal | null;
+  grams: Prisma.Decimal;
+}
+
+// "4.5 cm de alto · 2.5 cm de ancho · 15 gramos": la misma linea en la landing y en el catalogo PDF.
+export const candleDimensions = (candle: CandleSize | null) => (candle ? [
+  Number(candle.heightCm) > 0 && `${Number(candle.heightCm)} cm de alto`,
+  Number(candle.widthCm) > 0 && `${Number(candle.widthCm)} cm de ancho`,
+  Number(candle.grams) > 0 && `${Number(candle.grams)} gramos`,
+].filter(Boolean).join(' · ') || null : null);
 
 const omitPriceFields = <T extends PriceFields>(product: T) => {
   const { retailListPrice, wholesaleListPrice, retailPriceOverride, wholesalePriceOverride, ...rest } = product;
@@ -41,7 +54,9 @@ export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) => {
         image: images[0] ?? null,
         // Un ramo (BOUQUET) no tiene `candle` propio: sus moldes vienen de
         // sus componentes. Misma forma de arreglo para ambos casos.
-        candles: candle ? [candle] : components.map((c) => c.candle),
+        candles: candle ? [{ name: candle.name, slug: candle.slug }] : components.map((c) => c.candle),
+        // Solo SIMPLE: un ramo mezcla moldes y no tiene una medida unica.
+        dimensions: candleDimensions(candle),
       })),
     }));
 };
@@ -49,14 +64,14 @@ export const toPublicCatalogDto = (categories: PublicCatalogCategory[]) => {
 // Frontera de seguridad del detalle de producto: el select trae `supplies`
 // SOLO para derivar quoteFields. El BOM crudo nunca debe salir de aqui.
 export const toPublicProductDto = (product: PublicProduct) => {
-  const { supplies, ...rest } = product;
+  const { supplies, candle, ...rest } = product;
   const quoteFields = new Map<number, { supplyId: number; label: string; placeholder: string | null }>();
   for (const { supply } of supplies) {
     if (supply.askInQuote && supply.quoteFieldLabel) {
       quoteFields.set(supply.id, { supplyId: supply.id, label: supply.quoteFieldLabel, placeholder: supply.quoteFieldPlaceholder });
     }
   }
-  return { ...omitPriceFields(rest), prices: toPublicPrices(rest), quoteFields: [...quoteFields.values()] };
+  return { ...omitPriceFields(rest), prices: toPublicPrices(rest), quoteFields: [...quoteFields.values()], dimensions: candleDimensions(candle) };
 };
 
 export const toLandingImagesDto = (hero: LandingImage[], gallery: LandingImage[]) => ({

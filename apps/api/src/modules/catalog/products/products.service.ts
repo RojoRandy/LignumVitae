@@ -53,6 +53,8 @@ export class ProductsService {
     const orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] =
       sortBy === 'retailMargin' ? [{ retailMarginPct: 'desc' }, { name: 'asc' }]
         : sortBy === 'wholesaleMargin' ? [{ wholesaleMarginPct: 'desc' }, { name: 'asc' }]
+          // Por molde: los ramos (sin candleId) quedan al final, NULLS LAST de Postgres en ASC.
+          : sortBy === 'candle' ? [{ candle: { name: 'asc' } }, { name: 'asc' }]
           : { name: 'asc' };
     const [items, total] = await Promise.all([
       this.productRepository.findMany({ where, orderBy, ...paginate(page, limit) }),
@@ -128,6 +130,7 @@ export class ProductsService {
       packagingType: dto.packagingTypeId ? { connect: { id: dto.packagingTypeId } } : undefined,
       cardType: dto.cardTypeId ? { connect: { id: dto.cardTypeId } } : undefined,
       description: dto.description,
+      includes: dto.includes,
       excludedSupplyIds: dto.excludedSupplyIds,
       extraSetupMinutes: dto.extraSetupMinutes ?? 0,
       extraPackMinutes: dto.extraPackMinutes ?? 0,
@@ -153,6 +156,7 @@ export class ProductsService {
     if (dto.cardTypeId !== undefined) data.cardType = dto.cardTypeId ? { connect: { id: dto.cardTypeId } } : { disconnect: true };
     if (dto.excludedSupplyIds !== undefined) data.excludedSupplyIds = dto.excludedSupplyIds;
     if (dto.description !== undefined) data.description = dto.description;
+    if (dto.includes !== undefined) data.includes = dto.includes;
     if (dto.extraSetupMinutes !== undefined) data.extraSetupMinutes = dto.extraSetupMinutes;
     if (dto.extraPackMinutes !== undefined) data.extraPackMinutes = dto.extraPackMinutes;
     if (dto.assemblyMinutes !== undefined) data.assemblyMinutes = dto.assemblyMinutes;
@@ -382,7 +386,6 @@ export class ProductsService {
     // compartir los primeros 12 caracteres alfanumericos (p. ej. "Osito
     // Chico Liston" y "Osito Chico con Liston Rosa") y generar el mismo
     // SKU truncado aunque sus slugs sean diferentes.
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const candidate = suffix > 0 ? `${truncated}-${suffix}` : truncated;
       const existing = await this.productRepository.findBySku(candidate);

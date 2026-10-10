@@ -10,6 +10,9 @@ interface Product {
   slug: string;
   kind: string;
   description: string | null;
+  includes: string | null;
+  /** "4.5 cm de alto · 2.5 cm de ancho · 15 gramos"; null en ramos. */
+  dimensions: string | null;
   allowsFragrance: boolean;
   quoteFields: { supplyId: number; label: string; placeholder: string | null }[];
   category: { name: string; slug: string };
@@ -40,6 +43,7 @@ const settings = product ? await getJson<PublicSettings>('/public/settings') : n
 // se muestra: no es motivo para tumbar la ficha completa del producto.
 const fragrances = product?.allowsFragrance ? await getJson<Fragrance[]>('/public/fragrances').catch(() => []) : [];
 const images = product?.images ?? [];
+const includedItems = product?.includes?.split('\n').map((line) => line.replace(/^\s*-\s*/, '').trim()).filter(Boolean) ?? [];
 const origin = Astro.site!.origin;
 const threshold = settings?.wholesaleThresholdQty;
 const prices = [
@@ -86,6 +90,7 @@ const surcharge = settings?.fragranceSurcharge ?? 0;
           <a href="/catalogo" class="text-action hover:underline">Catálogo</a> / <a href={`/catalogo?c=${encodeURIComponent(product.category.slug)}`} class="text-action hover:underline">{product.category.name}</a>
         </nav>
         <h1 id="product-title" class="mt-4 text-display-lg text-brand">{product.name}</h1>
+        {product.dimensions && <p class="mt-2 text-body-sm text-text-muted">{product.dimensions}</p>}
         {hasPrice && <div class="mt-6">
           <dl class="grid grid-cols-2 gap-4 rounded-card bg-surface p-4 shadow-card" aria-label="Precios">
             {prices.map((price) => <div class="min-w-0">
@@ -102,6 +107,15 @@ const surcharge = settings?.fragranceSurcharge ?? 0;
             <svg class="shrink-0 text-text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
           <p class="pb-4 whitespace-pre-line text-body text-text">{product.description}</p>
+        </details>}
+        {includedItems.length > 0 && <details class:list={['group border-border', product.description ? 'border-b' : 'mt-6 border-y']}>
+          <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 py-2 text-body font-medium text-text [&::-webkit-details-marker]:hidden">
+            Incluye
+            <svg class="shrink-0 text-text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <ul class="list-disc space-y-1 pb-4 pl-5 text-body text-text">
+            {includedItems.map((item) => <li>{item}</li>)}
+          </ul>
         </details>}
         <div class="mt-6 flex gap-4 rounded-input border-l-[3px] border-action bg-surface-tint p-4 text-body-sm text-text">
           <svg class="shrink-0 text-action" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10v2" /></svg>

@@ -3,7 +3,7 @@ import { Prisma, QuotationStatus } from '@prisma/client';
 import { QuotationRepository } from './quotation.repository';
 import { CreateQuotationUseCase } from './usecases/create-quotation.usecase';
 import { DuplicateQuotationUseCase } from './usecases/duplicate-quotation.usecase';
-import { PaginationQueryDto, buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
+import { buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
 import { SalesErrors } from '../../../common/errors/sales.errors';
 import { CreateQuotationDto, UpdateQuotationDto } from './dto/create-quotation.dto';
 import type { FindQuotationsQueryDto } from './dto/find-quotations.query.dto';

@@ -1,10 +1,13 @@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CatalogErrors } from '../../../common/errors/catalog.errors';
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
 import { ProductsService } from './products.service';
+import { ProductRepository } from './product.repository';
+import { PdfService } from '../../pdf/pdf.service';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
 import { UpdateProductImageDto } from './dto/update-product-image.dto';
@@ -12,6 +15,21 @@ import { PreviewProductCostDto } from './dto/preview-product-cost.dto';
 import { FindProductsQueryDto } from './dto/find-products.query.dto';
 import { PreviewProductCostingUseCase } from './usecases/preview-product-costing.usecase';
 import { RecalculateAllProductsUseCase } from './usecases/recalculate-all-products.usecase';
+
+function parseCatalogFilter(ids?: string, candleIds?: string): { ids?: number[]; candleIds?: number[] } {
+  if (ids !== undefined && candleIds !== undefined) {
+    throw new BadRequestException('Usa ids o candleIds, no ambos');
+  }
+  const value = ids ?? candleIds;
+  if (value === undefined) return {};
+
+  const key = ids !== undefined ? 'ids' : 'candleIds';
+  const values = value.split(',').map((id) => Number(id.trim()));
+  if (values.length === 0 || values.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+    throw new BadRequestException(`${key} invalidos`);
+  }
+  return { [key]: [...new Set(values)] };
+}
 
 @ApiTags('Catalog')
 @Auth()
@@ -21,6 +39,8 @@ export class ProductsController {
     private readonly productsService: ProductsService,
     private readonly previewProductCostingUseCase: PreviewProductCostingUseCase,
     private readonly recalculateAllProductsUseCase: RecalculateAllProductsUseCase,
+    private readonly productRepository: ProductRepository,
+    private readonly pdfService: PdfService,
   ) {}
 
   // Sin @Auth adicional: hereda el @Auth() de la clase (cualquier
@@ -46,6 +66,34 @@ export class ProductsController {
   @Get()
   findAll(@Query() query: FindProductsQueryDto) {
     return this.productsService.findAll(query);
+  }
+
+  // Ver quotations.controller.ts: @Res({ passthrough: false }) evita envolver el binario con ApiResponseInterceptor.
+  @Get('catalog-pdf')
+  async catalogPdf(
+    @Res({ passthrough: false }) res: Response,
+    @Query('ids') ids?: string,
+    @Query('candleIds') candleIds?: string,
+  ) {
+    const products = await this.productRepository.findForCatalog(parseCatalogFilter(ids, candleIds));
+    const buffer = await this.pdfService.renderCatalogPdf(products);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="catalogo-lignum-vitae.pdf"');
+    res.send(buffer);
+  }
+
+  // Como catalog-pdf: @Res({ passthrough: false }) evita envolver el binario con ApiResponseInterceptor.
+  @Get('catalog-images')
+  async catalogImages(
+    @Res({ passthrough: false }) res: Response,
+    @Query('ids') ids?: string,
+    @Query('candleIds') candleIds?: string,
+  ) {
+    const products = await this.productRepository.findForCatalog(parseCatalogFilter(ids, candleIds));
+    const buffer = await this.pdfService.renderCatalogImages(products);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="catalogo-lignum-vitae.zip"');
+    res.send(buffer);
   }
 
   @Get(':id')

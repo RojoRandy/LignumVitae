@@ -140,6 +140,7 @@ export function updateQuoteCount(): void {
     badge.textContent = String(count);
     const floatingLink = badge.closest('a.quote-float');
     if (floatingLink) {
+      (floatingLink as HTMLElement).hidden = count === 0;
       badge.hidden = count === 0;
       floatingLink.setAttribute('aria-label', `Mi cotización, ${count} productos`);
     }

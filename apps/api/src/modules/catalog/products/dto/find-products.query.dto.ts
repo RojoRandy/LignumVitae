@@ -10,10 +10,10 @@ export class FindProductsQueryDto extends PaginationQueryDto {
   @IsIn(['featured', 'hero', 'gallery', 'new'])
   highlight?: 'featured' | 'hero' | 'gallery' | 'new';
 
-  @ApiPropertyOptional({ enum: ['name', 'retailMargin', 'wholesaleMargin'], default: 'name' })
+  @ApiPropertyOptional({ enum: ['name', 'candle', 'retailMargin', 'wholesaleMargin'], default: 'name' })
   @IsOptional()
-  @IsIn(['name', 'retailMargin', 'wholesaleMargin'])
-  sortBy?: 'name' | 'retailMargin' | 'wholesaleMargin';
+  @IsIn(['name', 'candle', 'retailMargin', 'wholesaleMargin'])
+  sortBy?: 'name' | 'candle' | 'retailMargin' | 'wholesaleMargin';
 
   @ApiPropertyOptional({ description: 'Margen minimo de venta al menudeo en porcentaje' })
   @IsOptional()

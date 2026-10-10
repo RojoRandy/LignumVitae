@@ -13,6 +13,7 @@ import { CardTypesModule } from '../card-types/card-types.module';
 import { SettingsModule } from '../../settings/settings.module';
 import { OverheadModule } from '../../inventory/overhead/overhead.module';
 import { SuppliesModule } from '../../inventory/supplies/supplies.module';
+import { PdfModule } from '../../pdf/pdf.module';
 
 @Module({
   // OverheadModule y SuppliesModule ahora tambien importan ProductsModule
@@ -26,6 +27,7 @@ import { SuppliesModule } from '../../inventory/supplies/supplies.module';
     PackagingTypesModule,
     CardTypesModule,
     SettingsModule,
+    PdfModule,
     forwardRef(() => OverheadModule),
     forwardRef(() => SuppliesModule),
   ],

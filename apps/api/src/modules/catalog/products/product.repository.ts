@@ -16,9 +16,43 @@ export const productInclude = {
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
 
+// Catalogo PDF para clientes: solo precios (lista y override), nunca costos ni margenes.
+const catalogProductSelect = {
+  id: true,
+  name: true,
+  description: true,
+  kind: true,
+  retailListPrice: true,
+  wholesaleListPrice: true,
+  retailPriceOverride: true,
+  wholesalePriceOverride: true,
+  images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { id: 'asc' }], take: 1, select: { url: true } },
+  candle: { select: { id: true, name: true, heightCm: true, widthCm: true, grams: true } },
+  category: { select: { id: true, name: true, description: true, sortOrder: true } },
+} satisfies Prisma.ProductSelect;
+
+export type CatalogProduct = Prisma.ProductGetPayload<{ select: typeof catalogProductSelect }>;
+
 @Injectable()
 export class ProductRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  // Con ids: activos, visibles o no (prioridad). Con candleIds: visibles de esos moldes. Sin filtros: todos los visibles.
+  findForCatalog(filter: { ids?: number[]; candleIds?: number[] } = {}): Promise<CatalogProduct[]> {
+    const { ids, candleIds } = filter;
+    return this.prisma.product.findMany({
+      where: ids?.length
+        ? { id: { in: ids }, isActive: true }
+        : {
+            isActive: true,
+            isVisibleOnLanding: true,
+            category: { isActive: true, isVisibleOnLanding: true },
+            ...(candleIds?.length ? { candleId: { in: candleIds } } : {}),
+          },
+      orderBy: [{ category: { sortOrder: 'asc' } }, { category: { name: 'asc' } }, { candle: { name: 'asc' } }, { name: 'asc' }],
+      select: catalogProductSelect,
+    });
+  }
 
   findMany(args: Prisma.ProductFindManyArgs) {
     return this.prisma.product.findMany({ include: productInclude, ...args });

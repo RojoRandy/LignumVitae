@@ -10,6 +10,8 @@ export interface Product {
   image: { url: string; alt: string | null } | null;
   candles?: { name: string; slug: string }[];
   packagingType?: { name: string; slug: string } | null;
+  /** Medidas de la vela ("4.5 cm de alto · 2.5 cm de ancho · 15 gramos"); null en ramos. */
+  dimensions?: string | null;
   prices?: ProductPrices;
 }
 
@@ -53,6 +55,7 @@ const hasPrice = prices.some((price) => price.value !== null);
   </div>
   <div class="p-4">
     <h3 class="text-heading-sm text-text [overflow-wrap:anywhere]">{product.name}</h3>
+    {product.dimensions && <p class="mt-1 text-caption text-text-muted">{product.dimensions}</p>}
     {hasPrice ? <dl class="mt-2 space-y-1">
       {prices.map((price) => <div class="flex flex-wrap items-baseline justify-between gap-x-2">
         <dt class="text-caption text-text-muted">{price.label}</dt>

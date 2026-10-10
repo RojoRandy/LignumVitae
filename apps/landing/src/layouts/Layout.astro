@@ -132,7 +132,7 @@ const showFloatingQuote = !/^\/cotizar\/?$/.test(Astro.url.pathname)
       </div>
     </footer>
 
-    {showFloatingQuote && <a href="/cotizar" aria-label="Mi cotización, 0 productos" class="quote-float button fixed right-4 bottom-4 z-30 h-14 w-14 rounded-full bg-action p-0 text-surface shadow-float hover:bg-action-hover">
+    {showFloatingQuote && <a hidden href="/cotizar" aria-label="Mi cotización, 0 productos" class="quote-float button fixed right-4 bottom-4 z-30 h-14 w-14 rounded-full bg-action p-0 text-surface shadow-float hover:bg-action-hover">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5 7h14l1 14H4L5 7Z" /><path d="M8 8V6a4 4 0 0 1 8 0v2" /></svg>
       <span data-quote-count hidden class="absolute -top-1 -right-1 h-6 min-w-6 place-items-center rounded-full bg-action-soft px-1 text-micro text-brand">0</span>
     </a>}

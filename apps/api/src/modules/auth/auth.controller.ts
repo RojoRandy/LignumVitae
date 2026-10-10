@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { UserRoles } from '@prisma/client';
+import { UserRoles, type User } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators/auth.decorator';
 import { AuthUser } from './decorators/auth-user.decorator';
@@ -26,7 +26,7 @@ export class AuthController {
 
   @Auth()
   @Get('check-status')
-  checkStatus(@AuthUser() user: any) {
+  checkStatus(@AuthUser() user: User) {
     return this.authService.checkStatus(user);
   }
 

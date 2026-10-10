@@ -59,7 +59,7 @@ export class PackagingTypesService {
     const { supplyTemplate, ...rest } = dto;
     const data: Prisma.PackagingTypeUpdateInput = { ...rest };
     if (dto.name) data.slug = slugify(dto.name);
-    const updated = await this.repository.update(id, data);
+    await this.repository.update(id, data);
     if (supplyTemplate) {
       await this.repository.replaceTemplate(
         id,
