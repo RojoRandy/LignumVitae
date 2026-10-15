@@ -9,7 +9,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { Select } from '@/components/ui/select';
-import type { OrderDto, OrderStatus } from '@/lib/types';
+import type { OrderDto, OrderItemDto, OrderStatus } from '@/lib/types';
 import { formatDate, formatDateTime, formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,6 +27,10 @@ import {
 import { PaymentProgress } from '@/components/domain/payment-progress';
 import { PaymentDialog } from './components/payment-dialog';
 import { TestimonialDialog } from './components/testimonial-dialog';
+import { OrderEditDialog } from './components/order-edit-dialog';
+import { OrderAddItemsDialog } from './components/order-add-items-dialog';
+import { OrderItemEditDialog } from './components/order-item-edit-dialog';
+import { OrderItemSplitDialog } from './components/order-item-split-dialog';
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING_DEPOSIT: 'Pendiente anticipo', CONFIRMED: 'Confirmado', IN_PRODUCTION: 'En produccion',
@@ -59,6 +63,10 @@ export default function OrderDetailPage() {
     .map((supply) => ({ value: String(supply.id), label: supply.name }));
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addItemsOpen, setAddItemsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<OrderItemDto | null>(null);
+  const [splittingItem, setSplittingItem] = useState<OrderItemDto | null>(null);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', id],
@@ -157,6 +165,8 @@ export default function OrderDetailPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setEditOpen(true)}>Editar fecha y notas</DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {order.status === 'DELIVERED' && (
                       <>
                         <DropdownMenuItem onSelect={() => setTestimonialDialogOpen(true)}>
@@ -189,10 +199,18 @@ export default function OrderDetailPage() {
             <div><p className="text-caption text-text-muted">Entrega</p><p className="text-body-sm font-medium text-text">{formatDate(order.dueDate)}</p></div>
             <div><p className="text-caption text-text-muted">Entregado</p><p className="text-body-sm font-medium text-text">{order.deliveredAt ? formatDate(order.deliveredAt) : '—'}</p></div>
             <div><p className="text-caption text-text-muted">Piezas</p><p className="text-body-sm font-medium text-text">{order.totalQuantity}</p></div>
+            {order.notes && <p className="col-span-full whitespace-pre-line text-body-sm text-text-muted">{order.notes}</p>}
           </Card>
 
           <Card className="p-4">
-            <h3 className="mb-3 text-body font-semibold text-text">Renglones</h3>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-body font-semibold text-text">Renglones</h3>
+              {order.status !== 'CANCELLED' && (
+                <Button size="sm" variant="secondary" onClick={() => setAddItemsOpen(true)}>
+                  <Plus className="size-3.5" /> Agregar productos
+                </Button>
+              )}
+            </div>
             <div className="flex flex-col divide-y divide-border">
               {(order.items ?? []).map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-2.5">
@@ -222,7 +240,17 @@ export default function OrderDetailPage() {
                       />
                     )}
                   </div>
-                  <p className="text-body-sm text-text">{item.quantity} × {formatMoney(item.unitPrice)}</p>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <p className="text-body-sm text-text">{item.quantity} × {formatMoney(item.unitPrice)}</p>
+                    {order.status !== 'CANCELLED' && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setEditingItem(item)}>Editar</Button>
+                        {item.quantity > 1 && (
+                          <Button variant="ghost" size="sm" onClick={() => setSplittingItem(item)}>Dividir</Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -291,6 +319,10 @@ export default function OrderDetailPage() {
 
       <PaymentDialog order={order} open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} />
       <TestimonialDialog order={order} open={testimonialDialogOpen} onOpenChange={setTestimonialDialogOpen} />
+      <OrderEditDialog order={order} open={editOpen} onOpenChange={setEditOpen} />
+      <OrderAddItemsDialog order={order} open={addItemsOpen} onOpenChange={setAddItemsOpen} />
+      <OrderItemEditDialog order={order} item={editingItem} open={editingItem !== null} onOpenChange={(open) => !open && setEditingItem(null)} />
+      <OrderItemSplitDialog order={order} item={splittingItem} open={splittingItem !== null} onOpenChange={(open) => !open && setSplittingItem(null)} />
     </div>
   );
 }

@@ -471,6 +471,21 @@ export interface PreviewQuotationTotalsResult {
   items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
 }
 
+/** POST /orders/:id/items/preview: como queda el pedido al agregar productos. */
+export interface AddOrderItemsPreview {
+  priceTier: PriceTierValue;
+  totalQuantity: number;
+  subtotal: number;
+  discountAmount: number;
+  shippingCost: number;
+  total: number;
+  depositAmount: number;
+  grossProfit: number;
+  existing: { itemId: number; previousUnitPrice: number; unitPrice: number; lineTotal: number; tierChanged: boolean }[];
+  added: { index: number; priceTier: PriceTierValue; unitPrice: number; lineTotal: number; lineMargin: number; fragranceMlPerUnit: number }[];
+  warnings: { itemId?: number; index?: number; marginPct: number; minMarginPct: number; minUnitPrice: number; minManualPrice: number }[];
+}
+
 export interface SalesStatsDto {
   activeQuotations: number;
   pendingOrders: number;
