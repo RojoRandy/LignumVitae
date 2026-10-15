@@ -38,6 +38,18 @@ export class OrderRepository {
     return this.prisma.orderItem.update({ where: { id: itemId }, data });
   }
 
+  /** Divide un renglon: actualiza el original (primera parte), crea las demas
+   *  con el mismo sortOrder y renumera todo el pedido 0..n-1 por (sortOrder, id),
+   *  asi las partes nuevas quedan pegadas al original. Todo o nada. */
+  splitItem(orderId: number, itemId: number, first: Prisma.OrderItemUpdateInput, rest: Prisma.OrderItemCreateManyInput[]) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.orderItem.update({ where: { id: itemId }, data: first });
+      await tx.orderItem.createMany({ data: rest });
+      const items = await tx.orderItem.findMany({ where: { orderId }, orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], select: { id: true } });
+      for (const [i, { id }] of items.entries()) await tx.orderItem.update({ where: { id }, data: { sortOrder: i } });
+    });
+  }
+
   update(id: number, data: Prisma.OrderUpdateInput) {
     return this.prisma.order.update({ where: { id }, data });
   }

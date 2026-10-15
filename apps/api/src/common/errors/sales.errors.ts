@@ -17,6 +17,8 @@ const Responses = {
     new ErrorResponseDto('ORDER_NOT_EDITABLE', 'No se puede modificar un pedido cancelado', data),
   ORDER_ITEM_WITHOUT_FRAGRANCE: (data?: unknown) =>
     new ErrorResponseDto('ORDER_ITEM_WITHOUT_FRAGRANCE', 'Este renglon no lleva aroma', data),
+  ORDER_ITEM_SPLIT_MISMATCH: (data?: unknown) =>
+    new ErrorResponseDto('ORDER_ITEM_SPLIT_MISMATCH', 'Las cantidades de las partes deben sumar la cantidad del renglon', data),
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) =>
     new ErrorResponseDto('PAYMENT_EXCEEDS_BALANCE', 'El abono excede el saldo pendiente del pedido', data),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) =>
@@ -53,6 +55,7 @@ const Exceptions = {
   ORDER_ITEM_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.ORDER_ITEM_NOT_FOUND(data)),
   ORDER_NOT_EDITABLE: (data?: unknown) => new BadRequestException(Responses.ORDER_NOT_EDITABLE(data)),
   ORDER_ITEM_WITHOUT_FRAGRANCE: (data?: unknown) => new BadRequestException(Responses.ORDER_ITEM_WITHOUT_FRAGRANCE(data)),
+  ORDER_ITEM_SPLIT_MISMATCH: (data?: unknown) => new BadRequestException(Responses.ORDER_ITEM_SPLIT_MISMATCH(data)),
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) => new BadRequestException(Responses.PAYMENT_EXCEEDS_BALANCE(data)),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTE_REQUEST_NOT_FOUND(data)),
   QUOTE_REQUEST_NOT_NEW: (data?: unknown) => new ConflictException(Responses.QUOTE_REQUEST_NOT_NEW(data)),
