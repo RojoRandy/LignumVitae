@@ -25,6 +25,6 @@ import { QuoteRequestsModule } from '../quote-requests/quote-requests.module';
     DuplicateQuotationUseCase,
     PreviewQuotationTotalsUseCase,
   ],
-  exports: [QuotationRepository, QuotationsService],
+  exports: [QuotationRepository, QuotationsService, CreateQuotationUseCase],
 })
 export class QuotationsModule {}

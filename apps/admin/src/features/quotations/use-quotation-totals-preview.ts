@@ -37,7 +37,7 @@ const isReady = (input: PreviewQuotationTotalsInput) => input.items.length > 0 &
  * un precio manual salia como un POST. Se espera a que el usuario deje de
  * teclear. Es un efecto de tiempo, no estado derivable en el render.
  */
-const useDebounced = <T,>(value: T, ms: number) => {
+export const useDebounced = <T,>(value: T, ms: number) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), ms);

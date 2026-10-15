@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
 import { OrdersService } from './orders.service';
+import { AddOrderItemsUseCase } from './usecases/add-order-items.usecase';
+import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { AuthUser } from '../../auth/decorators/auth-user.decorator';
 import { FindOrdersQueryDto } from './dto/find-orders.query.dto';
@@ -15,7 +17,10 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 @Auth()
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly addOrderItemsUseCase: AddOrderItemsUseCase,
+  ) {}
 
   @Get()
   findAll(@Query() query: FindOrdersQueryDto) {
@@ -38,6 +43,17 @@ export class OrdersController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrderDto) {
     return this.ordersService.update(id, dto);
+  }
+
+  // Vista previa: el mismo calculo que agregar, sin guardar nada.
+  @Post(':id/items/preview')
+  previewAddItems(@Param('id', ParseIntPipe) id: number, @Body() dto: AddOrderItemsDto) {
+    return this.addOrderItemsUseCase.plan(id, dto);
+  }
+
+  @Post(':id/items')
+  addItems(@Param('id', ParseIntPipe) id: number, @Body() dto: AddOrderItemsDto) {
+    return this.addOrderItemsUseCase.execute(id, dto);
   }
 
   @Patch(':id/items/:itemId')

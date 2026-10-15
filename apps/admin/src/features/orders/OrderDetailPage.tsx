@@ -28,6 +28,7 @@ import { PaymentProgress } from '@/components/domain/payment-progress';
 import { PaymentDialog } from './components/payment-dialog';
 import { TestimonialDialog } from './components/testimonial-dialog';
 import { OrderEditDialog } from './components/order-edit-dialog';
+import { OrderAddItemsDialog } from './components/order-add-items-dialog';
 import { OrderItemEditDialog } from './components/order-item-edit-dialog';
 import { OrderItemSplitDialog } from './components/order-item-split-dialog';
 
@@ -63,6 +64,7 @@ export default function OrderDetailPage() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [addItemsOpen, setAddItemsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<OrderItemDto | null>(null);
   const [splittingItem, setSplittingItem] = useState<OrderItemDto | null>(null);
 
@@ -201,7 +203,14 @@ export default function OrderDetailPage() {
           </Card>
 
           <Card className="p-4">
-            <h3 className="mb-3 text-body font-semibold text-text">Renglones</h3>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-body font-semibold text-text">Renglones</h3>
+              {order.status !== 'CANCELLED' && (
+                <Button size="sm" variant="secondary" onClick={() => setAddItemsOpen(true)}>
+                  <Plus className="size-3.5" /> Agregar productos
+                </Button>
+              )}
+            </div>
             <div className="flex flex-col divide-y divide-border">
               {(order.items ?? []).map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-2.5">
@@ -311,6 +320,7 @@ export default function OrderDetailPage() {
       <PaymentDialog order={order} open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} />
       <TestimonialDialog order={order} open={testimonialDialogOpen} onOpenChange={setTestimonialDialogOpen} />
       <OrderEditDialog order={order} open={editOpen} onOpenChange={setEditOpen} />
+      <OrderAddItemsDialog order={order} open={addItemsOpen} onOpenChange={setAddItemsOpen} />
       <OrderItemEditDialog order={order} item={editingItem} open={editingItem !== null} onOpenChange={(open) => !open && setEditingItem(null)} />
       <OrderItemSplitDialog order={order} item={splittingItem} open={splittingItem !== null} onOpenChange={(open) => !open && setSplittingItem(null)} />
     </div>

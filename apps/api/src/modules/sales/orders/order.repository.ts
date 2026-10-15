@@ -50,6 +50,10 @@ export class OrderRepository {
     });
   }
 
+  runInTransaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(fn);
+  }
+
   update(id: number, data: Prisma.OrderUpdateInput) {
     return this.prisma.order.update({ where: { id }, data });
   }
