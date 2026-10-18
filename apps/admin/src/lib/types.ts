@@ -522,6 +522,24 @@ export interface MonthlyFinanceDto {
     expenses: FinancePartDto;
     profit: FinancePartDto;
   };
+  /** Lo que salio en el mes: compras + gastos manuales (sin depreciacion ni doble conteo). */
+  outflows: { total: string; net: string };
+  purchases: {
+    total: string;
+    count: number;
+    supplies: string;
+    assets: string;
+    expenses: string;
+    shipping: string;
+    list: { id: number; folio: string; purchasedAt: string; supplier: string | null; total: string }[];
+  };
+  expenses: {
+    total: string;
+    manual: string;
+    fromPurchases: string;
+    depreciation: string;
+    byCategory: { categoryId: number; name: string; kind: ExpenseKind; amount: string }[];
+  };
   orders: {
     id: number;
     folio: string;
