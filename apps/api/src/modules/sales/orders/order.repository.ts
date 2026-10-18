@@ -22,6 +22,28 @@ export class OrderRepository {
     return this.prisma.order.findMany({ include: orderInclude, ...args }) as Promise<OrderWithRelations[]>;
   }
 
+  /** Solo los importes y lo minimo para listar: el resumen financiero del mes
+   *  no necesita renglones ni pagos, y un mes puede traer muchos pedidos. */
+  findForFinance(where: Prisma.OrderWhereInput) {
+    return this.prisma.order.findMany({
+      where,
+      orderBy: { orderDate: 'asc' },
+      select: {
+        id: true,
+        folio: true,
+        status: true,
+        orderDate: true,
+        total: true,
+        paidAmount: true,
+        shippingCost: true,
+        totalLaborCost: true,
+        totalOverheadCost: true,
+        totalCost: true,
+        customer: { select: { id: true, fullName: true } },
+      },
+    });
+  }
+
   count(where: Prisma.OrderWhereInput) {
     return this.prisma.order.count({ where });
   }
