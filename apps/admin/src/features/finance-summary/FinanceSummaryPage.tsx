@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Hammer, PiggyBank, Receipt, TrendingUp } from 'lucide-react';
+import { Banknote, Hammer, PiggyBank, Receipt, TrendingUp } from 'lucide-react';
 import { httpGet } from '@/lib/http';
 import type { FinancePartDto, MonthlyFinanceDto, OrderStatus } from '@/lib/types';
 import { formatDate, formatMoney, formatPercent } from '@/lib/format';
@@ -97,15 +97,31 @@ export default function FinanceSummaryPage() {
         </p>
       </Card>
 
-      {/* 2x2 y no 4 en fila: los importes en display-lg no caben en un cuarto del ancho. */}
+      {/* Lo vendido junto a lo cobrado arriba; abajo, a donde se va lo vendido. Pocas columnas a proposito:
+          los importes en display-lg no caben en un cuarto del ancho. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile
-          label="Ingresos del mes"
+          label="Ingresos del mes (vendido)"
           value={formatMoney(data?.income)}
-          hint={data ? `${data.orderCount} ${data.orderCount === 1 ? 'pedido' : 'pedidos'}` : undefined}
+          hint={data ? `${data.orderCount} ${data.orderCount === 1 ? 'pedido levantado' : 'pedidos levantados'}` : undefined}
           icon={<TrendingUp className="size-5" />}
           isLoading={isLoading}
         />
+        <StatTile
+          label="Ingresos reales (cobrado)"
+          value={formatMoney(data?.payments.total)}
+          hint={
+            data
+              ? `Anticipos ${formatMoney(data.payments.deposits.amount)} (${data.payments.deposits.count}) · Abonos ${formatMoney(data.payments.installments.amount)} (${data.payments.installments.count})`
+              : undefined
+          }
+          icon={<Banknote className="size-5" />}
+          tone="success"
+          isLoading={isLoading}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatTile
           label="Costos de produccion"
           value={formatMoney(b?.productionCost.amount)}
@@ -147,9 +163,8 @@ export default function FinanceSummaryPage() {
               <CardHeader>
                 <CardTitle>A donde se va cada peso</CardTitle>
                 <CardDescription>
-                  De {formatMoney(data.income)} vendidos: {formatMoney(data.collected)} cobrados y{' '}
-                  {formatMoney(data.outstanding)} por cobrar. Pagos recibidos en el mes (de cualquier pedido):{' '}
-                  {formatMoney(data.paymentsReceived)}.
+                  De {formatMoney(data.income)} vendidos en el mes: {formatMoney(data.collected)} ya cobrados y{' '}
+                  {formatMoney(data.outstanding)} por cobrar.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-5">

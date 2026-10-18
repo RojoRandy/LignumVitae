@@ -34,4 +34,21 @@ export class PaymentRepository {
     });
     return result._sum.amount ?? new Prisma.Decimal(0);
   }
+
+  /** Lo cobrado en el mes separado en anticipos (isDeposit) y abonos. */
+  async sumByMonthByKind(year: number, month: number) {
+    const start = new Date(Date.UTC(year, month - 1, 1));
+    const end = new Date(Date.UTC(year, month, 1));
+    const groups = await this.prisma.payment.groupBy({
+      by: ['isDeposit'],
+      where: { isActive: true, paidAt: { gte: start, lt: end } },
+      _sum: { amount: true },
+      _count: { _all: true },
+    });
+    const pick = (isDeposit: boolean) => {
+      const group = groups.find((g) => g.isDeposit === isDeposit);
+      return { amount: group?._sum.amount ?? new Prisma.Decimal(0), count: group?._count._all ?? 0 };
+    };
+    return { deposits: pick(true), installments: pick(false) };
+  }
 }
