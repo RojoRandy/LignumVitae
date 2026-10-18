@@ -507,7 +507,12 @@ export interface MonthlyFinanceDto {
   income: string;
   collected: string;
   outstanding: string;
-  paymentsReceived: string;
+  /** Pagos con fecha en el mes, de cualquier pedido: lo que de verdad entro. */
+  payments: {
+    total: string;
+    deposits: { amount: string; count: number };
+    installments: { amount: string; count: number };
+  };
   breakdown: {
     materials: FinancePartDto;
     labor: FinancePartDto;

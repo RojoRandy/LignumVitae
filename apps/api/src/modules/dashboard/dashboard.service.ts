@@ -43,13 +43,13 @@ export class DashboardService {
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
 
-    const [orders, paymentsReceived] = await Promise.all([
+    const [orders, payments] = await Promise.all([
       this.orderRepository.findForFinance({
         isActive: true,
         status: { not: 'CANCELLED' },
         orderDate: { gte: start, lt: end },
       }),
-      this.paymentRepository.sumByMonth(year, month),
+      this.paymentRepository.sumByMonthByKind(year, month),
     ]);
 
     const rows = orders.map((o) => {
@@ -85,7 +85,12 @@ export class DashboardService {
       income: amount(income),
       collected: amount(collected),
       outstanding: amount(income.minus(collected)),
-      paymentsReceived: paymentsReceived.toFixed(2),
+      // Dinero que de verdad entro en el mes (por fecha de pago), de cualquier pedido.
+      payments: {
+        total: payments.deposits.amount.plus(payments.installments.amount).toFixed(2),
+        deposits: { amount: payments.deposits.amount.toFixed(2), count: payments.deposits.count },
+        installments: { amount: payments.installments.amount.toFixed(2), count: payments.installments.count },
+      },
       breakdown: {
         materials: part(materials),
         labor: part(labor),
