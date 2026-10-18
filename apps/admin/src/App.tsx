@@ -27,6 +27,7 @@ const PurchasesPage = lazy(routeLoaders.purchases);
 const AssetsPage = lazy(routeLoaders.assets);
 const ExpensesPage = lazy(routeLoaders.expenses);
 const OverheadPage = lazy(routeLoaders.overhead);
+const FinanceSummaryPage = lazy(routeLoaders.financeSummary);
 const TestimonialsPage = lazy(routeLoaders.testimonials);
 const UsersPage = lazy(routeLoaders.users);
 const SettingsPage = lazy(routeLoaders.settings);
@@ -89,8 +90,9 @@ export default function App() {
           element={
             <TabsPageLayout
               title="Finanzas"
-              description="Gastos, activos y el cierre mensual: todo lo que se revisa a fin de mes."
+              description="Resumen del mes, gastos, activos y el cierre mensual: todo lo que se revisa a fin de mes."
               tabs={[
+                { label: 'Resumen del mes', to: '/finanzas/resumen' },
                 { label: 'Gastos', to: '/finanzas/gastos' },
                 { label: 'Activos', to: '/finanzas/activos' },
                 { label: 'Cierre mensual', to: '/finanzas/cierre-mensual' },
@@ -98,7 +100,8 @@ export default function App() {
             />
           }
         >
-          <Route index element={<Navigate to="gastos" replace />} />
+          <Route index element={<Navigate to="resumen" replace />} />
+          <Route path="resumen" element={<FinanceSummaryPage />} />
           <Route path="gastos" element={<ExpensesPage />} />
           <Route path="activos" element={<AssetsPage />} />
           <Route path="cierre-mensual" element={<OverheadPage />} />

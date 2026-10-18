@@ -494,6 +494,42 @@ export interface SalesStatsDto {
   upcomingDeliveries: OrderDto[];
 }
 
+export interface FinancePartDto {
+  amount: string;
+  /** Porcentaje del ingreso del mes, ya redondeado a 1 decimal por la API. */
+  pct: string;
+}
+
+export interface MonthlyFinanceDto {
+  year: number;
+  month: number;
+  orderCount: number;
+  income: string;
+  collected: string;
+  outstanding: string;
+  paymentsReceived: string;
+  breakdown: {
+    materials: FinancePartDto;
+    labor: FinancePartDto;
+    productionCost: FinancePartDto;
+    overhead: FinancePartDto;
+    shipping: FinancePartDto;
+    expenses: FinancePartDto;
+    profit: FinancePartDto;
+  };
+  orders: {
+    id: number;
+    folio: string;
+    status: OrderStatus;
+    orderDate: string;
+    customerName: string;
+    total: string;
+    productionCost: string;
+    expenses: string;
+    profit: string;
+  }[];
+}
+
 export type PurchaseLineKind = 'SUPPLY' | 'ASSET' | 'EXPENSE';
 export type AssetKind = 'MOLD' | 'TOOL' | 'EQUIPMENT';
 export type ExpenseKind = 'OVERHEAD' | 'NON_OPERATING';
