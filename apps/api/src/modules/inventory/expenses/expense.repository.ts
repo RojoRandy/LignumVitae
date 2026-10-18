@@ -22,6 +22,11 @@ export class ExpenseRepository {
     return this.prisma.expense.findMany({ include: { category: true }, ...args });
   }
 
+  /** Gastos activos imputados a un mes (periodMonth = primer dia del mes). */
+  findActiveByPeriod(periodMonth: Date) {
+    return this.prisma.expense.findMany({ where: { isActive: true, periodMonth }, include: { category: true } });
+  }
+
   count(where: Prisma.ExpenseWhereInput) {
     return this.prisma.expense.count({ where });
   }

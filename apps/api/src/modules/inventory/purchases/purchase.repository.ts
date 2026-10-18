@@ -10,6 +10,15 @@ export class PurchaseRepository {
     return this.prisma.purchase.findMany({ include: { items: true }, ...args });
   }
 
+  /** Compras activas en [start, end) con sus renglones: el resumen financiero del mes. */
+  findActiveBetween(start: Date, end: Date) {
+    return this.prisma.purchase.findMany({
+      where: { isActive: true, purchasedAt: { gte: start, lt: end } },
+      include: { items: true },
+      orderBy: { purchasedAt: 'asc' },
+    });
+  }
+
   count(where: Prisma.PurchaseWhereInput) {
     return this.prisma.purchase.count({ where });
   }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote, Hammer, PiggyBank, Receipt, TrendingUp } from 'lucide-react';
+import { Banknote, Hammer, PiggyBank, Receipt, Scale, ShoppingCart, TrendingUp, Wallet } from 'lucide-react';
 import { httpGet } from '@/lib/http';
 import type { FinancePartDto, MonthlyFinanceDto, OrderStatus } from '@/lib/types';
 import { formatDate, formatMoney, formatPercent } from '@/lib/format';
@@ -44,6 +44,18 @@ const GROUPS: { title: string; total: 'productionCost' | 'expenses' | 'profit'; 
 ];
 
 const isNegative = (value: string) => value.startsWith('-');
+
+const EXPENSE_KIND_LABEL: Record<string, string> = { OVERHEAD: 'Indirecto', NON_OPERATING: 'No operativo' };
+
+const AmountRow = ({ label, value, hint, strong }: { label: string; value: string; hint?: string; strong?: boolean }) => (
+  <div className="flex items-start justify-between gap-3">
+    <div className="min-w-0">
+      <p className={cn('text-body-sm text-text', strong && 'font-semibold')}>{label}</p>
+      {hint && <p className="text-caption text-text-muted">{hint}</p>}
+    </div>
+    <p className={cn('shrink-0 text-body-sm tabular-nums text-text', strong ? 'font-semibold' : 'font-medium')}>{formatMoney(value)}</p>
+  </div>
+);
 
 const PartLine = ({ label, hint, swatch, part, strong }: { label: string; hint?: string; swatch?: string; part: FinancePartDto; strong?: boolean }) => (
   <div className="flex items-start justify-between gap-3">
@@ -249,6 +261,90 @@ export default function FinanceSummaryPage() {
           </>
         )}
       </PageState>
+
+      {data && (
+        <section className="flex flex-col gap-4" aria-labelledby="egresos-del-mes">
+          <h2 id="egresos-del-mes" className="pt-2 text-heading font-semibold text-text">Egresos del mes</h2>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <StatTile
+              label="Egresos (salio)"
+              value={formatMoney(data.outflows.total)}
+              hint={`Compras ${formatMoney(data.purchases.total)} · Gastos manuales ${formatMoney(data.expenses.manual)}`}
+              icon={<Wallet className="size-5" />}
+              tone="warning"
+            />
+            <StatTile
+              label="Saldo del mes"
+              value={formatMoney(data.outflows.net)}
+              hint="Cobrado en el mes menos egresos"
+              icon={<Scale className="size-5" />}
+              tone={isNegative(data.outflows.net) ? 'danger' : 'success'}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="size-4 text-text-muted" /> Compras
+                </CardTitle>
+                <CardDescription>
+                  {data.purchases.count} {data.purchases.count === 1 ? 'compra registrada' : 'compras registradas'} con fecha en el mes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <AmountRow label="Insumos" hint="Cera, aroma, empaques y demas" value={data.purchases.supplies} />
+                <AmountRow label="Activos" hint="Moldes, herramienta y equipo" value={data.purchases.assets} />
+                <AmountRow label="Gastos" hint="Renglones de gasto dentro de una compra" value={data.purchases.expenses} />
+                <AmountRow label="Envio de compras" value={data.purchases.shipping} />
+                <div className="border-t border-border pt-3">
+                  <AmountRow label="Total de compras" value={data.purchases.total} strong />
+                </div>
+                {data.purchases.list.length > 0 && (
+                  <ul className="flex flex-col gap-2 border-t border-border pt-3">
+                    {data.purchases.list.map((p) => (
+                      <li key={p.id} className="flex items-center justify-between gap-3 text-body-sm">
+                        <span className="min-w-0 truncate text-text">
+                          <span className="font-medium">{p.folio}</span>
+                          <span className="text-text-muted"> · {formatDate(p.purchasedAt)}{p.supplier ? ` · ${p.supplier}` : ''}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-text">{formatMoney(p.total)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="size-4 text-text-muted" /> Gastos registrados
+                </CardTitle>
+                <CardDescription>Todos los gastos imputados al mes, por categoria.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                {data.expenses.byCategory.length === 0 ? (
+                  <p className="text-body-sm text-text-muted">Sin gastos registrados en este mes.</p>
+                ) : (
+                  data.expenses.byCategory.map((c) => (
+                    <AmountRow key={c.categoryId} label={c.name} hint={EXPENSE_KIND_LABEL[c.kind]} value={c.amount} />
+                  ))
+                )}
+                <div className="border-t border-border pt-3">
+                  <AmountRow label="Total de gastos" value={data.expenses.total} strong />
+                </div>
+                <div className="flex flex-col gap-1 text-caption text-text-muted">
+                  <p>Capturados a mano: {formatMoney(data.expenses.manual)}</p>
+                  <p>Vienen de compras (ya contados en Compras): {formatMoney(data.expenses.fromPurchases)}</p>
+                  <p>Depreciacion (no es dinero que sale): {formatMoney(data.expenses.depreciation)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
