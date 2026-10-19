@@ -99,7 +99,10 @@ export default function QuotationsPage() {
             <Select
               options={[{ value: ALL, label: 'Todos los estados' }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]}
               value={status}
-              onChange={setStatus}
+              onChange={(value) => {
+                setStatus(value);
+                setPage(1);
+              }}
               placeholder="Abiertas y vencidas"
               clearable
             />

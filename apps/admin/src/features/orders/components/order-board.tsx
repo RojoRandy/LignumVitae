@@ -20,13 +20,15 @@ import { cn } from '@/lib/cn';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentProgress } from '@/components/domain/payment-progress';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { STATUS_LABEL, orderItemDetail } from './order-detail';
 
 export const BOARD_STATUSES = ['PENDING_DEPOSIT', 'CONFIRMED', 'IN_PRODUCTION', 'READY'] as const satisfies readonly OrderStatus[];
+type BoardStatus = (typeof BOARD_STATUSES)[number];
 
 // Mismo tono que la tabla de pedidos (STATUS_TONE), salvo En produccion:
 // ahi era info igual que Confirmado y las dos columnas se veian iguales.
-const BOARD_TONE: Record<(typeof BOARD_STATUSES)[number], { column: string; card: string }> = {
+const BOARD_TONE: Record<BoardStatus, { column: string; card: string }> = {
   PENDING_DEPOSIT: { column: 'bg-warning-bg border-warning-solid/20', card: 'border-l-warning-solid' },
   CONFIRMED: { column: 'bg-info-bg border-info-solid/20', card: 'border-l-info-solid' },
   IN_PRODUCTION: { column: 'bg-accent-soft border-accent/20', card: 'border-l-accent' },
@@ -90,7 +92,7 @@ function OrderCard({ order, tone, onOpen }: { order: OrderDto; tone: string; onO
 }
 
 // ponytail: 500 por columna (max de la API); paginar si una columna pasa de eso.
-function BoardColumn({ status, onOpen }: { status: (typeof BOARD_STATUSES)[number]; onOpen: (order: OrderDto) => void }) {
+function BoardColumn({ status, onOpen }: { status: BoardStatus; onOpen: (order: OrderDto) => void }) {
   const { data, isLoading } = useQuery({
     queryKey: ['orders', 'board', status],
     queryFn: () => httpGet<Paginated<OrderDto>>('/orders', { status, limit: 500 }),
@@ -132,28 +134,49 @@ export function OrderBoard({ onOpen }: { onOpen: (order: OrderDto) => void }) {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
+  const confirm = useConfirm();
+
+  type Move = { order: OrderDto; status: BoardStatus };
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: number; status: OrderStatus }) => httpPatch<OrderDto>(`/orders/${id}/status`, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast.success('Estado actualizado');
+    mutationFn: ({ order, status }: Move) => httpPatch<OrderDto>(`/orders/${order.id}/status`, { status }),
+    // Optimista: la tarjeta queda en la columna destino mientras llega el PATCH,
+    // en vez de regresar a la de origen hasta el refetch.
+    onMutate: async ({ order, status }: Move) => {
+      await queryClient.cancelQueries({ queryKey: ['orders', 'board'] });
+      queryClient.setQueryData<Paginated<OrderDto>>(['orders', 'board', order.status], (d) =>
+        d && { ...d, items: d.items.filter((o) => o.id !== order.id), total: d.total - 1 });
+      queryClient.setQueryData<Paginated<OrderDto>>(['orders', 'board', status], (d) =>
+        d && { ...d, items: [...d.items, { ...order, status }].sort((a, b) => a.dueDate.localeCompare(b.dueDate)), total: d.total + 1 });
     },
+    onSuccess: () => toast.success('Estado actualizado'),
     onError: (error) => toast.error(errorMessage(error)),
+    // Tambien en error: el refetch deshace el movimiento optimista.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['orders'] }),
   });
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveOrder((event.active.data.current?.order as OrderDto | undefined) ?? null);
   };
 
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
     setActiveOrder(null);
     const order = active.data.current?.order as OrderDto | undefined;
     if (!order || !over || over.id === order.status) return;
-    statusMutation.mutate({ id: order.id, status: over.id as OrderStatus });
+    const status = over.id as BoardStatus;
+    // Regresar de etapa (p. ej. En produccion -> Pendiente anticipo) casi
+    // siempre es un arrastre que se solto donde no era: se confirma.
+    const backwards = BOARD_STATUSES.indexOf(status) < BOARD_STATUSES.indexOf(order.status as BoardStatus);
+    if (backwards && !(await confirm({ title: `¿Regresar ${order.folio} a ${STATUS_LABEL[status]}?`, description: 'El pedido vuelve a una etapa anterior.' }))) return;
+    statusMutation.mutate({ order, status });
   };
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveOrder(null)}>
+    <DndContext
+      sensors={sensors}
+      // Sin KeyboardSensor las instrucciones por defecto ("presiona espacio
+      // para levantar") serian falsas: Enter/Espacio abren el pedido.
+      accessibility={{ screenReaderInstructions: { draggable: 'Enter o Espacio abre el pedido. Para cambiar su estado, arrastralo con el mouse o mantenlo presionado en pantallas tactiles.' } }}
+      onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveOrder(null)}>
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible">
         {BOARD_STATUSES.map((status) => (
           <BoardColumn key={status} status={status} onOpen={onOpen} />
@@ -164,7 +187,7 @@ export function OrderBoard({ onOpen }: { onOpen: (order: OrderDto) => void }) {
           <Card
             className={cn(
               'flex cursor-grabbing flex-col gap-2 border-l-4 p-3 shadow-lift',
-              activeOrder.status in BOARD_TONE && BOARD_TONE[activeOrder.status as keyof typeof BOARD_TONE].card,
+              BOARD_TONE[activeOrder.status as BoardStatus].card,
             )}
           >
             <OrderCardBody order={activeOrder} />

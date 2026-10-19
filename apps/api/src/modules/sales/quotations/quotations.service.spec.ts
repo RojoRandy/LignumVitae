@@ -1,3 +1,6 @@
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { FindQuotationsQueryDto } from './dto/find-quotations.query.dto';
 import { QuotationRepository } from './quotation.repository';
 import { QuotationsService } from './quotations.service';
 import { CreateQuotationUseCase } from './usecases/create-quotation.usecase';
@@ -72,5 +75,28 @@ describe('findAll', () => {
     expect(repository.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ status: { in: ['DRAFT', 'EXPIRED'] } }) }),
     );
+  });
+});
+
+describe('FindQuotationsQueryDto.status', () => {
+  const parse = (status: string) => {
+    const dto = plainToInstance(FindQuotationsQueryDto, { status });
+    return { dto, errors: validateSync(dto) };
+  };
+
+  it('parte la lista separada por coma', () => {
+    const { dto, errors } = parse('DRAFT,EXPIRED');
+    expect(errors).toHaveLength(0);
+    expect(dto.status).toEqual(['DRAFT', 'EXPIRED']);
+  });
+
+  it('un solo valor sigue funcionando', () => {
+    const { dto, errors } = parse('DRAFT');
+    expect(errors).toHaveLength(0);
+    expect(dto.status).toEqual(['DRAFT']);
+  });
+
+  it('rechaza un estado que no existe', () => {
+    expect(parse('DRAFT,NOPE').errors).toHaveLength(1);
   });
 });

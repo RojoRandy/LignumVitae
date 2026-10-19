@@ -10,18 +10,10 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { OrderBoard } from './components/order-board';
-import { OrderDetail } from './components/order-detail';
+import { OrderDetail, STATUS_LABEL } from './components/order-detail';
 import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { PaymentProgress } from '@/components/domain/payment-progress';
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDING_DEPOSIT: 'Pendiente anticipo',
-  CONFIRMED: 'Confirmado',
-  IN_PRODUCTION: 'En produccion',
-  READY: 'Listo',
-  DELIVERED: 'Entregado',
-  CANCELLED: 'Cancelado',
-};
 const STATUS_TONE: Record<OrderStatus, 'neutral' | 'info' | 'warning' | 'success' | 'danger'> = {
   PENDING_DEPOSIT: 'warning',
   CONFIRMED: 'info',
@@ -89,7 +81,10 @@ export default function OrdersPage() {
               ]}
               value={closedStatus}
               onChange={(value) => {
-                if (value === 'DELIVERED' || value === 'CANCELLED') setClosedStatus(value);
+                if (value === 'DELIVERED' || value === 'CANCELLED') {
+                  setClosedStatus(value);
+                  setPage(1);
+                }
               }}
             />
           </div>
