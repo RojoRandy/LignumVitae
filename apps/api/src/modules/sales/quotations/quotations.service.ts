@@ -26,7 +26,7 @@ export class QuotationsService {
     const { page = 1, limit = 20, status, customerId, onlyActive = true } = query;
     const where: Prisma.QuotationWhereInput = {
       ...(onlyActive ? { isActive: true } : {}),
-      ...(status ? { status } : {}),
+      ...(status?.length ? { status: { in: status } } : {}),
       ...(customerId ? { customerId } : {}),
     };
     const [items, total] = await Promise.all([

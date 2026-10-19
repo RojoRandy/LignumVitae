@@ -30,14 +30,19 @@ const STATUS_TONE: Record<QuotationStatus, 'neutral' | 'info' | 'success' | 'dan
   EXPIRED: 'warning',
 };
 
+const DEFAULT_STATUSES: QuotationStatus[] = ['DRAFT', 'SENT', 'VIEWED', 'EXPIRED'];
+const ALL = 'ALL';
+
 export default function QuotationsPage() {
   const navigate = useNavigate();
   const { page, setPage, onlyActive, setOnlyActive } = useTableParams();
   const [status, setStatus] = useState<string | undefined>();
 
+  const statusParam = status === ALL ? undefined : status ?? DEFAULT_STATUSES;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['quotations', { page, status, onlyActive }],
-    queryFn: () => httpGet<Paginated<QuotationDto>>('/quotations', { page, status, onlyActive, limit: 20 }),
+    queryKey: ['quotations', { page, status: statusParam, onlyActive }],
+    queryFn: () => httpGet<Paginated<QuotationDto>>('/quotations', { page, status: statusParam, onlyActive, limit: 20 }),
   });
 
   const columns: ColumnDef<QuotationDto, unknown>[] = [
@@ -47,7 +52,20 @@ export default function QuotationsPage() {
       cell: ({ row }) => row.original.customer?.fullName ?? '—',
       meta: { mobile: 'subtitle' },
     },
-    { header: 'Emitida', cell: ({ row }) => formatDate(row.original.issuedAt) },
+    {
+      header: 'Detalle',
+      cell: ({ row }) => {
+        const items = row.original.items ?? [];
+        if (items.length === 0) return '—';
+        return (
+          <div className="flex flex-col gap-0.5 text-body-sm">
+            {items.map((item) => (
+              <span key={item.id}>{`${item.quantity} - ${item.product?.name ?? '—'}`}</span>
+            ))}
+          </div>
+        );
+      },
+    },
     { header: 'Vigente hasta', cell: ({ row }) => formatDate(row.original.validUntil) },
     { header: 'Total', cell: ({ row }) => formatMoney(row.original.total) },
     {
@@ -59,15 +77,6 @@ export default function QuotationsPage() {
         </div>
       ),
       meta: { mobile: 'trailing' },
-    },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/cotizaciones/${row.original.id}`)}>Ver</Button>
-        </div>
-      ),
     },
   ];
 
@@ -88,17 +97,17 @@ export default function QuotationsPage() {
         filters={
           <div className="w-full sm:w-64">
             <Select
-              options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
+              options={[{ value: ALL, label: 'Todos los estados' }, ...Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))]}
               value={status}
               onChange={setStatus}
-              placeholder="Todos los estados"
+              placeholder="Abiertas y vencidas"
               clearable
             />
           </div>
         }
       />
 
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin cotizaciones" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
+      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin cotizaciones" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={(q) => navigate(`/cotizaciones/${q.id}`)} />
     </div>
   );
 }

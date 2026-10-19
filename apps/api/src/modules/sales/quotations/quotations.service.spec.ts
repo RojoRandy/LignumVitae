@@ -46,3 +46,31 @@ describe('deletePermanently', () => {
     expect(repository.deletePermanently).toHaveBeenCalledWith(1);
   });
 });
+
+describe('findAll', () => {
+  const repository = {
+    expireOverdue: jest.fn(),
+    findMany: jest.fn(),
+    count: jest.fn(),
+  };
+  const service = new QuotationsService(
+    repository as unknown as QuotationRepository,
+    {} as CreateQuotationUseCase,
+    {} as DuplicateQuotationUseCase,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('filtra por varios estados con status: { in }', async () => {
+    repository.findMany.mockResolvedValue([]);
+    repository.count.mockResolvedValue(0);
+
+    await service.findAll({ status: ['DRAFT', 'EXPIRED'] } as never);
+
+    expect(repository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: { in: ['DRAFT', 'EXPIRED'] } }) }),
+    );
+  });
+});
