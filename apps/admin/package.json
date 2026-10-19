@@ -15,6 +15,7 @@
     "e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
     "@lignumvitae/types": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-table": "^8.20.6",

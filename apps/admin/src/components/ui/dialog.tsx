@@ -61,7 +61,7 @@ export const DialogContent = ({
             // gana siempre, incluso en sm:+. Sin clase, el radio ya es 0 por
             // defecto del navegador -- no hace falta forzarlo.
             'fixed inset-0 h-dvh max-h-none',
-            'sm:static sm:inset-auto sm:h-auto sm:max-h-[90vh] sm:rounded-card',
+            'sm:relative sm:inset-auto sm:h-auto sm:max-h-[90vh] sm:rounded-card',
             'data-[state=open]:animate-[dialog-content-show_220ms_var(--ease-out)]',
             'data-[state=closed]:animate-[dialog-content-hide_150ms_var(--ease-in-out)]',
             widths[size],
