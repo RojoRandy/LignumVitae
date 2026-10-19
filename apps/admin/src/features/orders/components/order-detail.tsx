@@ -1,0 +1,329 @@
+import { useState } from 'react';
+import { orderBalance } from '@lignumvitae/types';
+import { useNavigate } from 'react-router';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { MoreHorizontal, Plus } from 'lucide-react';
+import { httpGet, httpPatch, errorMessage } from '@/lib/http';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useAuth } from '@/hooks/use-auth';
+import { useSupplyOptions } from '@/hooks/use-supply-options';
+import { Select } from '@/components/ui/select';
+import type { OrderDto, OrderItemDto, OrderStatus } from '@/lib/types';
+import { formatDate, formatDateTime, formatMoney, fragranceEstimateLabel } from '@/lib/format';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip } from '@/components/ui/tooltip';
+import { PageHeader, PageState } from '@/components/ui/page';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { PaymentProgress } from '@/components/domain/payment-progress';
+import { PaymentDialog } from './payment-dialog';
+import { TestimonialDialog } from './testimonial-dialog';
+import { OrderEditDialog } from './order-edit-dialog';
+import { OrderAddItemsDialog } from './order-add-items-dialog';
+import { OrderItemEditDialog } from './order-item-edit-dialog';
+import { OrderItemSplitDialog } from './order-item-split-dialog';
+
+export const STATUS_LABEL: Record<OrderStatus, string> = {
+  PENDING_DEPOSIT: 'Pendiente anticipo', CONFIRMED: 'Confirmado', IN_PRODUCTION: 'En produccion',
+  READY: 'Listo', DELIVERED: 'Entregado', CANCELLED: 'Cancelado',
+};
+const METHOD_LABEL: Record<string, string> = { CASH: 'Efectivo', TRANSFER: 'Transferencia', CARD: 'Tarjeta', OTHER: 'Otro' };
+
+/*
+ * Avance manual real: PENDING_DEPOSIT -> CONFIRMED lo hace solo el backend
+ * al registrar el abono (registerPaymentUseCase), no esta aqui a proposito
+ * -- el "boton primario" para ese estado es "Registrar abono", que ya vive
+ * en la tarjeta de Pagos. De CONFIRMED en adelante si es un paso manual del
+ * taller, uno a la vez.
+ */
+const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
+  CONFIRMED: { status: 'IN_PRODUCTION', label: 'Marcar en produccion' },
+  IN_PRODUCTION: { status: 'READY', label: 'Marcar listo' },
+  READY: { status: 'DELIVERED', label: 'Marcar entregado' },
+};
+
+export const orderItemDetail = (item: OrderItemDto): string =>
+  [item.candleColor, item.ribbonColor, ...(item.extraFields ?? []).map((f) => `${f.label}: ${f.value}`), item.withFragrance ? `Aroma: ${item.fragranceName ?? 'Pendiente'}` : null, item.personalizationText]
+    .filter(Boolean).join(' · ');
+
+export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: string }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const confirm = useConfirm();
+  const { isAdmin } = useAuth();
+  const { supplies, isLoading: loadingSupplies } = useSupplyOptions();
+  const fragranceOptions = supplies
+    .filter((supply) => supply.isFragrance && supply.isActive)
+    .map((supply) => ({ value: String(supply.id), label: supply.name }));
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [testimonialDialogOpen, setTestimonialDialogOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addItemsOpen, setAddItemsOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<OrderItemDto | null>(null);
+  const [splittingItem, setSplittingItem] = useState<OrderItemDto | null>(null);
+
+  const { data: order, isLoading } = useQuery({
+    queryKey: ['orders', orderId],
+    queryFn: () => httpGet<OrderDto>(`/orders/${orderId}`),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (status: OrderStatus) => httpPatch<OrderDto>(`/orders/${orderId}/status`, { status }),
+    onSuccess: (updated, status) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      toast.success('Estado actualizado');
+      // La entrega ya quedo registrada; el testimonio es un extra opcional
+      // que no debe poder bloquearla, por eso se ofrece DESPUES del PATCH.
+      if (status === 'DELIVERED' && !updated.testimonial) setTestimonialDialogOpen(true);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const fragranceMutation = useMutation({
+    mutationFn: ({ itemId, fragranceSupplyId }: { itemId: number; fragranceSupplyId: number }) =>
+      httpPatch<OrderDto>(`/orders/${orderId}/items/${itemId}/fragrance`, { fragranceSupplyId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      toast.success('Aroma actualizado');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const cancelPaymentMutation = useMutation({
+    mutationFn: (paymentId: number) => httpPatch(`/payments/${paymentId}/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      toast.success('Pago cancelado');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const handleCancelPayment = async (paymentId: number) => {
+    const ok = await confirm({ title: '¿Cancelar este pago?', description: 'El saldo pendiente del pedido vuelve a subir. El estado del pedido no cambia solo.' });
+    if (ok) cancelPaymentMutation.mutate(paymentId);
+  };
+
+  if (isLoading || !order) {
+    return (
+      <PageState isLoading />
+    );
+  }
+
+  const depositCovered = Number(order.paidAmount) >= Number(order.depositAmount);
+  const balance = orderBalance(order.total, order.paidAmount);
+  const totalFragranceMl = (order.items ?? []).reduce(
+    (total, item) => total + (item.withFragrance ? Number(item.fragranceMlPerUnit) * item.quantity : 0),
+    0,
+  );
+  const nextStatus = NEXT_STATUS[order.status];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        backTo={backTo}
+        title={order.folio}
+        badge={
+          <>
+            <Badge variant={order.status === 'CANCELLED' ? 'danger' : order.status === 'DELIVERED' ? 'success' : 'info'}>{STATUS_LABEL[order.status]}</Badge>
+            {order.customer && !order.customer.phone && <Badge variant="warning">Sin teléfono registrado</Badge>}
+          </>
+        }
+        description={
+          <>
+            {order.customer?.fullName}
+            {order.quotation && (
+              <>
+                {' · '}
+                <button type="button" className="underline" onClick={() => navigate(`/cotizaciones/${order.quotation!.id}`)}>
+                  de {order.quotation.folio}
+                </button>
+              </>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {nextStatus && (
+              <Button onClick={() => statusMutation.mutate(nextStatus.status)} loading={statusMutation.isPending}>
+                {nextStatus.label}
+              </Button>
+            )}
+            {order.status !== 'CANCELLED' && (
+              <Tooltip content="El estado se cambia manualmente, no hay flujo automatico (excepto el anticipo, que confirma el pedido solo)">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="icon" aria-label="Cambiar estado manualmente">
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setEditOpen(true)}>Editar fecha y notas</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {order.status === 'DELIVERED' && (
+                      <>
+                        <DropdownMenuItem onSelect={() => setTestimonialDialogOpen(true)}>
+                          {order.testimonial ? 'Reemplazar testimonio' : 'Agregar testimonio'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuLabel>Cambiar estado manualmente</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {(Object.entries(STATUS_LABEL) as [OrderStatus, string][])
+                      .filter(([value]) => value !== order.status)
+                      .map(([value, label]) => (
+                        <DropdownMenuItem key={value} onSelect={() => statusMutation.mutate(value)}>
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </Tooltip>
+            )}
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <Card className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
+            <div><p className="text-caption text-text-muted">Pedido</p><p className="text-body-sm font-medium text-text">{formatDate(order.orderDate)}</p></div>
+            <div><p className="text-caption text-text-muted">Entrega</p><p className="text-body-sm font-medium text-text">{formatDate(order.dueDate)}</p></div>
+            <div><p className="text-caption text-text-muted">Entregado</p><p className="text-body-sm font-medium text-text">{order.deliveredAt ? formatDate(order.deliveredAt) : '—'}</p></div>
+            <div><p className="text-caption text-text-muted">Piezas</p><p className="text-body-sm font-medium text-text">{order.totalQuantity}</p></div>
+            {order.notes && <p className="col-span-full whitespace-pre-line text-body-sm text-text-muted">{order.notes}</p>}
+          </Card>
+
+          <Card className="p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-body font-semibold text-text">Renglones</h3>
+              {order.status !== 'CANCELLED' && (
+                <Button size="sm" variant="secondary" onClick={() => setAddItemsOpen(true)}>
+                  <Plus className="size-3.5" /> Agregar productos
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col divide-y divide-border">
+              {(order.items ?? []).map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-4 py-2.5">
+                  <div>
+                    <p className="text-body-sm font-medium text-text">{item.productName}</p>
+                    <p className="text-caption text-text-muted">
+                      {orderItemDetail(item) || '—'}
+                    </p>
+                    {item.withFragrance && (
+                      <p className="text-caption text-text-muted">
+                        Aroma estimado: {fragranceEstimateLabel(Number(item.fragranceMlPerUnit) * item.quantity)}
+                      </p>
+                    )}
+                    {item.withFragrance && !item.fragranceName && order.status !== 'CANCELLED' && (
+                      <Select
+                        className="mt-1 max-w-56"
+                        options={fragranceOptions}
+                        loading={loadingSupplies}
+                        value=""
+                        placeholder="Definir aroma..."
+                        disabled={fragranceMutation.isPending}
+                        onChange={(value) => {
+                          if (value) fragranceMutation.mutate({ itemId: item.id, fragranceSupplyId: Number(value) });
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <p className="text-body-sm text-text">{item.quantity} × {formatMoney(item.unitPrice)}</p>
+                    {order.status !== 'CANCELLED' && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setEditingItem(item)}>Editar</Button>
+                        {item.quantity > 1 && (
+                          <Button variant="ghost" size="sm" onClick={() => setSplittingItem(item)}>Dividir</Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-body font-semibold text-text">Pagos</h3>
+              <Button size="sm" onClick={() => setPaymentDialogOpen(true)} disabled={order.status === 'CANCELLED'}>
+                <Plus className="size-3.5" /> Registrar abono
+              </Button>
+            </div>
+            {(order.payments ?? []).length === 0 ? (
+              <p className="text-body-sm text-text-muted">Sin abonos registrados.</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-border">
+                {(order.payments ?? []).map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between gap-4 py-2.5">
+                    <div>
+                      <p className="text-body-sm font-medium text-text">
+                        {formatMoney(payment.amount)} {payment.isDeposit && <Badge variant="accent" className="ml-1">Anticipo</Badge>}
+                      </p>
+                      <p className="text-caption text-text-muted">{METHOD_LABEL[payment.method]} · {formatDateTime(payment.paidAt)}{payment.reference ? ` · ${payment.reference}` : ''}</p>
+                    </div>
+                    {isAdmin && (
+                      <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleCancelPayment(payment.id)}>Cancelar</Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <Card className="order-first flex h-fit flex-col gap-3 p-4 lg:order-none lg:sticky lg:top-4">
+          {/* order-first en movil: el panel de cobro quedaba al fondo, tras
+              dos Cards; en lg+ vuelve a su lugar natural (columna derecha,
+              sticky) porque order-none restaura el orden del DOM. */}
+          <div>
+            <div className="mb-1 flex items-center justify-between text-body-sm">
+              <span className="text-text-muted">Cobrado</span>
+              <span className="font-medium text-text">{formatMoney(order.paidAmount)} / {formatMoney(order.total)}</span>
+            </div>
+            <PaymentProgress paid={order.paidAmount} total={order.total} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {depositCovered && <Badge variant="success">Anticipo cubierto</Badge>}
+            {order.status !== 'CANCELLED' && (
+              <>
+                {balance.status === 'PENDING' && <Badge variant="warning">Saldo pendiente {formatMoney(balance.amount)}</Badge>}
+                {balance.status === 'PAID' && <Badge variant="success">Pagado</Badge>}
+                {balance.status === 'OVERPAID' && <Badge variant="info">Excedente {formatMoney(balance.amount)}</Badge>}
+              </>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5 text-body-sm">
+            <div className="flex justify-between"><span className="text-text-muted">Anticipo requerido</span><span className="font-medium text-text">{formatMoney(order.depositAmount)}</span></div>
+            <div className="flex justify-between"><span className="text-text-muted">Costo total</span><span className="text-text-muted">{formatMoney(order.totalCost)}</span></div>
+            <div className="flex justify-between"><span className="text-text-muted">Margen</span><span className="text-text-muted">{formatMoney(order.grossProfit)}</span></div>
+            {totalFragranceMl > 0 && (
+              <div className="flex justify-between gap-2"><span className="text-text-muted">Aroma estimado (total)</span><span className="text-text-muted">{fragranceEstimateLabel(totalFragranceMl)}</span></div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <PaymentDialog order={order} open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} />
+      <TestimonialDialog order={order} open={testimonialDialogOpen} onOpenChange={setTestimonialDialogOpen} />
+      <OrderEditDialog order={order} open={editOpen} onOpenChange={setEditOpen} />
+      <OrderAddItemsDialog order={order} open={addItemsOpen} onOpenChange={setAddItemsOpen} />
+      <OrderItemEditDialog order={order} item={editingItem} open={editingItem !== null} onOpenChange={(open) => !open && setEditingItem(null)} />
+      <OrderItemSplitDialog order={order} item={splittingItem} open={splittingItem !== null} onOpenChange={(open) => !open && setSplittingItem(null)} />
+    </div>
+  );
+}

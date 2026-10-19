@@ -1,26 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useTableParams } from '@/hooks/use-table-params';
 import { httpGet } from '@/lib/http';
 import type { OrderDto, OrderStatus, Paginated } from '@/lib/types';
 import { formatDate, formatMoney } from '@/lib/format';
-import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { OrderBoard } from './components/order-board';
+import { OrderDetail, STATUS_LABEL } from './components/order-detail';
 import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { PaymentProgress } from '@/components/domain/payment-progress';
 
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDING_DEPOSIT: 'Pendiente anticipo',
-  CONFIRMED: 'Confirmado',
-  IN_PRODUCTION: 'En produccion',
-  READY: 'Listo',
-  DELIVERED: 'Entregado',
-  CANCELLED: 'Cancelado',
-};
 const STATUS_TONE: Record<OrderStatus, 'neutral' | 'info' | 'warning' | 'success' | 'danger'> = {
   PENDING_DEPOSIT: 'warning',
   CONFIRMED: 'info',
@@ -31,13 +24,13 @@ const STATUS_TONE: Record<OrderStatus, 'neutral' | 'info' | 'warning' | 'success
 };
 
 export default function OrdersPage() {
-  const navigate = useNavigate();
   const { page, setPage } = useTableParams();
-  const [status, setStatus] = useState<string | undefined>();
+  const [closedStatus, setClosedStatus] = useState<'DELIVERED' | 'CANCELLED'>('DELIVERED');
+  const [openOrder, setOpenOrder] = useState<OrderDto | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', { page, status }],
-    queryFn: () => httpGet<Paginated<OrderDto>>('/orders', { page, status, limit: 20 }),
+    queryKey: ['orders', { page, status: closedStatus }],
+    queryFn: () => httpGet<Paginated<OrderDto>>('/orders', { page, status: closedStatus, limit: 20 }),
   });
 
   const columns: ColumnDef<OrderDto, unknown>[] = [
@@ -62,17 +55,8 @@ export default function OrdersPage() {
     {
       header: 'Estado',
       cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>,
-      // Junto al boton "Ver" en la tarjeta movil: se ve de inmediato sin bajar la vista.
+      // A la derecha en la tarjeta movil: se ve de inmediato sin bajar la vista.
       meta: { mobile: 'trailing' },
-    },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/pedidos/${row.original.id}`)}>Ver</Button>
-        </div>
-      ),
     },
   ];
 
@@ -80,24 +64,41 @@ export default function OrdersPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Pedidos"
-        description="Ordenados por fecha de entrega: la cola de produccion."
+        description="Tablero de produccion. Arrastra una tarjeta para cambiar su estado."
       />
+
+      <OrderBoard onOpen={setOpenOrder} />
+
+      <h2 className="text-body font-semibold text-text">Cerrados</h2>
 
       <PageToolbar
         filters={
           <div className="w-full sm:w-64">
             <Select
-              options={Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-              value={status}
-              onChange={setStatus}
-              placeholder="Todos los estados"
-              clearable
+              options={[
+                { value: 'DELIVERED', label: 'Entregados' },
+                { value: 'CANCELLED', label: 'Cancelados' },
+              ]}
+              value={closedStatus}
+              onChange={(value) => {
+                if (value === 'DELIVERED' || value === 'CANCELLED') {
+                  setClosedStatus(value);
+                  setPage(1);
+                }
+              }}
             />
           </div>
         }
       />
 
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin pedidos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
+      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin pedidos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={setOpenOrder} />
+
+      <Dialog open={openOrder !== null} onOpenChange={(open) => !open && setOpenOrder(null)}>
+        <DialogContent size="xl">
+          <DialogTitle className="sr-only">Pedido {openOrder?.folio}</DialogTitle>
+          {openOrder && <OrderDetail orderId={String(openOrder.id)} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

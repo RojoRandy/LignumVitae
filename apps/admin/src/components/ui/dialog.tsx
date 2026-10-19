@@ -49,7 +49,9 @@ export const DialogContent = ({
             // como Content ya no es "fixed" (el centrado lo hace el
             // contenedor de afuera), sin esto se posicionaria contra el
             // wrapper de pantalla completa en vez de contra la tarjeta.
-            'relative w-full overflow-y-auto bg-surface-raised p-6 shadow-panel',
+            // El scroll vive en el div interior, no aqui: si Content
+            // scrolleara, la X (absolute) se iria con el contenido.
+            'relative flex w-full flex-col overflow-hidden bg-surface-raised shadow-panel',
             // Movil: pantalla completa. Un formulario de varios renglones
             // (Compras) se siente atrapado en un modal centrado de 90vh con
             // margen alrededor; desde sm: vuelve al modal centrado y acotado
@@ -61,7 +63,7 @@ export const DialogContent = ({
             // gana siempre, incluso en sm:+. Sin clase, el radio ya es 0 por
             // defecto del navegador -- no hace falta forzarlo.
             'fixed inset-0 h-dvh max-h-none',
-            'sm:static sm:inset-auto sm:h-auto sm:max-h-[90vh] sm:rounded-card',
+            'sm:relative sm:inset-auto sm:h-auto sm:max-h-[90vh] sm:rounded-card',
             'data-[state=open]:animate-[dialog-content-show_220ms_var(--ease-out)]',
             'data-[state=closed]:animate-[dialog-content-hide_150ms_var(--ease-in-out)]',
             widths[size],
@@ -69,9 +71,11 @@ export const DialogContent = ({
           )}
           {...props}
         >
-          <PortalContainerContext.Provider value={portalContainer}>
-            {children}
-          </PortalContainerContext.Provider>
+          <div className="min-h-0 overflow-y-auto p-6">
+            <PortalContainerContext.Provider value={portalContainer}>
+              {children}
+            </PortalContainerContext.Provider>
+          </div>
           <RadixDialog.Close className="absolute right-4 top-4 rounded-input p-1.5 text-text-muted transition-colors hover:bg-surface-sunken hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
             <X className="size-4" />
           </RadixDialog.Close>

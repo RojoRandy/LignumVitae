@@ -72,11 +72,46 @@ h1, h2, h3, .font-display {
   letter-spacing: -0.02em;
 }
 
-* {
-  border-color: var(--color-border);
+/* En @layer base y no suelto: una regla sin capa le gana a TODA utilidad
+   de Tailwind 4 (que vive en @layer utilities), y border-accent,
+   border-l-warning-solid, etc. se ignoraban en silencio. */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 }
 
 ::selection {
   background: var(--color-accent-soft);
   color: var(--color-accent-hover);
+}
+
+/* Scrollbars del portal: delgadas y con la paleta salvia en vez del gris
+   del sistema. scrollbar-color/width es el estandar (Chrome, Firefox,
+   Safari 18.2+); los ::-webkit-scrollbar cubren Safari anterior. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+/* Solo contenedores con scroll: un *:hover recalculaba estilos de toda la
+   cadena de ancestros en cada movimiento del mouse. */
+:is(main, .overflow-auto, .overflow-y-auto, .overflow-x-auto):hover {
+  scrollbar-color: var(--color-text-faint) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+  background-clip: padding-box;
 }
