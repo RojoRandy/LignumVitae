@@ -17,7 +17,7 @@ import { CreateUserUseCase } from './usecases/create-user.usecase';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { expiresIn: config.get<string>('JWT_EXPIRATION', '8h') as unknown as number },
+        signOptions: { expiresIn: config.get<string>('JWT_EXPIRATION', '7d') as unknown as number },
       }),
     }),
   ],
