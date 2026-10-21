@@ -24,7 +24,7 @@ export default defineRailway(() => {
     start: "pnpm --filter @lignumvitae/admin start",
     replicas: { "us-west2": 1 },
     networking: { privateNetworkEndpoint: "lignumvitaeadmin", customDomains: { "admin.lignumvitae.com.mx": {} } },
-    env: { PUBLIC_API_URL: preserve(), VITE_API_URL: preserve(), VITE_PUBLIC_SITE_URL: preserve() },
+    env: { VITE_API_URL: preserve(), VITE_PUBLIC_SITE_URL: preserve() },
   });
 
   // Astro SSR (adapter node standalone): lee PORT de Railway y escucha en
