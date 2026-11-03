@@ -116,7 +116,6 @@ export default function TestimonialsPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
           <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Eliminar</Button>
         </div>
       ),
@@ -146,6 +145,7 @@ export default function TestimonialsPage() {
         pages={data?.pages}
         total={data?.total}
         onPageChange={setPage}
+        onRowClick={openEdit}
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -73,7 +73,7 @@ it('catalogImages elimina ids duplicados y envia el ZIP', async () => {
   await controller.catalogImages(res as unknown as Response, '3,3,5');
 
   expect(repository.findForCatalog).toHaveBeenCalledWith({ ids: [3, 5] });
-  expect(pdfService.renderCatalogImages).toHaveBeenCalledWith(products);
+  expect(pdfService.renderCatalogImages).toHaveBeenCalledWith(products, 'letter');
   expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
   expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="catalogo-lignum-vitae.zip"');
   expect(res.send).toHaveBeenCalledWith(buffer);

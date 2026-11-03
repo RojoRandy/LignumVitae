@@ -177,6 +177,12 @@ describe('update', () => {
     expect(orderRepository.update).toHaveBeenCalledWith(10, { notes: null });
   });
 
+  it('guarda fundsDistributed', async () => {
+    const { service, orderRepository } = build();
+    await service.update(10, { fundsDistributed: true });
+    expect(orderRepository.update).toHaveBeenCalledWith(10, { fundsDistributed: true });
+  });
+
   it('rechaza un pedido cancelado', async () => {
     const { service, order, orderRepository } = build();
     order.status = 'CANCELLED';

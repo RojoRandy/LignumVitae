@@ -1,13 +1,13 @@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { CatalogErrors } from '../../../common/errors/catalog.errors';
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
 import { ProductsService } from './products.service';
 import { ProductRepository } from './product.repository';
-import { PdfService } from '../../pdf/pdf.service';
+import { PdfService, type CatalogLayout } from '../../pdf/pdf.service';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CreateProductDto, SetPriceOverrideDto, UpdateProductDto } from './dto/create-product.dto';
 import { UpdateProductImageDto } from './dto/update-product-image.dto';
@@ -74,11 +74,12 @@ export class ProductsController {
     @Res({ passthrough: false }) res: Response,
     @Query('ids') ids?: string,
     @Query('candleIds') candleIds?: string,
+    @Query('layout', new ParseEnumPipe(['letter', 'mobile'], { optional: true })) layout: CatalogLayout = 'letter',
   ) {
     const products = await this.productRepository.findForCatalog(parseCatalogFilter(ids, candleIds));
-    const buffer = await this.pdfService.renderCatalogPdf(products);
+    const buffer = await this.pdfService.renderCatalogPdf(products, layout);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline; filename="catalogo-lignum-vitae.pdf"');
+    res.setHeader('Content-Disposition', `inline; filename="catalogo-lignum-vitae${layout === 'mobile' ? '-movil' : ''}.pdf"`);
     res.send(buffer);
   }
 
@@ -88,11 +89,12 @@ export class ProductsController {
     @Res({ passthrough: false }) res: Response,
     @Query('ids') ids?: string,
     @Query('candleIds') candleIds?: string,
+    @Query('layout', new ParseEnumPipe(['letter', 'mobile'], { optional: true })) layout: CatalogLayout = 'letter',
   ) {
     const products = await this.productRepository.findForCatalog(parseCatalogFilter(ids, candleIds));
-    const buffer = await this.pdfService.renderCatalogImages(products);
+    const buffer = await this.pdfService.renderCatalogImages(products, layout);
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename="catalogo-lignum-vitae.zip"');
+    res.setHeader('Content-Disposition', `attachment; filename="catalogo-lignum-vitae${layout === 'mobile' ? '-movil' : ''}.zip"`);
     res.send(buffer);
   }
 

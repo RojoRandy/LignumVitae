@@ -9,6 +9,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { Select } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import type { OrderDto, OrderItemDto, OrderStatus } from '@/lib/types';
 import { formatDate, formatDateTime, formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,16 @@ export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: str
       // La entrega ya quedo registrada; el testimonio es un extra opcional
       // que no debe poder bloquearla, por eso se ofrece DESPUES del PATCH.
       if (status === 'DELIVERED' && !updated.testimonial) setTestimonialDialogOpen(true);
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const fundsMutation = useMutation({
+    mutationFn: (fundsDistributed: boolean) => httpPatch<OrderDto>(`/orders/${orderId}`, { fundsDistributed }),
+    onSuccess: (_updated, fundsDistributed) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      toast.success(fundsDistributed ? 'Marcado como repartido' : 'Marcado como no repartido');
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -315,6 +326,15 @@ export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: str
               <div className="flex justify-between gap-2"><span className="text-text-muted">Aroma estimado (total)</span><span className="text-text-muted">{fragranceEstimateLabel(totalFragranceMl)}</span></div>
             )}
           </div>
+          <label htmlFor="fundsDistributed" className="flex items-center justify-between gap-2 border-t border-border pt-3 text-body-sm">
+            <span className="text-text-muted">Dinero repartido</span>
+            <Switch
+              id="fundsDistributed"
+              checked={order.fundsDistributed}
+              onCheckedChange={(checked) => fundsMutation.mutate(checked)}
+              disabled={order.status === 'CANCELLED' || fundsMutation.isPending}
+            />
+          </label>
         </Card>
       </div>
 

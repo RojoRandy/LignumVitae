@@ -107,7 +107,6 @@ export default function CustomersPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
           {row.original.isActive ? (
             <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
           ) : (
@@ -135,7 +134,7 @@ export default function CustomersPage() {
         showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
       />
 
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin clientes registrados" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
+      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin clientes registrados" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={openEdit} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

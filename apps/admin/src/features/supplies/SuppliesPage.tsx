@@ -33,12 +33,13 @@ export default function SuppliesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SupplyDto | null>(null);
   const [askInQuote, setAskInQuote] = useState(false);
+  const [typeSlug, setTypeSlug] = useState('');
   const defaultTypeId = String(editing?.typeId ?? supplyTypes.find((t) => t.slug === 'OTHER')?.id ?? '');
   const defaultUnitId = String(editing?.unitId ?? units.find((u) => u.slug === 'PIECE')?.id ?? '');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['supplies', { page, search, onlyActive }],
-    queryFn: () => httpGet<Paginated<SupplyDto>>('/supplies', { page, search, onlyActive, limit: 20 }),
+    queryKey: ['supplies', { page, search, onlyActive, type: typeSlug || undefined }],
+    queryFn: () => httpGet<Paginated<SupplyDto>>('/supplies', { page, search, onlyActive, type: typeSlug || undefined, limit: 20 }),
   });
 
   const { data: drift } = useQuery({
@@ -180,7 +181,6 @@ export default function SuppliesPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
           {row.original.isActive ? (
             <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Dar de baja</Button>
           ) : (
@@ -206,9 +206,24 @@ export default function SuppliesPage() {
         <PageToolbar
           search={{ value: search, onChange: setSearch, placeholder: 'Buscar...' }}
           showInactive={{ value: !onlyActive, onChange: (v) => setOnlyActive(!v) }}
+          filters={
+            <div className="w-full sm:w-64">
+              <Select
+                options={supplyTypes.map((type) => ({ value: type.slug, label: type.name }))}
+                value={typeSlug}
+                onChange={(value) => {
+                  setTypeSlug(value);
+                  setPage(1);
+                }}
+                loading={loadingTypes}
+                placeholder="Todos los tipos"
+                clearable
+              />
+            </div>
+          }
         />
 
-        <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin insumos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
+        <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin insumos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={openEdit} />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>

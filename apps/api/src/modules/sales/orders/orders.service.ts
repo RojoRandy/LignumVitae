@@ -51,10 +51,13 @@ export class OrdersService {
       ...(status ? { status } : {}),
       ...(customerId ? { customerId } : {}),
     };
-    // Orden por dueDate ascendente por defecto: es la "cola de produccion"
-    // que insinuan los indices del modelo (status + dueDate).
+    // Los mas recientes primero: asi se ubica rapido lo ultimo que entro.
     const [items, total] = await Promise.all([
-      this.orderRepository.findMany({ where, orderBy: { dueDate: 'asc' }, ...paginate(page, limit) }),
+      this.orderRepository.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...paginate(page, limit),
+      }),
       this.orderRepository.count(where),
     ]);
     return buildPaginatedResult(items, total, page, limit);
@@ -91,8 +94,8 @@ export class OrdersService {
     return this.findById(orderId);
   }
 
-  /** Completar datos que faltaban al aceptar (fecha del evento, notas). No
-   *  toca dinero ni estado. */
+  /** Completar datos que faltaban al aceptar (fecha del evento, notas) y marcar
+   *  si ya se repartio el dinero. No toca importes ni estado. */
   async update(id: number, dto: UpdateOrderDto) {
     const order = await this.findById(id);
     if (order.status === 'CANCELLED') throw SalesErrors.Exceptions.ORDER_NOT_EDITABLE({ orderId: id });
@@ -100,6 +103,7 @@ export class OrdersService {
     const data: Prisma.OrderUpdateInput = {};
     if (dto.dueDate !== undefined) data.dueDate = new Date(dto.dueDate);
     if (dto.notes !== undefined) data.notes = blankToNull(dto.notes);
+    if (dto.fundsDistributed !== undefined) data.fundsDistributed = dto.fundsDistributed;
     if (Object.keys(data).length > 0) await this.orderRepository.update(id, data);
     return this.findById(id);
   }

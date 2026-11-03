@@ -1034,6 +1034,9 @@ model Order {
   /// Copia inmutable de la cotizacion al momento de aceptar.
   snapshot    Json
   notes       String?
+  /// Ya se repartio el dinero del pedido en sus cuentas (materiales, mano
+  /// de obra, gastos indirectos y ganancia). Marca manual, no mueve dinero.
+  fundsDistributed Boolean @default(false) @map("funds_distributed")
   createdById Int?    @map("created_by_id")
 
   isActive  Boolean  @default(true) @map("is_active")

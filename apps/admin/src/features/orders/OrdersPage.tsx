@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
+import { toast } from 'sonner';
 import { useTableParams } from '@/hooks/use-table-params';
-import { httpGet } from '@/lib/http';
+import { errorMessage, httpGet, httpPatch } from '@/lib/http';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { OrderDto, OrderStatus, Paginated } from '@/lib/types';
 import { formatDate, formatMoney } from '@/lib/format';
 import { DataTable } from '@/components/ui/data-table';
@@ -33,6 +35,17 @@ export default function OrdersPage() {
     queryFn: () => httpGet<Paginated<OrderDto>>('/orders', { page, status: closedStatus, limit: 20 }),
   });
 
+  const queryClient = useQueryClient();
+  const fundsMutation = useMutation({
+    mutationFn: ({ id, fundsDistributed }: { id: number; fundsDistributed: boolean }) =>
+      httpPatch<OrderDto>(`/orders/${id}`, { fundsDistributed }),
+    onSuccess: (_updated, { fundsDistributed }) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success(fundsDistributed ? 'Marcado como repartido' : 'Marcado como no repartido');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
   const columns: ColumnDef<OrderDto, unknown>[] = [
     { header: 'Folio', accessorKey: 'folio' },
     {
@@ -50,6 +63,18 @@ export default function OrdersPage() {
           <PaymentProgress paid={row.original.paidAmount} total={row.original.total} size="sm" />
           <span className="text-caption text-text-muted">{formatMoney(row.original.paidAmount)}</span>
         </div>
+      ),
+    },
+    {
+      header: 'Repartido',
+      // El checkbox no abre el pedido: DataTable ignora clics en controles.
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.original.fundsDistributed}
+          onCheckedChange={(v) => fundsMutation.mutate({ id: row.original.id, fundsDistributed: v === true })}
+          disabled={row.original.status === 'CANCELLED' || fundsMutation.isPending}
+          aria-label={`Dinero repartido de ${row.original.folio}`}
+        />
       ),
     },
     {

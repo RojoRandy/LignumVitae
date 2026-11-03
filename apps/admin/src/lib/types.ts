@@ -414,6 +414,7 @@ export interface OrderDto {
   grossProfit: string;
   currency: string;
   notes: string | null;
+  fundsDistributed: boolean;
   createdById: number | null;
   isActive: boolean;
   createdAt: string;

@@ -225,15 +225,6 @@ export default function QuoteRequestsPage() {
       cell: ({ row }) => <Badge variant={STATUS_TONE[row.original.status]}>{STATUS_LABEL[row.original.status]}</Badge>,
       meta: { mobile: 'trailing' },
     },
-    {
-      id: 'actions',
-      header: '',
-      cell: ({ row }) => (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setSelected(row.original)}>Ver</Button>
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -267,6 +258,7 @@ export default function QuoteRequestsPage() {
         pages={data?.pages}
         total={data?.total}
         onPageChange={setPage}
+        onRowClick={setSelected}
       />
 
       <Sheet open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
