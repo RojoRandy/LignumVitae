@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
@@ -37,7 +37,10 @@ export default function ProductsPage() {
   const [moldDialogOpen, setMoldDialogOpen] = useState(false);
   const [selectedCandleIds, setSelectedCandleIds] = useState<Set<number>>(() => new Set());
   const [moldSearch, setMoldSearch] = useState('');
-  const catalogPath = (kind: 'pdf' | 'images', query = '') => `/products/catalog-${kind}${query}`;
+  const [catalogLayout, setCatalogLayout] = useState<'letter' | 'mobile'>('letter');
+  const catalogPath = (kind: 'pdf' | 'images', query = '') =>
+    `/products/catalog-${kind}${query}${query ? '&' : '?'}layout=${catalogLayout}`;
+  const catalogSuffix = catalogLayout === 'mobile' ? '-movil' : '';
   const selectedCatalogQuery = `?ids=${[...selectedIds].join(',')}`;
   const selectedCatalogPath = catalogPath('pdf', selectedCatalogQuery);
   const activeFilterCount = [categoryId, candleId, highlight, sortBy !== 'candle', minMarginPct !== null].filter(Boolean).length;
@@ -323,9 +326,6 @@ export default function ProductsPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/productos/${row.original.id}/editar`)}>
-            Editar
-          </Button>
           {row.original.isActive ? (
             <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>
               Dar de baja
@@ -357,16 +357,23 @@ export default function ProductsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('pdf'), filename: 'catalogo-lignum-vitae.pdf' })}>
+                <DropdownMenuLabel>Tamaño</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={catalogLayout} onValueChange={(value) => setCatalogLayout(value === 'mobile' ? 'mobile' : 'letter')}>
+                  {/* preventDefault: elegir tamaño no cierra el menu, falta elegir que exportar. */}
+                  <DropdownMenuRadioItem value="letter" onSelect={(e) => e.preventDefault()}>Carta</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="mobile" onSelect={(e) => e.preventDefault()}>Celular</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('pdf'), filename: `catalogo-lignum-vitae${catalogSuffix}.pdf` })}>
                   Completo — PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('images'), filename: 'catalogo-lignum-vitae.zip' })}>
+                <DropdownMenuItem onSelect={() => catalogMutation.mutate({ path: catalogPath('images'), filename: `catalogo-lignum-vitae${catalogSuffix}.zip` })}>
                   Completo — imágenes (ZIP)
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: selectedCatalogPath, filename: 'catalogo-lignum-vitae.pdf' })}>
+                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: selectedCatalogPath, filename: `catalogo-lignum-vitae${catalogSuffix}.pdf` })}>
                   Seleccionados ({selectedIds.size}) — PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: catalogPath('images', selectedCatalogQuery), filename: 'catalogo-lignum-vitae.zip' })}>
+                <DropdownMenuItem disabled={selectedIds.size === 0} onSelect={() => catalogMutation.mutate({ path: catalogPath('images', selectedCatalogQuery), filename: `catalogo-lignum-vitae${catalogSuffix}.zip` })}>
                   Seleccionados ({selectedIds.size}) — imágenes (ZIP)
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setMoldDialogOpen(true)}>Por moldes…</DropdownMenuItem>
@@ -433,10 +440,10 @@ export default function ProductsPage() {
             <Button variant="ghost" onClick={() => setSelectedCandleIds(new Set())}>Limpiar</Button>
             <Button
               disabled={selectedCandleIds.size === 0 || catalogMutation.isPending}
-              loading={catalogMutation.isPending && catalogMutation.variables?.filename === 'catalogo-lignum-vitae.pdf'}
+              loading={catalogMutation.isPending && catalogMutation.variables?.filename === `catalogo-lignum-vitae${catalogSuffix}.pdf`}
               onClick={() => catalogMutation.mutate({
                 path: catalogPath('pdf', `?candleIds=${[...selectedCandleIds].join(',')}`),
-                filename: 'catalogo-lignum-vitae.pdf',
+                filename: `catalogo-lignum-vitae${catalogSuffix}.pdf`,
               }, { onSuccess: () => setMoldDialogOpen(false) })}
             >
               Exportar PDF
@@ -444,10 +451,10 @@ export default function ProductsPage() {
             <Button
               variant="secondary"
               disabled={selectedCandleIds.size === 0 || catalogMutation.isPending}
-              loading={catalogMutation.isPending && catalogMutation.variables?.filename === 'catalogo-lignum-vitae.zip'}
+              loading={catalogMutation.isPending && catalogMutation.variables?.filename === `catalogo-lignum-vitae${catalogSuffix}.zip`}
               onClick={() => catalogMutation.mutate({
                 path: catalogPath('images', `?candleIds=${[...selectedCandleIds].join(',')}`),
-                filename: 'catalogo-lignum-vitae.zip',
+                filename: `catalogo-lignum-vitae${catalogSuffix}.zip`,
               }, { onSuccess: () => setMoldDialogOpen(false) })}
             >
               Exportar imágenes (ZIP)
@@ -577,6 +584,7 @@ export default function ProductsPage() {
         pages={data?.pages}
         total={data?.total}
         onPageChange={setPage}
+        onRowClick={(row) => navigate(`/productos/${row.id}/editar`)}
       />
     </div>
   );

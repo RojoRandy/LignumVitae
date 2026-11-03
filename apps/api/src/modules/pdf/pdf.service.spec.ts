@@ -122,6 +122,16 @@ describe('catalogo', () => {
     expect(group).toHaveBeenCalledWith(products, thumbnails);
   });
 
+  it('buildCatalogHtml marca la hoja movil y deja carta por defecto', async () => {
+    const { service, products } = build();
+    const letter = await service.buildCatalogHtml(products);
+    expect(letter).toContain('<body class="layout-letter">');
+    expect(letter).toContain('size: 8.5in 11in');
+    const mobile = await service.buildCatalogHtml(products, undefined, 'mobile');
+    expect(mobile).toContain('<body class="layout-mobile">');
+    expect(mobile).toContain('size: 430px 932px');
+  });
+
   it.each(['renderCatalogPdf', 'renderCatalogImages'] as const)('%s rechaza un catalogo sin productos', async (method) => {
     const { service } = build();
     await expect(service[method]([])).rejects.toThrow(BadRequestException);

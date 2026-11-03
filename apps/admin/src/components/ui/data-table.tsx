@@ -6,6 +6,7 @@ import { Pagination } from './pagination';
 import { Skeleton } from './skeleton';
 import { Card } from './card';
 import { Inbox } from 'lucide-react';
+import type { SyntheticEvent } from 'react';
 
 /*
  * Debajo de md la tabla se convierte en tarjetas. Es UNA decision para las
@@ -49,6 +50,16 @@ const labelOf = <T,>(cell: Cell<T, unknown>) => {
   return typeof header === 'string' && header.length > 0 ? header : undefined;
 };
 
+/** El clic abre el registro solo si cae en el renglon mismo: los botones,
+ *  checkboxes y menus de adentro hacen lo suyo, y lo que llega burbujeando
+ *  desde un portal (dialogo o menu abierto desde la fila) no cuenta. */
+const opensRow = (e: SyntheticEvent<HTMLElement>) => {
+  const target = e.target as HTMLElement;
+  if (!e.currentTarget.contains(target)) return false;
+  const control = target.closest('button, a, input, select, textarea, label, [role="checkbox"], [role="switch"], [role="menuitem"], [role="combobox"]');
+  return !control || control === e.currentTarget;
+};
+
 function MobileCard<T>({ row, onRowClick }: { row: Row<T>; onRowClick?: (data: T) => void }) {
   const cells = row.getVisibleCells();
   const pick = (slot: string) => cells.filter((cell, i) => slotOf(cell, i) === slot);
@@ -62,15 +73,15 @@ function MobileCard<T>({ row, onRowClick }: { row: Row<T>; onRowClick?: (data: T
 
   return (
     <Card
-      className="flex flex-col gap-2 p-3.5"
+      className={`flex flex-col gap-2 p-3.5${clickable ? ' cursor-pointer' : ''}`}
       // Fila clicable: tambien por teclado, no solo por mouse.
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
-      onClick={clickable ? () => onRowClick?.(row.original) : undefined}
+      onClick={clickable ? (e) => { if (opensRow(e)) onRowClick?.(row.original); } : undefined}
       onKeyDown={
         clickable
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if ((e.key === 'Enter' || e.key === ' ') && opensRow(e)) {
                 e.preventDefault();
                 onRowClick?.(row.original);
               }
@@ -184,11 +195,11 @@ export function DataTable<T>({
               rows.map((row, index) => (
                 <TableRow
                   key={row.id}
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  onClick={onRowClick ? (e) => { if (opensRow(e)) onRowClick(row.original); } : undefined}
                   onKeyDown={
                     onRowClick
                       ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
+                          if ((e.key === 'Enter' || e.key === ' ') && opensRow(e)) {
                             e.preventDefault();
                             onRowClick(row.original);
                           }

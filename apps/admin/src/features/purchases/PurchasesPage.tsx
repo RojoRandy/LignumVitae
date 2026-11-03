@@ -191,7 +191,6 @@ export default function PurchasesPage() {
       header: '',
       cell: ({ row }) => (
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>Editar</Button>
           <Button variant="ghost" size="sm" className="text-danger-fg" onClick={() => handleRemove(row.original)}>Eliminar</Button>
         </div>
       ),
@@ -210,7 +209,7 @@ export default function PurchasesPage() {
         }
       />
 
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin compras registradas" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} />
+      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin compras registradas" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={openEdit} />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent size="xl">

@@ -17,6 +17,13 @@ import type { CatalogProduct } from '../catalog/products/product.repository';
 import { candleDimensions, toPublicPrices } from '../public/dto/public-catalog.dto';
 
 export type QuotationLayout = 'letter' | 'mobile';
+export type CatalogLayout = QuotationLayout;
+
+/** Hoja del catalogo en px CSS: carta (8.5in x 11in a 96 dpi) o celular. */
+const CATALOG_SHEET: Record<CatalogLayout, { width: number; height: number }> = {
+  letter: { width: 816, height: 1056 },
+  mobile: { width: 430, height: 932 },
+};
 
 export const MAX_PDF_PAGE_HEIGHT = 14000;
 export const MAX_IMAGE_HEIGHT = 16000;
@@ -92,10 +99,12 @@ export class PdfService {
   }
 
   // expuesto para pruebas
-  async buildCatalogHtml(products: CatalogProduct[], thumbnails?: Map<number, string>): Promise<string> {
+  async buildCatalogHtml(products: CatalogProduct[], thumbnails?: Map<number, string>, layout: CatalogLayout = 'letter'): Promise<string> {
     const settings = await this.settingsService.get();
     const t = settings.wholesaleThresholdQty;
     return this.catalogTemplate({
+      layout,
+      mobile: layout === 'mobile',
       brandName: settings.brandName,
       logoSrc: this.logoSrc,
       fontSrc: this.fontSrc,
@@ -196,10 +205,10 @@ export class PdfService {
     return thumbnails;
   }
 
-  private async renderCatalog<T>(products: CatalogProduct[], viewport: Viewport, fn: (page: Page) => Promise<T>): Promise<T> {
+  private async renderCatalog<T>(products: CatalogProduct[], layout: CatalogLayout, viewport: Viewport, fn: (page: Page) => Promise<T>): Promise<T> {
     if (!products.length) throw new BadRequestException('No hay productos para el catálogo');
     const thumbnails = await this.buildThumbnails(products);
-    const html = await this.buildCatalogHtml(products, thumbnails);
+    const html = await this.buildCatalogHtml(products, thumbnails, layout);
     return this.withPage(viewport, async (page) => {
       await page.setContent(html, { waitUntil: 'load' });
       await page.waitForFunction('window.catalogReady === true', { timeout: 30000 });
@@ -207,11 +216,12 @@ export class PdfService {
     });
   }
 
-  async renderCatalogPdf(products: CatalogProduct[]): Promise<Buffer> {
-    return this.renderCatalog(products, { width: 816, height: 1056 }, async (page) => {
+  async renderCatalogPdf(products: CatalogProduct[], layout: CatalogLayout = 'letter'): Promise<Buffer> {
+    const sheet = CATALOG_SHEET[layout];
+    return this.renderCatalog(products, layout, { width: sheet.width, height: sheet.height }, async (page) => {
       const pdf = await page.pdf({
-        width: '8.5in',
-        height: '11in',
+        width: `${sheet.width}px`,
+        height: `${sheet.height}px`,
         printBackground: true,
         margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
       });
@@ -219,8 +229,8 @@ export class PdfService {
     });
   }
 
-  async renderCatalogImages(products: CatalogProduct[]): Promise<Buffer> {
-    return this.renderCatalog(products, { width: 816, height: 1056, deviceScaleFactor: 2 }, async (page) => {
+  async renderCatalogImages(products: CatalogProduct[], layout: CatalogLayout = 'letter'): Promise<Buffer> {
+    return this.renderCatalog(products, layout, { ...CATALOG_SHEET[layout], deviceScaleFactor: 2 }, async (page) => {
       const pages = await page.$$('.page');
       if (!pages.length) throw new Error('El catálogo no contiene hojas (.page) para exportar');
       const width = pages.length > 99 ? 3 : 2;
