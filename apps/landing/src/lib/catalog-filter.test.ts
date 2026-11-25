@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { activeFilterCount, categoryFromHash, facetVisible, filtersFromSearch, filtersToSearch, flattenCatalog, matchesFilters, normalizeText, resultsLabel } from './catalog-filter.ts';
+import { activeFilterCount, categoryFromHash, parsePrice, facetVisible, filtersFromSearch, filtersToSearch, flattenCatalog, matchesFilters, normalizeText, resultsLabel } from './catalog-filter.ts';
 
-const card = { name: 'Vela Corazón', category: 'flores', candles: ['rosa', 'girasol'], packaging: 'caja' };
-const emptyFilters = { categories: [], candles: [], packagings: [], query: '' };
+const card = { name: 'Vela Corazón', category: 'flores', candles: ['rosa', 'girasol'], packaging: 'caja', retail: 120 };
+const emptyFilters = { categories: [], candles: [], packagings: [], query: '', priceMin: null, priceMax: null };
 
 test('matchesFilters sin filtros muestra la tarjeta', () => {
   assert.equal(matchesFilters(card, emptyFilters), true);
@@ -136,7 +136,7 @@ const valid = { categories: ['flores', 'corazones'], candles: ['rosa', 'girasol'
 test('filtersToSearch omite los grupos vacíos y usa claves de una letra', () => {
   assert.equal(filtersToSearch(emptyFilters), '');
   assert.equal(filtersToSearch({ ...emptyFilters, query: '   ' }), '');
-  assert.equal(filtersToSearch({ categories: ['flores', 'corazones'], candles: ['rosa'], packagings: ['caja'], query: '' }), '?c=flores,corazones&m=rosa&e=caja');
+  assert.equal(filtersToSearch({ ...emptyFilters, categories: ['flores', 'corazones'], candles: ['rosa'], packagings: ['caja'] }), '?c=flores,corazones&m=rosa&e=caja');
 });
 
 test('filtersToSearch codifica la búsqueda con + para los espacios', () => {
@@ -145,7 +145,7 @@ test('filtersToSearch codifica la búsqueda con + para los espacios', () => {
 });
 
 test('filtersFromSearch lee lo que escribe filtersToSearch', () => {
-  const state = { categories: ['corazones', 'flores'], candles: ['girasol'], packagings: ['bolsa'], query: 'vela coraz\u00f3n & más' };
+  const state = { categories: ['corazones', 'flores'], candles: ['girasol'], packagings: ['bolsa'], query: 'vela coraz\u00f3n & más', priceMin: 50, priceMax: 150.5 };
   assert.deepEqual(filtersFromSearch(filtersToSearch(state), valid), state);
 });
 
@@ -157,4 +157,39 @@ test('filtersFromSearch descarta slugs inválidos o repetidos y tolera parámetr
 
 test('filtersFromSearch acepta comas codificadas entre slugs', () => {
   assert.deepEqual(filtersFromSearch('?c=flores%2Ccorazones', valid).categories, ['flores', 'corazones']);
+});
+
+test('matchesFilters filtra por rango de menudeo con límites inclusivos', () => {
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMin: 100, priceMax: 150 }), true);
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMin: 120, priceMax: 120 }), true);
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMin: 121 }), false);
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMax: 119 }), false);
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMin: 50 }), true);
+  assert.equal(matchesFilters(card, { ...emptyFilters, priceMax: 200 }), true);
+});
+
+test('matchesFilters oculta productos sin menudeo solo si hay filtro de precio', () => {
+  const sinPrecio = { ...card, retail: null };
+  assert.equal(matchesFilters(sinPrecio, emptyFilters), true);
+  assert.equal(matchesFilters(sinPrecio, { ...emptyFilters, priceMin: 0 }), false);
+  assert.equal(matchesFilters(sinPrecio, { ...emptyFilters, priceMax: 1000 }), false);
+});
+
+test('filtersToSearch y filtersFromSearch manejan pmin y pmax', () => {
+  assert.equal(filtersToSearch({ ...emptyFilters, priceMin: 50, priceMax: 150 }), '?pmin=50&pmax=150');
+  assert.equal(filtersToSearch({ ...emptyFilters, priceMin: 0 }), '?pmin=0');
+  assert.deepEqual(filtersFromSearch('?pmin=50&pmax=150', valid), { ...emptyFilters, priceMin: 50, priceMax: 150 });
+  assert.deepEqual(filtersFromSearch('?pmin=abc&pmax=-5', valid), emptyFilters);
+  assert.deepEqual(filtersFromSearch('?pmin=&pmax=Infinity', valid), emptyFilters);
+});
+
+test('parsePrice acepta solo números finitos no negativos', () => {
+  assert.equal(parsePrice('0'), 0);
+  assert.equal(parsePrice(' 99.5 '), 99.5);
+  for (const value of [null, undefined, '', '  ', 'abc', '-1', 'Infinity']) assert.equal(parsePrice(value), null, String(value));
+});
+
+test('activeFilterCount cuenta el rango de precio como un filtro', () => {
+  assert.equal(activeFilterCount({ ...emptyFilters, priceMin: 50 }), 1);
+  assert.equal(activeFilterCount({ ...emptyFilters, priceMin: 50, priceMax: 150, categories: ['flores'] }), 2);
 });

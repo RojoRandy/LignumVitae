@@ -38,6 +38,7 @@ const hasPrice = prices.some((price) => price.value !== null);
   data-category={categorySlug}
   data-candles={candleSlugs}
   data-packaging={product.packagingType?.slug ?? ''}
+  data-retail={product.prices?.retail ?? ''}
   hidden={hidden}
 >
   <div class="relative overflow-hidden rounded-t-card bg-canvas-deep">

@@ -3,15 +3,21 @@ export function normalizeText(value: string): string {
 }
 
 export function matchesFilters(
-  card: { name: string; category: string; candles: string[]; packaging: string },
-  state: { categories: string[]; candles: string[]; packagings: string[]; query: string },
+  card: { name: string; category: string; candles: string[]; packaging: string; retail: number | null },
+  state: FilterState,
 ): boolean {
   const matchesCategory = state.categories.length === 0 || state.categories.includes(card.category);
   const matchesCandle = state.candles.length === 0 || card.candles.some((slug) => state.candles.includes(slug));
   const matchesPackaging = state.packagings.length === 0 || state.packagings.includes(card.packaging);
   const query = normalizeText(state.query);
   const matchesQuery = query === '' || normalizeText(card.name).includes(query);
-  return matchesCategory && matchesCandle && matchesPackaging && matchesQuery;
+  return matchesCategory && matchesCandle && matchesPackaging && matchesQuery && matchesPrice(card.retail, state);
+}
+
+// Solo el precio de menudeo. Con filtro activo, "A cotizar" (null) no entra.
+function matchesPrice(retail: number | null, { priceMin, priceMax }: FilterState): boolean {
+  if (priceMin === null && priceMax === null) return true;
+  return retail !== null && (priceMin === null || retail >= priceMin) && (priceMax === null || retail <= priceMax);
 }
 
 export function facetVisible(facetCategorySlugs: string[], selectedCategories: string[]): boolean {
@@ -35,12 +41,23 @@ export interface FilterSelection {
 
 export interface FilterState extends FilterSelection {
   query: string;
+  /** Rango de precio de menudeo; null = sin limite. */
+  priceMin: number | null;
+  priceMax: number | null;
 }
 
 // Claves de una letra para que el enlace compartido quede corto:
-// /catalogo?c=flores,corazones&m=rosa&e=caja&q=osito
+// /catalogo?c=flores,corazones&m=rosa&e=caja&q=osito&pmin=50&pmax=150
 const PARAM_KEYS = { categories: 'c', candles: 'm', packagings: 'e' } as const;
 const QUERY_KEY = 'q';
+const PRICE_KEYS = { priceMin: 'pmin', priceMax: 'pmax' } as const;
+
+/** Un precio valido es un numero finito >= 0; vacio, texto o negativo = sin limite. */
+export function parsePrice(value: string | null | undefined): number | null {
+  if (value == null || value.trim() === '') return null;
+  const price = Number(value);
+  return Number.isFinite(price) && price >= 0 ? price : null;
+}
 
 /** Lee los filtros del query string y descarta slugs que no existen o repetidos. */
 export function filtersFromSearch(search: string, valid: FilterSelection): FilterState {
@@ -54,6 +71,8 @@ export function filtersFromSearch(search: string, valid: FilterSelection): Filte
     candles: pick('candles'),
     packagings: pick('packagings'),
     query: (params.get(QUERY_KEY) ?? '').trim(),
+    priceMin: parsePrice(params.get(PRICE_KEYS.priceMin)),
+    priceMax: parsePrice(params.get(PRICE_KEYS.priceMax)),
   };
 }
 
@@ -65,6 +84,9 @@ export function filtersToSearch(state: FilterState): string {
   }
   const query = state.query.trim();
   if (query) parts.push(`${QUERY_KEY}=${encodeURIComponent(query).replace(/%20/g, '+')}`);
+  for (const key of ['priceMin', 'priceMax'] as const) {
+    if (state[key] !== null) parts.push(`${PRICE_KEYS[key]}=${state[key]}`);
+  }
   return parts.length > 0 ? `?${parts.join('&')}` : '';
 }
 
@@ -76,8 +98,10 @@ export function flattenCatalog<P extends { isFeatured: boolean }>(
     .sort((a, b) => Number(b.product.isFeatured) - Number(a.product.isFeatured));
 }
 
-export function activeFilterCount(state: { categories: string[]; candles: string[]; packagings: string[] }): number {
-  return state.categories.length + state.candles.length + state.packagings.length;
+// El rango de precio cuenta como un solo filtro, tenga uno o los dos limites.
+export function activeFilterCount(state: FilterSelection & { priceMin?: number | null; priceMax?: number | null }): number {
+  const price = state.priceMin != null || state.priceMax != null ? 1 : 0;
+  return state.categories.length + state.candles.length + state.packagings.length + price;
 }
 
 export function resultsLabel(count: number): string {
