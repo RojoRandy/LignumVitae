@@ -3,6 +3,8 @@ import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as sharp from 'sharp';
 import { SettingsService } from '../settings/settings.service';
+import { formatMoney } from '@lignumvitae/types';
+import type { OrderWithRelations } from '../sales/orders/order.repository';
 import type { QuotationWithRelations } from '../sales/quotations/quotation.repository';
 import type { CatalogProduct } from '../catalog/products/product.repository';
 import { PdfService, absoluteAssetUrl, mobileRenderPlan } from './pdf.service';
@@ -200,5 +202,42 @@ describe('buildHtml', () => {
     expect(html).toContain('<body class="layout-letter">');
     expect(html).not.toContain('class="nums"');
     expect(html.match(/<td class="num"/g)).toHaveLength(3);
+  });
+
+  it('imprime la fecha del evento sin recorrerla un dia', async () => {
+    const { service, quotation } = build();
+    Object.assign(quotation, { eventDate: new Date('2026-11-05T00:00:00.000Z') });
+    const html = await service.buildHtml(quotation, 'letter');
+    expect(html).toContain('Fecha del evento: 5 de noviembre de 2026');
+  });
+});
+
+describe('buildOrdersHtml', () => {
+  it('pinta folio, detalle del renglon, estado y saldo', async () => {
+    const settingsService = { get: jest.fn().mockResolvedValue({ brandName: 'Lignum Vitae' }) } as unknown as SettingsService;
+    const configService = { get: jest.fn().mockReturnValue('') } as unknown as ConfigService;
+    const service = new PdfService(settingsService, configService);
+    const d = (n: number) => new Prisma.Decimal(n);
+    const order = {
+      folio: 'P-2026-0001', status: 'PENDING_DEPOSIT',
+      orderDate: new Date('2026-11-02T00:00:00.000Z'), dueDate: new Date('2026-11-05T00:00:00.000Z'),
+      customer: { fullName: 'Cliente', whatsapp: '618 000 0000', phone: null, notes: null },
+      notes: null, quotation: null, totalQuantity: 2, totalWaxGrams: d(30),
+      total: d(100), paidAmount: d(40),
+      items: [{
+        quantity: 2, productName: 'Vela', candleColor: 'Rosa', ribbonColor: null,
+        extraFields: [{ label: 'Nombre', value: 'Ana' }],
+        withFragrance: true, fragranceName: 'Vainilla', personalizationText: null,
+        fragranceMlPerUnit: d(0.5),
+      }],
+      payments: [{ paidAt: new Date('2026-05-02'), method: 'CASH', amount: d(40), reference: null }],
+    } as unknown as OrderWithRelations;
+    const html = await service.buildOrdersHtml([order], 'Pedidos');
+    expect(html).toContain('P-2026-0001');
+    expect(html).toContain('Rosa · Nombre: Ana · Aroma: Vainilla');
+    expect(html).toContain('Pendiente anticipo');
+    expect(html).toContain(formatMoney(60));
+    expect(html).toContain('Pedido 2 de noviembre de 2026');
+    expect(html).toContain('Entrega 5 de noviembre de 2026');
   });
 });

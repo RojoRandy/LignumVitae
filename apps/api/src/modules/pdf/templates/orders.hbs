@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8" />
+<style>
+  /* Paleta de marca copiada de quotation.hbs (packages/tailwind-preset/brand.json). Ningun otro hex en esta plantilla. */
+  :root {
+    --accent: #3D6660;         /* teal-700 */
+    --ink: #26302A;            /* ink */
+    --muted: #5C6E63;          /* moss-600 */
+    --surface-sunken: #F7F4EC; /* cream-50 */
+    --border-strong: #B2CBAE;  /* sage-300 */
+    --border: #E9E3D3;         /* cream-100 */
+    --paper: #FFFFFF;          /* token "paper" */
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: var(--ink); background: var(--paper); margin: 0; padding: 0; font-size: 11px; }
+  .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 2px solid var(--accent); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { height: 40px; width: 40px; }
+  .brand-name { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .doc-info { text-align: right; }
+  .doc-title { font-size: 14px; font-weight: 700; }
+  .printed { color: var(--muted); font-size: 10px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { break-inside: avoid; page-break-inside: avoid; border: 1px solid var(--border-strong); border-left: 4px solid var(--accent); border-radius: 8px; padding: 8px 10px; }
+  .card > * + * { margin-top: 4px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; }
+  .folio { font-weight: 700; }
+  .muted { color: var(--muted); }
+  .items { list-style: none; margin: 0; padding: 4px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .items li + li { margin-top: 3px; }
+  .detail { color: var(--muted); }
+  .payments { list-style: none; margin: 0; padding: 0; font-size: 10px; color: var(--muted); }
+  .notes { white-space: pre-line; }
+  .balance { font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <img src="{{logoSrc}}" alt="" />
+      <div class="brand-name">{{brandName}}</div>
+    </div>
+    <div class="doc-info">
+      <div class="doc-title">{{title}}</div>
+      <div class="printed">Impreso {{date printedAt}}</div>
+    </div>
+  </div>
+  <div class="grid">
+    {{#each orders}}
+    <div class="card">
+      <div class="row"><span class="folio">{{folio}}</span><span>{{status}}</span></div>
+      <div>{{customerName}}{{#if customerPhone}} · {{customerPhone}}{{/if}}</div>
+      {{#if customerNotes}}<div class="muted">{{customerNotes}}</div>{{/if}}
+      <div>Pedido {{day orderDate}} · Entrega {{day dueDate}}{{#if quotationFolio}} · de {{quotationFolio}}{{/if}}</div>
+      <ul class="items">
+        {{#each items}}
+        <li>
+          <div>{{quantity}} × {{productName}}</div>
+          {{#if detail}}<div class="detail">{{detail}}</div>{{/if}}
+          {{#if (gt fragranceMl 0)}}<div class="detail">Aroma estimado: {{fixed2 fragranceMl}} ml</div>{{/if}}
+        </li>
+        {{/each}}
+      </ul>
+      <div>Piezas {{totalQuantity}} · Cera {{grams totalWaxGrams}}</div>
+      <div>Total {{money total}} · Pagado {{money paid}} · <span class="balance">Saldo {{money balance}}</span></div>
+      {{#if payments.length}}
+      <ul class="payments">
+        {{#each payments}}
+        <li>{{date paidAt}} · {{method}} · {{money amount}}{{#if reference}} · {{reference}}{{/if}}</li>
+        {{/each}}
+      </ul>
+      {{/if}}
+      {{#if notes}}<div class="notes">{{notes}}</div>{{/if}}
+    </div>
+    {{/each}}
+  </div>
+</body>
+</html>

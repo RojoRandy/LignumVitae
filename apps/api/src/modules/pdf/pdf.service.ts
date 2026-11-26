@@ -12,6 +12,7 @@ import { zipSync, type Zippable } from 'fflate';
 import puppeteer, { type Page, type Viewport } from 'puppeteer';
 import { SettingsService, toBankAccount } from '../settings/settings.service';
 import { registerHelpers } from './templates/helpers';
+import type { OrderWithRelations } from '../sales/orders/order.repository';
 import type { QuotationWithRelations } from '../sales/quotations/quotation.repository';
 import type { CatalogProduct } from '../catalog/products/product.repository';
 import { candleDimensions, toPublicPrices } from '../public/dto/public-catalog.dto';
@@ -23,6 +24,22 @@ export type CatalogLayout = QuotationLayout;
 const CATALOG_SHEET: Record<CatalogLayout, { width: number; height: number }> = {
   letter: { width: 816, height: 1056 },
   mobile: { width: 430, height: 932 },
+};
+
+const ORDER_STATUS_LABEL: Record<OrderWithRelations['status'], string> = {
+  PENDING_DEPOSIT: 'Pendiente anticipo',
+  CONFIRMED: 'Confirmado',
+  IN_PRODUCTION: 'En produccion',
+  READY: 'Listo',
+  DELIVERED: 'Entregado',
+  CANCELLED: 'Cancelado',
+};
+
+const PAYMENT_METHOD_LABEL: Record<OrderWithRelations['payments'][number]['method'], string> = {
+  CASH: 'Efectivo',
+  TRANSFER: 'Transferencia',
+  CARD: 'Tarjeta',
+  OTHER: 'Otro',
 };
 
 export const MAX_PDF_PAGE_HEIGHT = 14000;
@@ -45,6 +62,7 @@ export const absoluteAssetUrl = (url: string, port: string | number = process.en
 export class PdfService {
   private readonly quotationTemplate: HandlebarsTemplateDelegate;
   private readonly catalogTemplate: HandlebarsTemplateDelegate;
+  private readonly ordersTemplate: HandlebarsTemplateDelegate;
   /** Logo circular de la marca (copia de apps/landing/public/logo.svg),
    *  incrustado como data URI: no depende de red ni de Settings.logoUrl. */
   private readonly logoSrc: string;
@@ -58,6 +76,7 @@ export class PdfService {
     const source = readFileSync(join(__dirname, 'templates', 'quotation.hbs'), 'utf-8');
     this.quotationTemplate = Handlebars.compile(source);
     this.catalogTemplate = Handlebars.compile(readFileSync(join(__dirname, 'templates', 'catalog.hbs'), 'utf-8'));
+    this.ordersTemplate = Handlebars.compile(readFileSync(join(__dirname, 'templates', 'orders.hbs'), 'utf-8'));
     const logo = readFileSync(join(__dirname, 'templates', 'logo-circular.svg'));
     this.logoSrc = `data:image/svg+xml;base64,${logo.toString('base64')}`;
     const font = readFileSync(join(__dirname, 'templates', 'fonts', 'Parisienne-Regular.ttf'));
@@ -95,6 +114,65 @@ export class PdfService {
       notes: quotation.notes,
       bankAccount: toBankAccount(settings),
       publicUrl: `${publicSiteUrl}/cotizacion/${quotation.publicToken}`,
+    });
+  }
+
+  // expuesto para pruebas
+  async buildOrdersHtml(orders: OrderWithRelations[], title: string): Promise<string> {
+    const settings = await this.settingsService.get();
+    return this.ordersTemplate({
+      brandName: settings.brandName,
+      logoSrc: this.logoSrc,
+      title,
+      printedAt: new Date(),
+      orders: orders.map((o) => ({
+        folio: o.folio,
+        status: ORDER_STATUS_LABEL[o.status],
+        orderDate: o.orderDate,
+        dueDate: o.dueDate,
+        customerName: o.customer.fullName,
+        customerPhone: o.customer.whatsapp || o.customer.phone || null,
+        customerNotes: o.customer.notes,
+        notes: o.notes,
+        quotationFolio: o.quotation?.folio ?? null,
+        totalQuantity: o.totalQuantity,
+        totalWaxGrams: o.totalWaxGrams.toNumber(),
+        total: o.total.toNumber(),
+        paid: o.paidAmount.toNumber(),
+        balance: o.total.minus(o.paidAmount).toNumber(),
+        items: o.items.map((item) => ({
+          quantity: item.quantity,
+          productName: item.productName,
+          detail: [
+            item.candleColor,
+            item.ribbonColor,
+            ...((item.extraFields as { label: string; value: string }[] | null) ?? []).map((f) => `${f.label}: ${f.value}`),
+            item.withFragrance ? `Aroma: ${item.fragranceName ?? 'Pendiente'}` : null,
+            item.personalizationText,
+          ].filter(Boolean).join(' · '),
+          fragranceMl: item.withFragrance ? item.fragranceMlPerUnit.toNumber() * item.quantity : 0,
+        })),
+        payments: o.payments.map((p) => ({
+          paidAt: p.paidAt,
+          method: PAYMENT_METHOD_LABEL[p.method],
+          amount: p.amount.toNumber(),
+          reference: p.reference,
+        })),
+      })),
+    });
+  }
+
+  async renderOrdersPdf(orders: OrderWithRelations[], title: string): Promise<Buffer> {
+    if (!orders.length) throw new BadRequestException('No hay pedidos para imprimir');
+    const html = await this.buildOrdersHtml(orders, title);
+    return this.withPage(undefined, async (page) => {
+      await page.setContent(html, { waitUntil: 'load' });
+      const pdf = await page.pdf({
+        format: 'Letter',
+        printBackground: true,
+        margin: { top: '12mm', bottom: '12mm', left: '10mm', right: '10mm' },
+      });
+      return Buffer.from(pdf);
     });
   }
 

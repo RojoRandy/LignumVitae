@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { getJson } from '../lib/api';
 import { organizationJsonLd, websiteJsonLd, jsonLdScript } from '../lib/seo';
+import { whatsappLink } from '../lib/whatsapp';
 
 interface Props {
   title: string;
@@ -32,10 +33,7 @@ const canonical = new URL(Astro.url.pathname, origin);
 const ogImage = image ?? '/galeria/1.jpeg';
 const imageUrl = ogImage.startsWith('http') ? ogImage : new URL(ogImage, origin).href;
 const settings = await getJson<PublicSettings>('/public/settings');
-const whatsappDigits = settings.whatsapp?.replace(/\D/g, '');
-const whatsappUrl = whatsappDigits
-  ? `https://wa.me/${whatsappDigits.length === 10 ? '52' : ''}${whatsappDigits}`
-  : null;
+const whatsappUrl = whatsappLink(settings.whatsapp);
 const navigation = [
   { href: '/catalogo', label: 'Catálogo' },
   { href: '/#como-funciona', label: 'Cómo funciona' },

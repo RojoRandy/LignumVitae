@@ -199,6 +199,7 @@ describe('calculateBouquetCost: ramos como producto compuesto', () => {
     });
 
     expect(bouquet.unitWaxCost).toBeCloseTo(rose.unitWaxCost * 3, 4);
+    expect(bouquet.waxGramsPerUnit).toBeCloseTo(rose.waxGramsPerUnit * 3, 4);
     expect(bouquet.unitFragranceCost).toBe(0);
     expect(bouquet.unitSupplyCost).toBeCloseTo(rose.unitSupplyCost * 3 + 1.125, 4);
     expect(bouquet.unitTotalCost).toBeGreaterThan(rose.unitTotalCost * 3); // el armado suma costo

@@ -1,5 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { PrintOrdersQueryDto } from './dto/print-orders.query.dto';
 import { OrdersService, splitLineAmounts } from './orders.service';
 
 const build = () => {
@@ -39,6 +42,78 @@ const build = () => {
   );
   return { service, order, supply, orderRepository, supplyRepository };
 };
+
+describe('findAll', () => {
+  const buildList = () => {
+    const ctx = build();
+    const repo = ctx.orderRepository as unknown as Record<string, jest.Mock>;
+    repo.findMany = jest.fn().mockResolvedValue([]);
+    repo.count = jest.fn().mockResolvedValue(0);
+    return { service: ctx.service, repo };
+  };
+
+  it('filtra entregados por mes de entrega', async () => {
+    const { service, repo } = buildList();
+    await service.findAll({ status: 'DELIVERED', month: '2026-11' });
+    expect(repo.findMany.mock.calls[0][0].where.deliveredAt).toEqual({
+      gte: new Date('2026-11-01T00:00:00.000Z'),
+      lt: new Date('2026-12-01T00:00:00.000Z'),
+    });
+  });
+
+  it('filtra cancelados por mes de cancelacion', async () => {
+    const { service, repo } = buildList();
+    await service.findAll({ status: 'CANCELLED', month: '2026-12' });
+    const where = repo.findMany.mock.calls[0][0].where;
+    expect(where.cancelledAt).toEqual({
+      gte: new Date('2026-12-01T00:00:00.000Z'),
+      lt: new Date('2027-01-01T00:00:00.000Z'),
+    });
+    expect(where.deliveredAt).toBeUndefined();
+  });
+
+  it('busca por folio o cliente con el texto recortado', async () => {
+    const { service, repo } = buildList();
+    await service.findAll({ search: ' ped ' });
+    expect(repo.findMany.mock.calls[0][0].where.OR).toEqual([
+      { folio: { contains: 'ped', mode: 'insensitive' } },
+      { customer: { fullName: { contains: 'ped', mode: 'insensitive' } } },
+    ]);
+  });
+});
+
+describe('findActiveForPrint', () => {
+  const buildPrint = () => {
+    const ctx = build();
+    const repo = ctx.orderRepository as unknown as Record<string, jest.Mock>;
+    repo.findMany = jest.fn().mockResolvedValue([]);
+    return { service: ctx.service, repo };
+  };
+
+  it('filtra por los ids recibidos', async () => {
+    const { service, repo } = buildPrint();
+    await service.findActiveForPrint([1, 2]);
+    expect(repo.findMany.mock.calls[0][0].where.id).toEqual({ in: [1, 2] });
+  });
+
+  it('sin ids no filtra por id', async () => {
+    const { service, repo } = buildPrint();
+    await service.findActiveForPrint();
+    expect(repo.findMany.mock.calls[0][0].where).not.toHaveProperty('id');
+  });
+});
+
+describe('PrintOrdersQueryDto', () => {
+  it('convierte la lista separada por comas en numeros', () => {
+    const dto = plainToInstance(PrintOrdersQueryDto, { ids: '1,2' });
+    expect(validateSync(dto)).toHaveLength(0);
+    expect(dto.ids).toEqual([1, 2]);
+  });
+
+  it.each(['abc', ''])('rechaza ids=%j', (ids) => {
+    expect(validateSync(plainToInstance(PrintOrdersQueryDto, { ids }))).not.toHaveLength(0);
+  });
+});
 
 it('guarda solo el nombre del aroma y devuelve el pedido actualizado', async () => {
   const { service, order, orderRepository, supplyRepository } = build();

@@ -48,7 +48,9 @@ export class QuoteRequestRepository {
       select: {
         id: true,
         name: true,
+        slug: true,
         allowsFragrance: true,
+        images: { orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }, { id: 'asc' }], take: 1, select: { url: true } },
         // Solo para validar extraFields contra el BOM (nunca sale en la respuesta).
         supplies: {
           where: { supply: { askInQuote: true, isActive: true } },
@@ -64,5 +66,13 @@ export class QuoteRequestRepository {
       where: { id: { in: ids }, isFragrance: true, isActive: true },
       select: { id: true, name: true },
     });
+  }
+
+  createShared(data: Prisma.SharedQuoteCreateInput) {
+    return this.prisma.sharedQuote.create({ data, select: { token: true } });
+  }
+
+  findShared(token: string) {
+    return this.prisma.sharedQuote.findUnique({ where: { token } });
   }
 }

@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { ApiError, getJson, imageUrl } from '../../lib/api';
 import { breadcrumbJsonLd, jsonLdScript } from '../../lib/seo';
 import { formatPrice, fragranceNote, PRICE_DISCLAIMER, type ProductPrices } from '../../lib/price';
+import { whatsappLink } from '../../lib/whatsapp';
 
 interface Product {
   id: string;
@@ -25,6 +26,7 @@ interface PublicSettings {
   minLeadTimeDays: number;
   wholesaleThresholdQty?: number;
   fragranceSurcharge?: number;
+  whatsapp: string | null;
 }
 
 interface Fragrance {
@@ -52,6 +54,9 @@ const prices = [
 ];
 const hasPrice = prices.some((price) => price.value !== null);
 const surcharge = settings?.fragranceSurcharge ?? 0;
+const quoteUrl = product && settings
+  ? whatsappLink(settings.whatsapp, `Hola, quiero cotizar: ${product.name} ${new URL(`/producto/${product.slug}`, Astro.site).href}`)
+  : null;
 ---
 
 <Layout title={product ? `${product.name} · Lignum Vitae` : 'Producto no encontrado · Lignum Vitae'} description={product?.description || 'Velas personalizadas para tus momentos especiales.'} image={images[0] ? imageUrl(images[0].url) : undefined}>
@@ -157,6 +162,7 @@ const surcharge = settings?.fragranceSurcharge ?? 0;
           <p id="quote-status" role="status" class="text-body-sm text-action" hidden>Agregado · <a href="/cotizar" class="underline">Ver mi cotización</a></p>
           <p id="quote-error" role="alert" class="rounded-input bg-danger-bg p-4 text-caption text-danger-fg" hidden>No pudimos guardar tu cotización. Revisa que el navegador permita guardar datos e intenta de nuevo.</p>
         </form>
+        {quoteUrl && <a href={quoteUrl} target="_blank" rel="noopener" class="mt-4 inline-flex min-h-11 items-center text-body-sm text-action underline">o pregunta por WhatsApp</a>}
       </div>
     </div>
   </section> : <section class="site-container py-16 lg:py-24">

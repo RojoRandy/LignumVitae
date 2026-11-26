@@ -3,15 +3,15 @@ import { orderBalance } from '@lignumvitae/types';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { MoreHorizontal, Plus } from 'lucide-react';
-import { httpGet, httpPatch, errorMessage } from '@/lib/http';
+import { MoreHorizontal, Plus, Printer } from 'lucide-react';
+import { downloadFile, httpGet, httpPatch, errorMessage } from '@/lib/http';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useSupplyOptions } from '@/hooks/use-supply-options';
 import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import type { OrderDto, OrderItemDto, OrderStatus } from '@/lib/types';
-import { formatDate, formatDateTime, formatMoney, fragranceEstimateLabel } from '@/lib/format';
+import { formatDate, formatDateTime, formatGrams, formatMoney, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +120,11 @@ export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: str
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  const printMutation = useMutation({
+    mutationFn: () => downloadFile(`/orders/${orderId}/pdf`, `${order?.folio ?? orderId}.pdf`),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
   const handleCancelPayment = async (paymentId: number) => {
     const ok = await confirm({ title: '¿Cancelar este pago?', description: 'El saldo pendiente del pedido vuelve a subir. El estado del pedido no cambia solo.' });
     if (ok) cancelPaymentMutation.mutate(paymentId);
@@ -165,6 +170,9 @@ export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: str
         }
         actions={
           <>
+            <Button variant="secondary" onClick={() => printMutation.mutate()} loading={printMutation.isPending}>
+              <Printer className="size-3.5" /> Imprimir
+            </Button>
             {nextStatus && (
               <Button onClick={() => statusMutation.mutate(nextStatus.status)} loading={statusMutation.isPending}>
                 {nextStatus.label}
@@ -208,11 +216,12 @@ export function OrderDetail({ orderId, backTo }: { orderId: string; backTo?: str
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <Card className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
+          <Card className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-5">
             <div><p className="text-caption text-text-muted">Pedido</p><p className="text-body-sm font-medium text-text">{formatDate(order.orderDate)}</p></div>
             <div><p className="text-caption text-text-muted">Entrega</p><p className="text-body-sm font-medium text-text">{formatDate(order.dueDate)}</p></div>
             <div><p className="text-caption text-text-muted">Entregado</p><p className="text-body-sm font-medium text-text">{order.deliveredAt ? formatDate(order.deliveredAt) : '—'}</p></div>
             <div><p className="text-caption text-text-muted">Piezas</p><p className="text-body-sm font-medium text-text">{order.totalQuantity}</p></div>
+            <div><p className="text-caption text-text-muted">Cera total</p><p className="text-body-sm font-medium text-text">{formatGrams(order.totalWaxGrams)}</p></div>
             {order.notes && <p className="col-span-full whitespace-pre-line text-body-sm text-text-muted">{order.notes}</p>}
           </Card>
 

@@ -45,12 +45,25 @@ export class OrdersService {
   ) {}
 
   async findAll(query: FindOrdersQueryDto & Pick<PaginationQueryDto, 'onlyActive'>) {
-    const { page = 1, limit = 20, status, customerId, onlyActive = true } = query;
+    const { page = 1, limit = 20, status, customerId, month, search, onlyActive = true } = query;
     const where: Prisma.OrderWhereInput = {
       ...(onlyActive ? { isActive: true } : {}),
       ...(status ? { status } : {}),
       ...(customerId ? { customerId } : {}),
     };
+    if (month) {
+      // ponytail: limites del mes en UTC; deliveredAt es @db.Date (exacto), cancelledAt puede moverse unas horas en el borde del mes
+      const start = new Date(`${month}-01T00:00:00.000Z`);
+      const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+      where[status === 'CANCELLED' ? 'cancelledAt' : 'deliveredAt'] = { gte: start, lt: end };
+    }
+    const term = search?.trim();
+    if (term) {
+      where.OR = [
+        { folio: { contains: term, mode: 'insensitive' } },
+        { customer: { fullName: { contains: term, mode: 'insensitive' } } },
+      ];
+    }
     // Los mas recientes primero: asi se ubica rapido lo ultimo que entro.
     const [items, total] = await Promise.all([
       this.orderRepository.findMany({
@@ -61,6 +74,18 @@ export class OrdersService {
       this.orderRepository.count(where),
     ]);
     return buildPaginatedResult(items, total, page, limit);
+  }
+
+  // Pedidos vivos para imprimir (pdf de pedidos activos), por fecha de entrega.
+  findActiveForPrint(ids?: number[]) {
+    return this.orderRepository.findMany({
+      where: {
+        isActive: true,
+        status: { in: ['PENDING_DEPOSIT', 'CONFIRMED', 'IN_PRODUCTION', 'READY'] },
+        ...(ids ? { id: { in: ids } } : {}),
+      },
+      orderBy: [{ dueDate: 'asc' }, { id: 'asc' }],
+    });
   }
 
   async findById(id: number) {

@@ -470,6 +470,7 @@ export interface PreviewQuotationTotalsResult {
   totals: QuotationTotalsPreview;
   warnings: QuotationMarginWarning[];
   items: { unitTotalCost: number; fragranceMlPerUnit: number }[];
+  totalWaxGrams: number;
 }
 
 /** POST /orders/:id/items/preview: como queda el pedido al agregar productos. */

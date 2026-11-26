@@ -6,7 +6,7 @@ import { downloadFile, errorMessage, httpDelete, httpGet, httpPost } from '@/lib
 import { staticUrl } from '@/lib/api';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import type { QuotationDto, QuotationStatus } from '@/lib/types';
-import { formatDate, formatMoney, formatPercent, fragranceEstimateLabel } from '@/lib/format';
+import { formatDate, formatGrams, formatMoney, formatPercent, fragranceEstimateLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -305,6 +305,7 @@ export default function QuotationDetailPage() {
           <Separator />
           <MoneyRow label="Costo total" value={formatMoney(quotation.totalCost)} muted />
           <MoneyRow label="Margen" value={`${formatMoney(quotation.grossProfit)} (${formatPercent(quotation.grossMarginPct)})`} muted />
+          <MoneyRow label="Cera total" value={formatGrams(quotation.totalWaxGrams)} muted />
           {totalFragranceMl > 0 && <MoneyRow label="Aroma estimado (total)" value={fragranceEstimateLabel(totalFragranceMl)} muted />}
         </Card>
       </div>
