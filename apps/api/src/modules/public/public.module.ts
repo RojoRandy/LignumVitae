@@ -5,12 +5,18 @@ import { OrdersModule } from '../sales/orders/orders.module';
 import { SettingsModule } from '../settings/settings.module';
 import { QuoteRequestsModule } from '../sales/quote-requests/quote-requests.module';
 import { PublicQuoteRequestsController } from './public-quote-requests.controller';
+import { PublicSharedQuotesController } from './public-shared-quotes.controller';
 import { PublicCatalogController } from './public-catalog.controller';
 import { PublicCatalogRepository } from './public-catalog.repository';
 
 @Module({
   imports: [QuotationsModule, OrdersModule, SettingsModule, QuoteRequestsModule],
-  controllers: [PublicQuotationsController, PublicCatalogController, PublicQuoteRequestsController],
+  controllers: [
+    PublicQuotationsController,
+    PublicCatalogController,
+    PublicQuoteRequestsController,
+    PublicSharedQuotesController,
+  ],
   providers: [PublicCatalogRepository],
 })
 export class PublicModule {}

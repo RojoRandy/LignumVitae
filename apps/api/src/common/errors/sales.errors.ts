@@ -25,6 +25,8 @@ const Responses = {
     new ErrorResponseDto('QUOTE_REQUEST_NOT_FOUND', 'No se encontro la solicitud de cotizacion', data),
   QUOTE_REQUEST_NOT_NEW: (data?: unknown) =>
     new ErrorResponseDto('QUOTE_REQUEST_NOT_NEW', 'Esta solicitud ya se convirtio o se descarto', data),
+  SHARED_QUOTE_NOT_FOUND: (data?: unknown) =>
+    new ErrorResponseDto('SHARED_QUOTE_NOT_FOUND', 'No se encontro la lista compartida', data),
   LEAD_TIME_TOO_SHORT: (data?: unknown) =>
     new ErrorResponseDto(
       'LEAD_TIME_TOO_SHORT',
@@ -59,6 +61,7 @@ const Exceptions = {
   PAYMENT_EXCEEDS_BALANCE: (data?: unknown) => new BadRequestException(Responses.PAYMENT_EXCEEDS_BALANCE(data)),
   QUOTE_REQUEST_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.QUOTE_REQUEST_NOT_FOUND(data)),
   QUOTE_REQUEST_NOT_NEW: (data?: unknown) => new ConflictException(Responses.QUOTE_REQUEST_NOT_NEW(data)),
+  SHARED_QUOTE_NOT_FOUND: (data?: unknown) => new NotFoundException(Responses.SHARED_QUOTE_NOT_FOUND(data)),
   LEAD_TIME_TOO_SHORT: (data?: unknown) => new BadRequestException(Responses.LEAD_TIME_TOO_SHORT(data)),
   INVALID_FRAGRANCE_SUPPLY: (data?: unknown) => new BadRequestException(Responses.INVALID_FRAGRANCE_SUPPLY(data)),
   QUOTATION_EMPTY: (data?: unknown) => new BadRequestException(Responses.QUOTATION_EMPTY(data)),

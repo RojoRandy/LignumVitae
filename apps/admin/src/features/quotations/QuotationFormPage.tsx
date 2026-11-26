@@ -12,7 +12,7 @@ import { errorMessage, httpGet, httpPatch, httpPost } from '@/lib/http';
 import { useFieldErrors } from '@/hooks/use-field-errors';
 import { useCustomerOptions } from '@/hooks/use-customer-options';
 import type { AdjustmentTypeValue, CustomerDto, QuotationDto, QuotationMarginWarning, QuoteRequestDto, SettingsDto } from '@/lib/types';
-import { formatMoney, formatPercent } from '@/lib/format';
+import { formatGrams, formatMoney, formatPercent } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
@@ -419,6 +419,7 @@ export default function QuotationFormPage() {
                   <Separator />
                   <MoneyRow label="Costo total" value={formatMoney(preview.totals.totalCost)} muted />
                   <MoneyRow label="Margen" value={`${formatMoney(preview.totals.grossProfit)} (${formatPercent(preview.totals.grossMarginPct)})`} muted />
+                  <MoneyRow label="Cera total" value={formatGrams(preview.totalWaxGrams)} muted />
                 </div>
                 <p className="text-caption text-text-faint">Vista previa — se recalcula al guardar.</p>
               </>

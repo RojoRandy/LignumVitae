@@ -1,12 +1,14 @@
 // Solicitudes crudas del cotizador publico de la landing. No llevan precio ni
 // cliente: la duena las convierte en Quotation desde el admin.
+import { randomBytes } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { buildPaginatedResult, paginate } from '../../../common/dto/pagination.dto';
 import { SettingsService } from '../../settings/settings.service';
 import { CatalogErrors } from '../../../common/errors/catalog.errors';
 import { SalesErrors } from '../../../common/errors/sales.errors';
-import type { CreateQuoteRequestDto } from '../../public/dto/create-quote-request.dto';
+import type { CreateQuoteRequestDto, CreateQuoteRequestItemDto } from '../../public/dto/create-quote-request.dto';
+import type { CreateSharedQuoteDto } from '../../public/dto/create-shared-quote.dto';
 import { QuoteRequestRepository } from './quote-request.repository';
 import type { FindQuoteRequestsQueryDto } from './dto/find-quote-requests.query.dto';
 
@@ -27,6 +29,20 @@ export const cleanExtraFields = (input: { supplyId: number; value: string }[] | 
     clean.push({ supplyId: field.supplyId, label, value });
   }
   return clean;
+};
+
+/** Renglon tal como queda en la columna Json de shared_quotes. */
+type SharedQuoteItem = {
+  productId: number;
+  slug: string;
+  productName: string;
+  imageUrl: string | null;
+  quantity: number;
+  candleColor: string | null;
+  extraFields: { supplyId: number; label: string; value: string }[];
+  withFragrance: boolean;
+  fragranceSupplyId: number | null;
+  fragranceName: string | null;
 };
 
 @Injectable()
@@ -97,7 +113,55 @@ export class QuoteRequestsService {
       });
     }
 
-    const ids = [...new Set(dto.items.map((item) => item.productId))];
+    const { items } = await this.resolveItems(dto.items);
+
+    return this.quoteRequestRepository.create({
+      fullName: dto.fullName.trim(),
+      whatsapp: dto.whatsapp,
+      eventDate: new Date(`${dto.eventDate.slice(0, 10)}T00:00:00Z`),
+      notes: dto.notes?.trim() || null,
+      items: items as Prisma.InputJsonValue,
+    });
+  }
+
+  // ponytail: filas sin caducidad; purgar por createdAt si crece
+  async createShared(dto: CreateSharedQuoteDto) {
+    const { items, products } = await this.resolveItems(dto.items);
+    // Sin minimo de anticipacion: compartir la lista todavia no es pedir.
+    return this.quoteRequestRepository.createShared({
+      token: randomBytes(8).toString('base64url'),
+      eventDate: dto.eventDate ? new Date(`${dto.eventDate.slice(0, 10)}T00:00:00Z`) : null,
+      items: items.map((item) => {
+        const product = products.get(item.productId)!;
+        return { ...item, slug: product.slug, imageUrl: product.images[0]?.url ?? null };
+      }) as Prisma.InputJsonValue,
+    });
+  }
+
+  async findShared(token: string) {
+    const shared = await this.quoteRequestRepository.findShared(token);
+    if (!shared) throw SalesErrors.Exceptions.SHARED_QUOTE_NOT_FOUND();
+    // Es publico: se listan los campos uno a uno para que nunca salgan ids de insumos.
+    return {
+      eventDate: shared.eventDate?.toISOString().slice(0, 10) ?? null,
+      createdAt: shared.createdAt,
+      items: (shared.items as unknown as SharedQuoteItem[]).map((item) => ({
+        productId: item.productId,
+        slug: item.slug,
+        productName: item.productName,
+        imageUrl: item.imageUrl,
+        quantity: item.quantity,
+        candleColor: item.candleColor,
+        extraFields: item.extraFields.map(({ label, value }) => ({ label, value })),
+        withFragrance: item.withFragrance,
+        fragranceName: item.fragranceName,
+      })),
+    };
+  }
+
+  /** Valida productos y aromas contra la BD y arma los renglones que se guardan. */
+  private async resolveItems(input: CreateQuoteRequestItemDto[]) {
+    const ids = [...new Set(input.map((item) => item.productId))];
     const products = new Map((await this.quoteRequestRepository.findQuotableProducts(ids)).map((p) => [p.id, p]));
     const missing = ids.filter((id) => !products.has(id));
     // 400 y no 404: el recurso es la solicitud, lo que esta mal es su contenido.
@@ -105,14 +169,14 @@ export class QuoteRequestsService {
 
     // Mismo criterio que la cotizacion del admin (create-quotation.usecase.ts):
     // el aroma debe existir, estar activo y seguir marcado como aroma.
-    const fragranceIds = [...new Set(dto.items.map((item) => item.fragranceSupplyId).filter((id): id is number => id != null))];
+    const fragranceIds = [...new Set(input.map((item) => item.fragranceSupplyId).filter((id): id is number => id != null))];
     const fragrances = new Map(
       (fragranceIds.length ? await this.quoteRequestRepository.findQuotableFragrances(fragranceIds) : []).map((f) => [f.id, f]),
     );
     const missingFragrances = fragranceIds.filter((id) => !fragrances.has(id));
     if (missingFragrances.length) throw SalesErrors.Exceptions.INVALID_FRAGRANCE_SUPPLY({ fragranceSupplyIds: missingFragrances });
 
-    const items = dto.items.map((item) => {
+    const items = input.map((item) => {
       const product = products.get(item.productId)!;
       const withFragrance = product.allowsFragrance && Boolean(item.withFragrance);
       const fragrance = withFragrance && item.fragranceSupplyId != null ? fragrances.get(item.fragranceSupplyId) : undefined;
@@ -128,12 +192,6 @@ export class QuoteRequestsService {
       };
     });
 
-    return this.quoteRequestRepository.create({
-      fullName: dto.fullName.trim(),
-      whatsapp: dto.whatsapp,
-      eventDate: new Date(`${dto.eventDate.slice(0, 10)}T00:00:00Z`),
-      notes: dto.notes?.trim() || null,
-      items: items as Prisma.InputJsonValue,
-    });
+    return { items, products };
   }
 }

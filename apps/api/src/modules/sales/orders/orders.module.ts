@@ -8,9 +8,10 @@ import { QuotationsModule } from '../quotations/quotations.module';
 import { SuppliesModule } from '../../inventory/supplies/supplies.module';
 import { SettingsModule } from '../../settings/settings.module';
 import { ProductsModule } from '../../catalog/products/products.module';
+import { PdfModule } from '../../pdf/pdf.module';
 
 @Module({
-  imports: [QuotationsModule, SettingsModule, SuppliesModule, ProductsModule],
+  imports: [QuotationsModule, SettingsModule, SuppliesModule, ProductsModule, PdfModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderRepository, CreateOrderFromQuotationUseCase, AddOrderItemsUseCase],
   exports: [OrderRepository, OrdersService],

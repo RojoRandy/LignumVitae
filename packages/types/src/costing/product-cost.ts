@@ -124,7 +124,7 @@ export const calculateProductCost = (input: ProductCostInput): ProductCostBreakd
 
 export interface BouquetComponentInput {
   /** Costo ya calculado de la vela componente (calculateProductCost sin empaque propio). */
-  unitCost: Pick<ProductCostBreakdown, 'unitWaxCost' | 'unitSupplyCost' | 'meltMinutesPerUnit'>;
+  unitCost: Pick<ProductCostBreakdown, 'waxGramsPerUnit' | 'unitWaxCost' | 'unitSupplyCost' | 'meltMinutesPerUnit'>;
   quantity: number;
 }
 
@@ -148,6 +148,10 @@ export interface BouquetCostInput {
 export const calculateBouquetCost = (input: BouquetCostInput): ProductCostBreakdown => {
   const componentsWaxCost = input.components.reduce(
     (acc, c) => acc.plus(money(c.unitCost.unitWaxCost).times(c.quantity)),
+    money(0),
+  );
+  const componentsWaxGrams = input.components.reduce(
+    (acc, c) => acc.plus(money(c.unitCost.waxGramsPerUnit).times(c.quantity)),
     money(0),
   );
   const componentsSupplyCost = input.components.reduce(
@@ -177,7 +181,7 @@ export const calculateBouquetCost = (input: BouquetCostInput): ProductCostBreakd
   );
 
   return {
-    waxGramsPerUnit: 0, // un ramo no tiene "gramos por unidad" propios: son de sus componentes
+    waxGramsPerUnit: componentsWaxGrams.toNumber(), // cera de todas las velas del ramo, con merma
     piecesPerMeltBatch: 1,
     meltMinutesPerUnit: componentsMeltMinutes.toNumber(),
     setupMinutesPerUnit: setupMinutesPerUnit.toNumber(),

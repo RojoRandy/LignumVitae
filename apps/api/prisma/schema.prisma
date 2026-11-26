@@ -870,6 +870,18 @@ model QuoteRequest {
   @@schema("sales")
 }
 
+/// Lista del carrito compartida por WhatsApp. Sin datos personales.
+model SharedQuote {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  eventDate DateTime? @map("event_date") @db.Date
+  items     Json
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("shared_quotes")
+  @@schema("sales")
+}
+
 model Quotation {
   id     Int             @id @default(autoincrement())
   folio  String          @unique

@@ -1,0 +1,89 @@
+---
+import { imageUrl } from '../lib/api';
+import { estimateLine, estimateTotal, formatPrice, type PriceSettings, type ProductPrices } from '../lib/price';
+
+// Forma de la respuesta publica de la lista compartida (findShared en el API).
+export interface SharedQuoteData {
+  eventDate: string | null;
+  createdAt: string;
+  items: {
+    productId: number;
+    slug: string;
+    productName: string;
+    imageUrl: string | null;
+    quantity: number;
+    candleColor: string | null;
+    extraFields: { label: string; value: string }[];
+    withFragrance: boolean;
+    fragranceName: string | null;
+  }[];
+}
+
+interface Props {
+  quote: SharedQuoteData | null;
+  /** Precios vigentes por producto; la llave es String(productId). */
+  prices: Record<string, ProductPrices | undefined>;
+  priceSettings: PriceSettings;
+}
+
+const { quote, prices, priceSettings } = Astro.props;
+const tierLabel = { retail: 'Menudeo', wholesale: 'Mayoreo' } as const;
+
+// Mismas reglas y textos que render() en pages/cotizar.astro.
+const rows = (quote?.items ?? []).map((item) => ({
+  item,
+  options: [
+    item.candleColor && `Vela: ${item.candleColor}`,
+    ...item.extraFields.map((field) => `${field.label}: ${field.value}`),
+    item.withFragrance ? `Aroma: ${item.fragranceName || 'sin especificar'}` : 'Sin aroma',
+  ].filter(Boolean).join(' · '),
+  estimate: estimateLine(item, prices[String(item.productId)], priceSettings),
+}));
+const { total, pending } = estimateTotal(rows.map((row) => row.estimate));
+---
+
+{quote === null ? (
+  <div class="mt-8">
+    <p class="text-body-lg text-text-muted">No encontramos esta lista.</p>
+    <a href="/catalogo" class="button mt-6 bg-action text-surface hover:bg-action-hover">Ver catálogo</a>
+  </div>
+) : (
+  <div class="mt-8 min-w-0">
+    <ul class="flex flex-col gap-4">
+      {rows.map(({ item, options, estimate }) => (
+        <li class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-4 rounded-card bg-surface p-4 shadow-card">
+          <img src={item.imageUrl === null ? '/logo.svg' : imageUrl(item.imageUrl)} alt="" width="128" height="128" class="aspect-square w-24 rounded-input bg-canvas-deep object-cover md:w-32" />
+          <div class="min-w-0">
+            <a href={`/producto/${encodeURIComponent(item.slug)}`} class="text-heading-sm text-text [overflow-wrap:anywhere] hover:text-action">{item.productName}</a>
+            <p class="mt-1 text-caption text-text-muted [overflow-wrap:anywhere]">{options}</p>
+            <p class="mt-2 text-caption text-text-muted">
+              {estimate
+                ? `${tierLabel[estimate.tier]} · ${formatPrice(estimate.unitPrice)} c/u${item.withFragrance && priceSettings.fragranceSurcharge ? ' (aroma incluido)' : ''}`
+                : 'Precio a cotizar'}
+            </p>
+            <p class="text-body font-semibold text-brand tabular-nums">{estimate ? formatPrice(estimate.lineTotal) : ''}</p>
+          </div>
+          <div class="flex flex-col items-end gap-2">
+            <p class="font-semibold tabular-nums">{item.quantity === 1 ? '1 pieza' : `${item.quantity} piezas`}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+
+    {/* AAAA-MM-DD a DD/MM/AAAA sin pasar por Date para no mover el dia por zona horaria. */}
+    {quote.eventDate && <p class="mt-6 text-body-sm font-medium">Fecha del evento: {quote.eventDate.split('-').reverse().join('/')}</p>}
+
+    {/* Sin ningun renglon con precio no hay nada que estimar. */}
+    {pending < rows.length && (
+      <div class="mt-6 rounded-card bg-surface p-4 shadow-card">
+        <dl class="flex items-baseline justify-between gap-4">
+          <dt class="text-body font-medium">Total estimado</dt>
+          <dd class="text-heading-lg text-brand tabular-nums">{formatPrice(total)}</dd>
+        </dl>
+        {pending > 0 && <p class="mt-1 text-caption text-text-muted">{pending === 1 ? 'No incluye 1 producto a cotizar.' : `No incluye ${pending} productos a cotizar.`}</p>}
+      </div>
+    )}
+
+    <p class="mt-2 text-caption text-text-muted">Precios vigentes al momento de consultar; el precio final se confirma por WhatsApp.</p>
+  </div>
+)}

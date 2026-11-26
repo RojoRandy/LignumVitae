@@ -3,16 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { useTableParams } from '@/hooks/use-table-params';
+import { Printer } from 'lucide-react';
 import { errorMessage, httpGet, httpPatch } from '@/lib/http';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { OrderDto, OrderStatus, Paginated } from '@/lib/types';
 import { formatDate, formatMoney } from '@/lib/format';
 import { DataTable } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { OrderBoard } from './components/order-board';
 import { OrderDetail, STATUS_LABEL } from './components/order-detail';
+import { PrintOrdersDialog } from './components/print-orders-dialog';
 import { PageHeader, PageToolbar } from '@/components/ui/page';
 import { PaymentProgress } from '@/components/domain/payment-progress';
 
@@ -25,14 +29,26 @@ const STATUS_TONE: Record<OrderStatus, 'neutral' | 'info' | 'warning' | 'success
   CANCELLED: 'danger',
 };
 
+// Mes local actual en formato YYYY-MM.
+const currentMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+
 export default function OrdersPage() {
-  const { page, setPage } = useTableParams();
+  const { page, setPage, search, setSearch } = useTableParams();
+  const [month, setMonth] = useState(currentMonth);
   const [closedStatus, setClosedStatus] = useState<'DELIVERED' | 'CANCELLED'>('DELIVERED');
   const [openOrder, setOpenOrder] = useState<OrderDto | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', { page, status: closedStatus }],
-    queryFn: () => httpGet<Paginated<OrderDto>>('/orders', { page, status: closedStatus, limit: 20 }),
+    queryKey: ['orders', { page, status: closedStatus, month, search }],
+    queryFn: () =>
+      httpGet<Paginated<OrderDto>>('/orders', {
+        page,
+        status: closedStatus,
+        limit: 20,
+        month: month || undefined,
+        search: search || undefined,
+      }),
   });
 
   const queryClient = useQueryClient();
@@ -90,6 +106,11 @@ export default function OrdersPage() {
       <PageHeader
         title="Pedidos"
         description="Tablero de produccion. Arrastra una tarjeta para cambiar su estado."
+        actions={
+          <Button variant="secondary" onClick={() => setPrintOpen(true)}>
+            <Printer className="size-3.5" /> Imprimir pedidos
+          </Button>
+        }
       />
 
       <OrderBoard onOpen={setOpenOrder} />
@@ -97,7 +118,19 @@ export default function OrdersPage() {
       <h2 className="text-body font-semibold text-text">Cerrados</h2>
 
       <PageToolbar
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar folio o cliente...' }}
         filters={
+          <>
+            <Input
+              type="month"
+              aria-label="Mes"
+              value={month}
+              onChange={(e) => {
+                setMonth(e.target.value);
+                setPage(1);
+              }}
+              className="w-full sm:w-44"
+            />
           <div className="w-full sm:w-64">
             <Select
               options={[
@@ -113,10 +146,11 @@ export default function OrdersPage() {
               }}
             />
           </div>
+          </>
         }
       />
 
-      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin pedidos" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={setOpenOrder} />
+      <DataTable columns={columns} data={data?.items ?? []} isLoading={isLoading} emptyTitle="Sin pedidos en este periodo" page={data?.page} pages={data?.pages} total={data?.total} onPageChange={setPage} onRowClick={setOpenOrder} />
 
       <Dialog open={openOrder !== null} onOpenChange={(open) => !open && setOpenOrder(null)}>
         <DialogContent size="xl">
@@ -124,6 +158,8 @@ export default function OrdersPage() {
           {openOrder && <OrderDetail orderId={String(openOrder.id)} />}
         </DialogContent>
       </Dialog>
+
+      <PrintOrdersDialog open={printOpen} onOpenChange={setPrintOpen} />
     </div>
   );
 }

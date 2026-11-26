@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { UserRoles } from '@prisma/client';
 import { OrdersService } from './orders.service';
@@ -7,11 +8,13 @@ import { AddOrderItemsDto } from './dto/add-order-items.dto';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { AuthUser } from '../../auth/decorators/auth-user.decorator';
 import { FindOrdersQueryDto } from './dto/find-orders.query.dto';
+import { PrintOrdersQueryDto } from './dto/print-orders.query.dto';
 import { SetOrderItemFragranceDto } from './dto/set-order-item-fragrance.dto';
 import { SplitOrderItemDto } from './dto/split-order-item.dto';
 import { UpdateOrderItemDto } from './dto/update-order-item.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { PdfService } from '../../pdf/pdf.service';
 
 @ApiTags('Sales')
 @Auth()
@@ -20,11 +23,31 @@ export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly addOrderItemsUseCase: AddOrderItemsUseCase,
+    private readonly pdfService: PdfService,
   ) {}
 
   @Get()
   findAll(@Query() query: FindOrdersQueryDto) {
     return this.ordersService.findAll(query);
+  }
+
+  // PDF binario: @Res passthrough:false salta el ApiResponseInterceptor global,
+  // igual que en cotizaciones. Va antes de ':id' para que 'pdf' no se tome como id.
+  @Get('pdf')
+  async pdfActive(@Query() query: PrintOrdersQueryDto, @Res({ passthrough: false }) res: Response) {
+    const buffer = await this.pdfService.renderOrdersPdf(await this.ordersService.findActiveForPrint(query.ids), 'Pedidos activos');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="pedidos-activos.pdf"');
+    res.send(buffer);
+  }
+
+  @Get(':id/pdf')
+  async pdfOne(@Param('id', ParseIntPipe) id: number, @Res({ passthrough: false }) res: Response) {
+    const order = await this.ordersService.findById(id);
+    const buffer = await this.pdfService.renderOrdersPdf([order], `Pedido ${order.folio}`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${order.folio}.pdf"`);
+    res.send(buffer);
   }
 
   @Get(':id')
